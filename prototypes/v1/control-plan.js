@@ -89,6 +89,20 @@
     return d + " " + m + " " + y;
   }
 
+  /* ---------------------------------------------------------
+     Date-input (<input type="date">) helpers — parse/format the
+     "YYYY-MM-DD" value using local date components (avoids the
+     UTC-midnight parsing pitfall of `new Date(str)`).
+     --------------------------------------------------------- */
+  function toDateInputValue(date) {
+    return date.getFullYear() + "-" + pad2(date.getMonth() + 1) + "-" + pad2(date.getDate());
+  }
+
+  function parseDateInputValue(str) {
+    var parts = String(str).split("-");
+    return new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+  }
+
   var ICON_SEND = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13"></path><path d="M22 2 15 22l-4-9-9-4 20-7Z"></path></svg>';
   var ICON_CHECK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg>';
 
@@ -106,8 +120,69 @@
     btnGenerateWorkplan: document.getElementById("btn-generate-workplan"),
     workplanTextarea: document.getElementById("workplan-textarea"),
     btnConfirmWorkplan: document.getElementById("btn-confirm-workplan"),
-    workplanStatus: document.getElementById("workplan-status")
+    workplanStatus: document.getElementById("workplan-status"),
+    workplanScheduleBody: document.getElementById("workplan-schedule-body")
   };
+
+  /* ---------------------------------------------------------
+     Control workplan schedule state — one row per spray team
+     (1-4), each with an editable date + time. Default values
+     replicate the old hardcoded logic (team 1-2 = tomorrow,
+     team 3-4 = day after tomorrow) but split into two default
+     start times (08:00 / 09:00) per team so the sort-by-time
+     behaviour is visible out of the box. Team <-> area mapping
+     mirrors the order previously hardcoded in buildWorkplanText().
+     --------------------------------------------------------- */
+  var today0 = new Date();
+  var day1 = new Date(today0.getTime() + 1 * 24 * 60 * 60 * 1000);
+  var day2 = new Date(today0.getTime() + 2 * 24 * 60 * 60 * 1000);
+
+  var workplanSchedule = [
+    { teamId: 1, teamLabel: "ทีมพ่น 1", area: getAreaById(1), date: toDateInputValue(day1), time: "08:00" },
+    { teamId: 2, teamLabel: "ทีมพ่น 2", area: getAreaById(2), date: toDateInputValue(day1), time: "09:00" },
+    { teamId: 3, teamLabel: "ทีมพ่น 3", area: getAreaById(3), date: toDateInputValue(day2), time: "08:00" },
+    { teamId: 4, teamLabel: "ทีมพ่น 4", area: getAreaById(4), date: toDateInputValue(day2), time: "09:00" }
+  ];
+
+  function scheduleTimestamp(entry) {
+    if (!entry.date || !entry.time) return Number.MAX_SAFE_INTEGER;
+    var dateParts = entry.date.split("-");
+    var timeParts = entry.time.split(":");
+    if (dateParts.length !== 3 || timeParts.length !== 2) return Number.MAX_SAFE_INTEGER;
+    var dt = new Date(
+      parseInt(dateParts[0], 10),
+      parseInt(dateParts[1], 10) - 1,
+      parseInt(dateParts[2], 10),
+      parseInt(timeParts[0], 10),
+      parseInt(timeParts[1], 10)
+    );
+    return dt.getTime();
+  }
+
+  function sortWorkplanSchedule() {
+    workplanSchedule.sort(function (a, b) { return scheduleTimestamp(a) - scheduleTimestamp(b); });
+  }
+
+  /* ---------------------------------------------------------
+     Render: workplan schedule table (sorted soonest -> latest) —
+     inline date/time inputs reuse .input-inline per DESIGN.md
+     Input/Form guideline
+     --------------------------------------------------------- */
+  function renderWorkplanSchedule() {
+    sortWorkplanSchedule();
+    els.workplanScheduleBody.innerHTML = "";
+    workplanSchedule.forEach(function (entry) {
+      var tr = document.createElement("tr");
+      tr.setAttribute("data-team-id", entry.teamId);
+      tr.innerHTML =
+        "<td><span class=\"cell-primary\">" + escapeHtml(entry.teamLabel) + "</span></td>" +
+        "<td><span class=\"cell-primary\">" + escapeHtml(entry.area.name) + "</span>" +
+          "<span class=\"cell-secondary\">" + entry.area.households + " หลังคาเรือน &middot; " + escapeHtml(entry.area.clusterRef) + "</span></td>" +
+        "<td><input type=\"date\" class=\"input-inline\" data-field=\"date\" value=\"" + escapeHtml(entry.date) + "\" aria-label=\"วันที่ปฏิบัติงาน " + escapeHtml(entry.teamLabel) + "\"></td>" +
+        "<td><input type=\"time\" class=\"input-inline\" data-field=\"time\" value=\"" + escapeHtml(entry.time) + "\" aria-label=\"เวลาเริ่มปฏิบัติงาน " + escapeHtml(entry.teamLabel) + "\"></td>";
+      els.workplanScheduleBody.appendChild(tr);
+    });
+  }
 
   /* ---------------------------------------------------------
      Approval request state machine: draft -> sent (รออนุมัติ) -> approved
@@ -219,19 +294,21 @@
      generation, see BUILD-PLAN.md assumption)
      --------------------------------------------------------- */
   function buildWorkplanText() {
-    var today = new Date();
-    var day1 = new Date(today.getTime() + 1 * 24 * 60 * 60 * 1000);
-    var day2 = new Date(today.getTime() + 2 * 24 * 60 * 60 * 1000);
+    sortWorkplanSchedule(); // ensure the wording order matches the table's current (soonest -> latest) order
+
+    var assignmentLines = workplanSchedule.map(function (entry, i) {
+      var whenText = (entry.date && entry.time)
+        ? "ปฏิบัติงาน " + formatThaiDate(parseDateInputValue(entry.date)) + " เวลา " + entry.time + " น."
+        : "ยังไม่กำหนดวันที่/เวลาปฏิบัติงาน";
+      return (i + 1) + ". " + entry.teamLabel + " — รับผิดชอบ " + entry.area.name + " (" + entry.area.households + " หลังคาเรือน) — " + whenText;
+    });
 
     var lines = [
       "แผนปฏิบัติงานควบคุมโรค (ร่างโดยระบบ AI)",
       "สร้างเมื่อ: " + formatThaiDateTime(new Date()),
       "",
-      "การมอบหมายทีม:",
-      "1. ทีมพ่น 1 — รับผิดชอบ ต.หนองบัว หมู่ 4 บ้านโนนสวรรค์ (86 หลังคาเรือน) — ปฏิบัติงาน " + formatThaiDate(day1),
-      "2. ทีมพ่น 2 — รับผิดชอบ ต.หนองบัว หมู่ 5 บ้านหนองบัวพัฒนา (54 หลังคาเรือน) — ปฏิบัติงาน " + formatThaiDate(day1),
-      "3. ทีมพ่น 3 — รับผิดชอบ ต.บ้านเป็ด หมู่ 3 บ้านเป็ดใหม่ + ศูนย์เด็กเล็ก (40 หลังคาเรือน) — ปฏิบัติงาน " + formatThaiDate(day2),
-      "4. ทีมพ่น 4 — รับผิดชอบ ต.เกาะแก้ว หมู่ 5 บ้านหาดทราย (48 หลังคาเรือน) — ปฏิบัติงาน " + formatThaiDate(day2),
+      "การมอบหมายทีม:"
+    ].concat(assignmentLines).concat([
       "",
       "ขั้นตอนปฏิบัติงาน:",
       "1. ประชุมทีมและตรวจสอบอุปกรณ์/น้ำยาเคมีก่อนออกปฏิบัติงาน 07:30 น.",
@@ -247,7 +324,7 @@
       "- พักดื่มน้ำและล้างมือทุก 1 ชั่วโมง งดสูบบุหรี่ระหว่างพ่นสารเคมี",
       "",
       "หมายเหตุ: ร่างแผนนี้สร้างโดยระบบ AI จากข้อมูลพื้นที่ที่มีในระบบ โปรดตรวจสอบความถูกต้องและปรับแก้ให้เหมาะกับสถานการณ์จริงก่อนใช้งาน"
-    ];
+    ]);
     return lines.join("\n");
   }
 
@@ -281,6 +358,22 @@
       renderAreaList();
     });
 
+    els.workplanScheduleBody.addEventListener("change", function (e) {
+      var input = e.target.closest("input[data-field]");
+      if (!input) return;
+      var tr = input.closest("tr[data-team-id]");
+      if (!tr) return;
+      var teamId = parseInt(tr.getAttribute("data-team-id"), 10);
+      var entry = null;
+      for (var i = 0; i < workplanSchedule.length; i++) {
+        if (workplanSchedule[i].teamId === teamId) { entry = workplanSchedule[i]; break; }
+      }
+      if (!entry) return;
+      var field = input.getAttribute("data-field"); // "date" | "time"
+      entry[field] = input.value;
+      renderWorkplanSchedule(); // re-sorts (soonest -> latest) and re-renders the whole table
+    });
+
     els.btnGenerateApproval.addEventListener("click", generateApproval);
     els.btnSendApproval.addEventListener("click", sendApproval);
     els.btnMockApprove.addEventListener("click", mockApprove);
@@ -290,6 +383,7 @@
 
   function init() {
     renderAreaList();
+    renderWorkplanSchedule();
     initEvents();
   }
 
