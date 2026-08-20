@@ -7,9 +7,14 @@
 - [x] Design system (`DESIGN.md`) — Earth Tone + Minimalist + Muji
 - [x] Outbreak Dashboard — KPI, แผนที่ความเสี่ยงตามภูมิภาค, กราฟแนวโน้ม, การแจ้งเตือนล่าสุด, ตัวกรอง
 - [x] Case Intake — mock OCR review table, human-in-the-loop confirm + แก้ไขข้อมูลก่อนยืนยัน, notification log, spot map + วงรัศมี 100 เมตร
+- [x] Case Analysis — case cluster map, ร่างรายงานสอบสวนโรค, chatbot ประสานงาน อสม. (mock)
+- [x] Control Plan — ร่างใบขออนุมัติเบิกน้ำมัน/น้ำยาเคมี, ร่างแผนปฏิบัติงานควบคุมโรค (mock)
+- [x] Field Tracking — tracking ทีมพ่นบน spot map, AI vision QC รูปถ่ายภาคสนาม (mock)
+- [x] ASM Coordination — photo intake จาก อสม., ตารางคิวแจ้งเตือนล่วงหน้าผ่าน LINE (mock)
+- [x] Reports — KPI สรุปผู้บริหาร, สร้าง/ส่งรายงานรายวัน-รายสัปดาห์ (mock)
 - [x] เอกสาร QA รอบแรก (Test Plan, Acceptance Criteria, Test Cases) สำหรับ Outbreak Dashboard
 
-ทั้งหมดเป็น static HTML/CSS/JS ใช้ mock data ไม่มี backend จริง
+ทั้งหมดเป็น static HTML/CSS/JS ใช้ mock data ไม่มี backend จริง — prototype ตอนนี้ครอบคลุม UI ของ pain point ทั้ง 5 ข้อแล้ว (Phase 1-5 ด้านล่างคือการเชื่อมต่อ AI/backend/API **จริง** แทนที่ mock ซึ่งยังไม่ได้ทำ)
 
 ## Phase 1 — Case Intake: เชื่อมต่อจริง (โรงพยาบาล → เทศบาล)
 
