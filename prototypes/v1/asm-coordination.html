@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Control Plan — AI-DSRP</title>
+<title>ASM Coordination — AI-DSRP</title>
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -38,24 +38,24 @@
         </span>
         <span class="rail-label">Case Analysis</span>
       </a>
-      <span class="rail-link active" title="Control Plan — ร่างใบขออนุมัติเบิกน้ำมัน/น้ำยาเคมี และแผนปฏิบัติงานควบคุมโรค">
+      <a class="rail-link" href="control-plan.html" title="Control Plan — ร่างใบขออนุมัติเบิกน้ำมัน/น้ำยาเคมี และแผนปฏิบัติงานควบคุมโรค">
         <span class="rail-icon">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2"></rect><path d="M9 3h6v3H9V3Z"></path><path d="M8 12l2.5 2.5L16 9"></path></svg>
         </span>
         <span class="rail-label">Control Plan</span>
-      </span>
+      </a>
       <a class="rail-link" href="field-tracking.html" title="Field Tracking — ติดตามทีมพ่นภาคสนามและตรวจสอบภาพถ่าย">
         <span class="rail-icon">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s7-5.5 7-12a7 7 0 0 0-14 0c0 6.5 7 12 7 12Z"></path><circle cx="12" cy="10" r="2.5"></circle></svg>
         </span>
         <span class="rail-label">Field Tracking</span>
       </a>
-      <a class="rail-link" href="asm-coordination.html" title="ASM Coordination — ประสานงาน อสม. รับรูปยืนยันพ่นและคิวแจ้งเตือนล่วงหน้า">
+      <span class="rail-link active" title="ASM Coordination — ประสานงาน อสม. รับรูปยืนยันพ่นและคิวแจ้งเตือนล่วงหน้า">
         <span class="rail-icon">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>
         </span>
         <span class="rail-label">ASM Coordination</span>
-      </a>
+      </span>
       <span class="rail-link disabled" tabindex="-1" aria-disabled="true" title="Alerts — ยังไม่เปิดใช้งานในเวอร์ชันนี้">
         <span class="rail-icon">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.7 21a2 2 0 0 1-3.4 0"></path></svg>
@@ -89,56 +89,65 @@
     <!-- Page header -->
     <div class="page-header">
       <div class="page-header-title">
-        <h1>แผนควบคุมโรคและขออนุมัติ (Control Plan)</h1>
-        <p class="body-secondary">ช่วยทีมควบคุมโรค (ทีมพ่น) ร่างใบขออนุมัติเบิกน้ำมัน/น้ำยาเคมี และร่างแผนปฏิบัติงานควบคุมโรคจากข้อมูลพื้นที่/กลุ่มเคสที่ยืนยันแล้ว (ข้อมูลจำลอง)</p>
+        <h1>ประสานงาน อสม. (ASM Coordination)</h1>
+        <p class="body-secondary">รับรูปยืนยันการพ่นสารเคมีจาก อสม. ผ่าน LINE OA ให้ AI vision จัดหมวดหมู่ตามพื้นที่/วันที่และสรุปสถานะอัตโนมัติ พร้อมจัดคิวแจ้งเตือนล่วงหน้าก่อนวันที่ 0 และวันที่ 7 (ข้อมูลจำลอง)</p>
       </div>
     </div>
 
-    <!-- 1) Draft approval request -->
+    <!-- 1) Photo intake -->
     <div class="panel">
       <div class="panel-header">
         <h2>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 2h8l4 4v16H7a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2Z"></path><path d="M15 2v4h4"></path><path d="M9 13h6M9 17h6"></path></svg>
-          ร่างใบขออนุมัติเบิกน้ำมัน/น้ำยาเคมี
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2Z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+          รับรูปจาก อสม. (Photo Intake)
         </h2>
-        <span class="body-secondary">เลือกพื้นที่ที่ต้องพ่นสารเคมี ระบบจะช่วยร่างเอกสารขออนุมัติจากข้อมูลพื้นที่ที่เลือก</span>
+        <span class="body-secondary" id="photo-grid-subtitle">--</span>
       </div>
 
-      <div class="area-select-list" id="area-select-list"></div>
-      <p class="area-select-summary" id="area-select-summary">--</p>
-
-      <div class="report-controls">
-        <button type="button" class="btn btn-primary" id="btn-generate-approval" disabled>สร้างร่างเอกสาร</button>
+      <div class="filter-bar" role="region" aria-label="ตัวกรองรูปภาพ">
+        <div class="filter-field">
+          <label for="asm-filter-area">พื้นที่ (Area)</label>
+          <select id="asm-filter-area"></select>
+        </div>
+        <div class="filter-field">
+          <label for="asm-filter-range">ช่วงวันที่ส่ง (Date Range)</label>
+          <select id="asm-filter-range">
+            <option value="7">7 วันล่าสุด</option>
+            <option value="14" selected>14 วันล่าสุด</option>
+            <option value="30">30 วันล่าสุด</option>
+          </select>
+        </div>
+        <div class="filter-meta">
+          <button type="button" class="filter-reset-btn" id="btn-reset-asm-filters">ล้างตัวกรอง</button>
+        </div>
       </div>
 
-      <textarea class="report-textarea" id="approval-textarea" rows="16" aria-label="ร่างใบขออนุมัติเบิกน้ำมัน/น้ำยาเคมี (แก้ไขได้)" placeholder="ร่างเอกสารจะปรากฏที่นี่หลังกด “สร้างร่างเอกสาร” — สามารถแก้ไขข้อความได้ก่อนส่งขออนุมัติ"></textarea>
-
-      <div class="report-actions">
-        <button type="button" class="btn btn-outline" id="btn-send-approval" disabled>ส่งขออนุมัติ</button>
-        <button type="button" class="btn btn-outline" id="btn-mock-approve" style="display:none;">อนุมัติ (จำลองผู้บริหารกดอนุมัติ)</button>
-        <span class="report-status" id="approval-status"></span>
-      </div>
+      <div class="photo-grid" id="asm-photo-grid"></div>
     </div>
 
-    <!-- 2) Draft control workplan -->
+    <!-- 2) Advance-notice queue table -->
     <div class="panel">
       <div class="panel-header">
         <h2>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
-          ร่างแผนปฏิบัติงานควบคุมโรค
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 3"></path></svg>
+          คิวแจ้งเตือนล่วงหน้าผ่าน LINE
         </h2>
-        <span class="body-secondary">มอบหมายทีมพ่น กำหนดวันปฏิบัติงาน และขั้นตอนพ่น/ป้องกัน ให้นักวิชาการตรวจสอบและแก้ไขต่อก่อนใช้งานจริง</span>
+        <span class="body-secondary">แจ้งเตือนล่วงหน้า 1 วัน ก่อนกำหนดพ่นรอบที่ 1 (วันที่ 0) และรอบที่ 2 (วันที่ 0 + 7)</span>
       </div>
 
-      <div class="report-controls">
-        <button type="button" class="btn btn-primary" id="btn-generate-workplan">สร้างร่างแผนปฏิบัติงาน</button>
-      </div>
-
-      <textarea class="report-textarea" id="workplan-textarea" rows="16" aria-label="ร่างแผนปฏิบัติงานควบคุมโรค (แก้ไขได้)" placeholder="ร่างแผนปฏิบัติงานจะปรากฏที่นี่หลังกด “สร้างร่างแผนปฏิบัติงาน” — สามารถแก้ไขข้อความได้ก่อนยืนยันใช้งาน"></textarea>
-
-      <div class="report-actions">
-        <button type="button" class="btn btn-outline" id="btn-confirm-workplan" disabled>ยืนยันใช้แผนนี้</button>
-        <span class="report-status" id="workplan-status"></span>
+      <div class="table-scroll">
+        <table class="data-table" id="queue-table">
+          <thead>
+            <tr>
+              <th>พื้นที่ / คลัสเตอร์</th>
+              <th>วันที่ 0 (วันตรวจพบ)</th>
+              <th>แจ้งเตือนล่วงหน้า รอบที่ 1</th>
+              <th>แจ้งเตือนล่วงหน้า รอบที่ 2 (วันที่ 0+7)</th>
+              <th>ตัวอย่างข้อความ</th>
+            </tr>
+          </thead>
+          <tbody id="queue-table-body"></tbody>
+        </table>
       </div>
     </div>
 
@@ -151,6 +160,6 @@
   </div>
 </div>
 </div>
-<script src="control-plan.js"></script>
+<script src="asm-coordination.js"></script>
 </body>
 </html>
