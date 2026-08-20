@@ -12,9 +12,10 @@
 - [x] Field Tracking — tracking ทีมพ่นบน spot map, AI vision QC รูปถ่ายภาคสนาม (mock)
 - [x] ASM Coordination — photo intake จาก อสม., ตารางคิวแจ้งเตือนล่วงหน้าผ่าน LINE (mock)
 - [x] Reports — KPI สรุปผู้บริหาร, สร้าง/ส่งรายงานรายวัน-รายสัปดาห์ (mock)
+- [x] Alerts — workflow มอบหมายงาน/อัปเดตสถานะ/ปิดเคส (mock)
 - [x] เอกสาร QA รอบแรก (Test Plan, Acceptance Criteria, Test Cases) สำหรับ Outbreak Dashboard
 
-ทั้งหมดเป็น static HTML/CSS/JS ใช้ mock data ไม่มี backend จริง — prototype ตอนนี้ครอบคลุม UI ของ pain point ทั้ง 5 ข้อแล้ว (Phase 1-5 ด้านล่างคือการเชื่อมต่อ AI/backend/API **จริง** แทนที่ mock ซึ่งยังไม่ได้ทำ)
+ทั้งหมดเป็น static HTML/CSS/JS ใช้ mock data ไม่มี backend จริง — เมนู left rail ทั้ง 8 อันตอนนี้ชี้ไปหน้าจริงครบแล้ว (prototype ครอบคลุม UI ของ pain point ทั้ง 5 ข้อ + Alert Management) — Phase 1-5/7 ด้านล่างคือการเชื่อมต่อ AI/backend/API **จริง** แทนที่ mock ซึ่งยังไม่ได้ทำ
 
 ## Phase 1 — Case Intake: เชื่อมต่อจริง (โรงพยาบาล → เทศบาล)
 
@@ -52,9 +53,8 @@
 
 ## Phase 6 — Alert & Response Management แบบเต็ม
 
-- หน้า Alert & Response Management (ปัจจุบันเป็น placeholder disabled ใน left rail ของ Outbreak Dashboard)
-- Workflow ติดตามการตอบสนองต่อการระบาด (มอบหมายงาน, อัปเดตสถานะ, ปิดเคส)
-- เชื่อมข้อมูลจาก Case Intake / โมดูลทีมต่างๆ เข้ากับ Outbreak Dashboard แบบ real-time แทน mock data คนละชุด
+- [x] หน้า Alert & Response Management (`alerts.html`) — workflow มอบหมายงาน/อัปเดตสถานะ/ปิดเคส (ต้องบันทึกสรุปก่อนปิด) พร้อมตัวกรองสถานะ/ความรุนแรง — **prototype UI เสร็จแล้ว (mock data)**
+- [ ] เชื่อมข้อมูลจาก Case Intake / โมดูลทีมต่างๆ เข้ากับ Outbreak Dashboard แบบ real-time แทน mock data คนละชุด (ยังไม่ทำ — ต้องมี backend จริงตาม Phase 7)
 
 ## Phase 7 — Platform Foundations
 
