@@ -46,8 +46,6 @@ npx http-server prototypes/v1 -p 8743 -c-1
 - [prototypes/v1/BUILD-PLAN.md](./prototypes/v1/BUILD-PLAN.md) — แผนและ requirement ต้นทางของแต่ละฟีเจอร์
 - [test-docs/v1/TEST-PLAN.md](./test-docs/v1/TEST-PLAN.md), [ACCEPTANCE-CRITERIA.md](./test-docs/v1/ACCEPTANCE-CRITERIA.md), [TEST-CASES.xlsx](./test-docs/v1/TEST-CASES.xlsx) — แผนทดสอบและเกณฑ์การยอมรับของ prototype v1
 
-## Roadmap (นอก scope ปัจจุบัน)
+## Roadmap
 
-- การเชื่อมต่อ Google Sheet/Google Drive/LINE OA จริง
-- OCR/Geocoding API จริง (ปัจจุบันเป็น mock)
-- หน้า Alert & Response Management แบบเต็ม, ระบบ login/สิทธิ์ผู้ใช้, backend จริง
+ดู [ROADMAP.md](./ROADMAP.md) สำหรับแผนงานเต็ม แบ่งเป็นเฟส — ตั้งแต่การเชื่อมต่อ Google Sheet/Drive/LINE OA/Geocoding จริง, Alert & Response Management แบบเต็ม, ไปจนถึง backend/authentication และ hardening ก่อนใช้งานจริง
