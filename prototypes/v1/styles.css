@@ -1501,6 +1501,114 @@ main.content-wrap {
   margin-bottom: var(--space-2);
 }
 
+/* =========================================================
+   Control Plan page — additions 2026-08-20 (รอบ 9)
+   Area+location (home/work) selection groups, per-row radius
+   select, mini-map panel, 24h hour/minute select pair
+   ========================================================= */
+
+/* ---------------------------------------------------------
+   Area group — wraps the "home" + "work/school" rows for one
+   area so the two selectable locations read as a pair
+   --------------------------------------------------------- */
+.area-select-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-panel);
+  background: var(--color-surface);
+}
+
+.area-select-group-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.area-select-group-meta {
+  font-size: var(--fs-caption);
+  color: var(--color-text-secondary);
+}
+
+.area-select-locations {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+/* Location rows nested inside a group reuse .area-select-item, but the
+   checkbox is no longer wrapped by the same <label> as the radius
+   <select> below it (avoids the browser's implicit label->control click
+   forwarding from swallowing clicks meant for the <select>). */
+.area-select-group .area-select-item {
+  background: var(--color-background);
+  flex-wrap: wrap;
+}
+
+.area-select-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex: 0 0 100%;
+  margin-left: 28px; /* aligns under the row's label text, past the checkbox */
+}
+
+.area-select-radius-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-caption);
+  color: var(--color-text-secondary);
+}
+
+.input-inline-sm {
+  width: 110px;
+  flex: 0 0 110px;
+}
+
+@media (max-width: 720px) {
+  .area-select-controls {
+    margin-left: 0;
+  }
+}
+
+/* ---------------------------------------------------------
+   Mini-map panel (reuses .spotmap-wrap / .region-legend / .pin-dot
+   from the spot map pattern used in case-intake.js etc.)
+   --------------------------------------------------------- */
+.minimap-panel {
+  margin-bottom: var(--space-3);
+}
+
+.minimap-pin-group {
+  animation: pinFadeIn 200ms ease-in-out;
+}
+
+/* ---------------------------------------------------------
+   24-hour time select pair (hour + minute), replacing native
+   <input type="time"> so the display is always 24h regardless
+   of browser/OS locale
+   --------------------------------------------------------- */
+.time-select-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.select-hm {
+  width: 62px;
+  flex: 0 0 62px;
+}
+
+.time-select-sep {
+  color: var(--color-text-secondary);
+  font-weight: 600;
+}
+
 /* Operational (non-epidemiological) status badge tones — reuse the
    dot + label badge pattern, kept distinct from success/warning/danger
    which are reserved for epidemiological status only. */
