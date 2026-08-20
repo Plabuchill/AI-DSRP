@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Outbreak Dashboard — AI-DSRP</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="page-shell">
+<div class="app-layout">
+
+  <!-- ============================================================
+       Navigation — left rail
+       ============================================================ -->
+  <aside class="side-rail">
+    <div class="rail-brand">
+      <span class="rail-brand-mark">ai-dsrp</span>
+      <span class="rail-brand-short">ai</span>
+    </div>
+
+    <nav class="rail-nav" aria-label="Primary">
+      <span class="rail-link active" title="Dashboard">
+        <span class="rail-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1"></rect><rect x="14" y="3" width="7" height="5" rx="1"></rect><rect x="14" y="12" width="7" height="9" rx="1"></rect><rect x="3" y="16" width="7" height="5" rx="1"></rect></svg>
+        </span>
+        <span class="rail-label">Dashboard</span>
+      </span>
+      <a class="rail-link" href="case-intake.html" title="Cases — รับข้อมูลผู้ป่วยจากโรงพยาบาล (Case Intake)">
+        <span class="rail-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 2h6l1 4H8l1-4Z"></path><path d="M6 6h12l1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L6 6Z"></path></svg>
+        </span>
+        <span class="rail-label">Cases</span>
+      </a>
+      <span class="rail-link disabled" tabindex="-1" aria-disabled="true" title="Alerts — ยังไม่เปิดใช้งานในเวอร์ชันนี้">
+        <span class="rail-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.7 21a2 2 0 0 1-3.4 0"></path></svg>
+        </span>
+        <span class="rail-label">Alerts</span>
+        <span class="soon-tag">SOON</span>
+      </span>
+      <span class="rail-link disabled" tabindex="-1" aria-disabled="true" title="Reports — ยังไม่เปิดใช้งานในเวอร์ชันนี้">
+        <span class="rail-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 2h8l4 4v16H7a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2Z"></path><path d="M15 2v4h4"></path><path d="M9 13h6M9 17h6"></path></svg>
+        </span>
+        <span class="rail-label">Reports</span>
+        <span class="soon-tag">SOON</span>
+      </span>
+    </nav>
+
+    <div class="rail-footer">
+      <div class="rail-user">
+        <span class="avatar">สส</span>
+        <span class="rail-user-info">
+          <span class="rail-user-name">สมศักดิ์ สุขวัฒน์</span>
+          <span class="rail-user-role">เจ้าหน้าที่เฝ้าระวังโรค</span>
+        </span>
+      </div>
+    </div>
+  </aside>
+
+  <div class="main-column">
+  <main class="content-wrap">
+
+    <!-- Page header + Filters -->
+    <div class="page-header">
+      <div class="page-header-title">
+        <h1>Outbreak Dashboard</h1>
+        <p class="body-secondary">ภาพรวมการเฝ้าระวังโรคระบาดทั่วประเทศแบบเรียลไทม์ (ข้อมูลจำลอง)</p>
+      </div>
+    </div>
+
+    <div class="filter-bar" role="region" aria-label="ตัวกรองข้อมูล">
+      <div class="filter-field">
+        <label for="filter-disease">โรค (Disease)</label>
+        <select id="filter-disease"></select>
+      </div>
+      <div class="filter-field">
+        <label for="filter-region">ภูมิภาค (Region)</label>
+        <select id="filter-region"></select>
+      </div>
+      <div class="filter-field">
+        <label for="filter-range">ช่วงเวลา (Date Range)</label>
+        <select id="filter-range">
+          <option value="7">7 วันล่าสุด</option>
+          <option value="14" selected>14 วันล่าสุด</option>
+          <option value="30">30 วันล่าสุด</option>
+        </select>
+      </div>
+      <div class="filter-meta">
+        <button type="button" class="filter-reset-btn" id="btn-reset-filters">ล้างตัวกรอง</button>
+        <span class="updated-note" id="last-updated-note">อัปเดตล่าสุด: 16 ส.ค. 2569, 08:30 น.</span>
+      </div>
+    </div>
+
+    <!-- KPI cards -->
+    <section class="kpi-grid" aria-label="ตัวชี้วัดหลัก">
+      <div class="card kpi-card">
+        <div class="kpi-card-top">
+          <div>
+            <div class="kpi-value" id="kpi-active-cases">--</div>
+            <div class="kpi-label">Total Active Cases</div>
+          </div>
+          <div class="kpi-icon tone-primary">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>
+          </div>
+        </div>
+        <span class="kpi-trend" id="kpi-active-cases-trend">--</span>
+      </div>
+
+      <div class="card kpi-card">
+        <div class="kpi-card-top">
+          <div>
+            <div class="kpi-value" id="kpi-new-today">--</div>
+            <div class="kpi-label">New Cases Today</div>
+          </div>
+          <div class="kpi-icon tone-secondary">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"></path></svg>
+          </div>
+        </div>
+        <span class="kpi-trend" id="kpi-new-today-trend">--</span>
+      </div>
+
+      <div class="card kpi-card">
+        <div class="kpi-card-top">
+          <div>
+            <div class="kpi-value" id="kpi-outbreak-zones">--</div>
+            <div class="kpi-label">Active Outbreak Zones</div>
+          </div>
+          <div class="kpi-icon tone-warning">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 2 21h20L12 2Z"></path><path d="M12 9v5M12 17h.01"></path></svg>
+          </div>
+        </div>
+        <span class="kpi-trend neutral" id="kpi-outbreak-zones-note">--</span>
+      </div>
+
+      <div class="card kpi-card">
+        <div class="kpi-card-top">
+          <div>
+            <div class="kpi-value" id="kpi-risk-level">--</div>
+            <div class="kpi-label">Overall Risk Level</div>
+          </div>
+          <div class="kpi-icon tone-danger" id="kpi-risk-icon-wrap">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4.5 8-11V5l-8-3-8 3v6c0 6.5 8 11 8 11Z"></path></svg>
+          </div>
+        </div>
+        <span class="kpi-trend" id="kpi-risk-level-note">--</span>
+      </div>
+    </section>
+
+    <!-- Main grid: region risk grid + trend chart | alerts -->
+    <section class="dashboard-grid">
+      <div class="stack">
+
+        <!-- Region risk grid ("map") -->
+        <div class="panel">
+          <div class="panel-header">
+            <h2>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 6v16l7-4 8 4 7-4V2l-7 4-8-4-7 4Z"></path><path d="M8 2v16M16 6v16"></path></svg>
+              แผนที่ความเสี่ยงตามภูมิภาค
+            </h2>
+            <span class="body-secondary" id="region-panel-subtitle">เคสสะสมช่วง 14 วันล่าสุด</span>
+          </div>
+          <div class="region-grid" id="region-grid"></div>
+          <div class="region-legend">
+            <div class="region-legend-item"><span class="risk-dot risk-success"></span>ปกติ / ควบคุมได้</div>
+            <div class="region-legend-item"><span class="risk-dot risk-warning"></span>เฝ้าระวัง</div>
+            <div class="region-legend-item"><span class="risk-dot risk-danger"></span>วิกฤต / เกินเกณฑ์</div>
+          </div>
+        </div>
+
+        <!-- Trend chart -->
+        <div class="panel">
+          <div class="panel-header">
+            <h2>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"></path><path d="M7 16l4-5 3 3 5-7"></path></svg>
+              แนวโน้มจำนวนผู้ป่วยรายวัน
+            </h2>
+            <span class="body-secondary" id="chart-panel-subtitle">14 วันล่าสุด</span>
+          </div>
+          <div class="chart-wrap" id="chart-wrap"></div>
+          <div class="chart-legend">
+            <div class="chart-legend-item"><span class="chart-legend-swatch" style="background:var(--color-secondary)"></span>ผู้ป่วยรายใหม่ต่อวัน</div>
+            <div class="chart-legend-item"><span class="chart-legend-swatch" style="background:var(--color-accent)"></span>ค่าเฉลี่ยเคลื่อนที่ 3 วัน</div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Recent Alerts -->
+      <div class="panel">
+        <div class="panel-header">
+          <h2>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.7 21a2 2 0 0 1-3.4 0"></path></svg>
+            การแจ้งเตือนล่าสุด
+          </h2>
+        </div>
+        <div class="alert-list" id="alert-list"></div>
+      </div>
+
+    </section>
+
+  </main>
+
+  <footer class="footer">
+    AI Disease Surveillance &amp; Response Platform — Prototype v1 · ข้อมูลทั้งหมดเป็นข้อมูลจำลองเพื่อการสาธิตเท่านั้น
+  </footer>
+
+  </div>
+</div>
+</div>
+<script src="script.js"></script>
+</body>
+</html>
