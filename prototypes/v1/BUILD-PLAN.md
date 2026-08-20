@@ -78,3 +78,32 @@ Prototype แรกของ AI Disease Surveillance & Response Platform โฟ�
 
 ### Design Reference
 อ้างอิง `DESIGN.md` เดิม — input แก้ไขใน table ใช้ style เดียวกับ Input/Form guideline ข้อ 3 (label บนไม่จำเป็นในบริบท inline table แต่ border/focus state ต้องตรงตาม pattern เดิม)
+
+---
+
+## เพิ่มเติม 2026-08-20 (รอบ 3) — หน้า Case Analysis (ทีมสอบสวนโรค)
+
+### Requirement ต้นทาง
+Pain point ข้อ 2 จาก [ROADMAP.md](./../../ROADMAP.md) Phase 2 — ทีมสอบสวนโรคต้องการ: (1) AI ช่วยวิเคราะห์การเชื่อมโยงเคส (clustering ตามเวลา/พื้นที่/ผู้สัมผัส), (2) AI ร่างรายงานสอบสวนโรคจากข้อมูลดิบให้นักวิชาการแก้ต่อ, (3) Chatbot ช่วยประสานงาน อสม. เบื้องต้น (นัดหมาย/แจ้งพื้นที่) ก่อนโทรจริง
+
+### Scope
+เพิ่มหน้าใหม่ `case-analysis.html` เข้าไปใน `prototypes/v1` เดิม (แก้ของเดิมในที่ ไม่สร้าง v2) พร้อมเพิ่มเมนูใหม่ **"Case Analysis"** ใน left rail — ไม่แตะเมนู "Alerts"/"Reports" ที่เป็น placeholder เดิม (จองไว้สำหรับ ROADMAP.md Phase 6/5)
+
+### โครงสร้างหน้า (single-page รวม 3 ส่วน)
+1. **Case Cluster Map** — ต่อยอด spot map SVG แบบเดียวกับ `case-intake.html` แสดงเคสที่ยืนยันแล้ว พร้อมกลุ่ม cluster ที่ AI เสนอ (สีวงล้อมต่างกันต่อ cluster) และรายการข้าง ๆ ระบุจำนวนเคส/ระดับความมั่นใจต่อ cluster พร้อมปุ่ม **"ยืนยัน cluster นี้"** ต่อกลุ่ม (human-in-the-loop)
+2. **ร่างรายงานสอบสวนโรค** — ปุ่ม "สร้างร่างรายงาน" (ใช้ได้เมื่อมี cluster ที่ยืนยันแล้ว) → mock ร่างรายงานจากข้อมูล cluster (จำนวนผู้สัมผัส, ไทม์ไลน์, พื้นที่) ขึ้นในกล่องข้อความที่แก้ไขได้ พร้อมปุ่ม "ส่งให้ผู้บริหาร"
+3. **ประสานงาน อสม. (Chatbot)** — chat thread ตัวอย่างบทสนทนาสำเร็จรูประหว่างระบบกับ อสม. (นัดหมาย/แจ้งพื้นที่) พร้อมปุ่มโชว์ข้อความถัดไปแบบ demo (ไม่ใช่ chat engine จริง)
+
+### Backlog/Feature ที่ไม่รวมในรอบนี้
+AI clustering/OCR/chatbot จริง, การเชื่อมต่อ LINE OA จริง — ทั้งหมด mock data/scripted ตาม Phase 2 ใน ROADMAP.md
+
+### Assumption ที่ตั้งไว้
+- Cluster ถูก pre-group ไว้ใน mock data (ไม่ใช่ clustering algorithm จริง)
+- รายงานร่างเป็น template คงที่เติมค่าจากข้อมูล cluster ไม่ใช่ AI generation จริง
+- Chatbot conversation เป็น script คงที่ ไม่มี free-text input จริง
+
+### Version
+แก้ไข `prototypes/v1` เดิมในที่ (ไม่สร้าง v2)
+
+### Design Reference
+อ้างอิง `DESIGN.md` เดิมให้เข้าชุดกับหน้าอื่น

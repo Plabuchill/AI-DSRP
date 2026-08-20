@@ -1205,3 +1205,227 @@ main.content-wrap {
     min-width: 140px;
   }
 }
+
+/* =========================================================
+   Case Analysis page — additions 2026-08-20 (รอบ 3)
+   Case Cluster Map / draft investigation report / อสม. chatbot
+   ========================================================= */
+
+/* ---------------------------------------------------------
+   Case Cluster Map — reuses .spotmap-wrap; cluster pins reuse
+   the same fade-in as the spot map pins (.spot-pin-group)
+   --------------------------------------------------------- */
+.cluster-pin-group {
+  animation: pinFadeIn 200ms ease-in-out;
+}
+
+.cluster-swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+/* ---------------------------------------------------------
+   Cluster list (Case Cluster Map side panel)
+   --------------------------------------------------------- */
+.cluster-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.cluster-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-panel);
+  background: var(--color-background);
+}
+
+.cluster-item-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.cluster-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--fs-small);
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.cluster-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: var(--fs-caption);
+  color: var(--color-text-secondary);
+}
+
+.cluster-confidence {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 2px;
+}
+
+.cluster-confidence-label {
+  font-size: var(--fs-caption);
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.cluster-confidence-bar {
+  width: 100%;
+  max-width: 220px;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--color-border);
+  overflow: hidden;
+}
+
+.cluster-confidence-fill {
+  height: 100%;
+  border-radius: 3px;
+}
+
+.cluster-actions {
+  margin-top: 4px;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* ---------------------------------------------------------
+   Draft investigation report
+   --------------------------------------------------------- */
+.report-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.report-textarea {
+  width: 100%;
+  min-height: 320px;
+  font-family: var(--font-family);
+  font-size: var(--fs-small);
+  color: var(--color-text-primary);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-control);
+  padding: var(--space-2);
+  line-height: 1.6;
+  resize: vertical;
+  white-space: pre-wrap;
+}
+
+.report-textarea:hover {
+  border-color: var(--color-primary);
+}
+
+.report-textarea:focus {
+  border-color: var(--color-primary);
+  outline: 2px solid var(--color-primary);
+  outline-offset: -1px;
+}
+
+.report-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.report-status {
+  font-size: var(--fs-caption);
+  color: var(--color-text-secondary);
+}
+
+/* ---------------------------------------------------------
+   อสม. coordination chatbot — chat thread
+   --------------------------------------------------------- */
+.chat-thread {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  max-height: 480px;
+  overflow-y: auto;
+  padding: 4px 4px 0 4px;
+}
+
+.chat-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-width: 70%;
+}
+
+.chat-row.from-bot {
+  align-self: flex-start;
+  align-items: flex-start;
+}
+
+.chat-row.from-osm {
+  align-self: flex-end;
+  align-items: flex-end;
+}
+
+.chat-sender {
+  font-size: var(--fs-caption);
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.chat-bubble {
+  padding: 10px 14px;
+  border-radius: var(--radius-panel);
+  font-size: var(--fs-small);
+  line-height: 1.5;
+}
+
+.chat-row.from-bot .chat-bubble {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-primary);
+}
+
+.chat-row.from-osm .chat-bubble {
+  background: rgba(138, 154, 91, 0.13);
+  border: 1px solid rgba(138, 154, 91, 0.35);
+  color: var(--color-text-primary);
+}
+
+.chat-timestamp {
+  font-size: var(--fs-caption);
+  color: var(--color-text-secondary);
+}
+
+.chat-next-wrap {
+  margin-top: var(--space-2);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+@media (max-width: 720px) {
+  .chat-row {
+    max-width: 92%;
+  }
+  .cluster-item-top {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
