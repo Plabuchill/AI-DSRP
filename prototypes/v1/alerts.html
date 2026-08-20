@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Case Intake — AI-DSRP</title>
+<title>Alerts — AI-DSRP</title>
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -26,12 +26,12 @@
         </span>
         <span class="rail-label">Dashboard</span>
       </a>
-      <span class="rail-link active" title="Cases">
+      <a class="rail-link" href="case-intake.html" title="Cases — รับข้อมูลผู้ป่วยจากโรงพยาบาล (Case Intake)">
         <span class="rail-icon">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 2h6l1 4H8l1-4Z"></path><path d="M6 6h12l1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L6 6Z"></path></svg>
         </span>
         <span class="rail-label">Cases</span>
-      </span>
+      </a>
       <a class="rail-link" href="case-analysis.html" title="Case Analysis — วิเคราะห์กลุ่มเคสและร่างรายงานสอบสวนโรค">
         <span class="rail-icon">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="6" r="3"></circle><circle cx="18" cy="6" r="3"></circle><circle cx="12" cy="18" r="3"></circle><path d="M8.5 7.6 15.5 4.4M8.5 8.4 12 15M15.5 7.6 12 15"></path></svg>
@@ -56,12 +56,12 @@
         </span>
         <span class="rail-label">ASM Coordination</span>
       </a>
-      <a class="rail-link" href="alerts.html" title="Alerts — ติดตามและตอบสนองการแจ้งเตือนโรคระบาด (มอบหมายงาน/ปิดเคส)">
+      <span class="rail-link active" title="Alerts — ติดตามและตอบสนองการแจ้งเตือนโรคระบาด (มอบหมายงาน/ปิดเคส)">
         <span class="rail-icon">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.7 21a2 2 0 0 1-3.4 0"></path></svg>
         </span>
         <span class="rail-label">Alerts</span>
-      </a>
+      </span>
       <a class="rail-link" href="reports.html" title="Reports — รายงานสรุปผู้บริหาร (รายวัน/รายสัปดาห์)">
         <span class="rail-icon">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 2h8l4 4v16H7a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2Z"></path><path d="M15 2v4h4"></path><path d="M9 13h6M9 17h6"></path></svg>
@@ -87,98 +87,69 @@
     <!-- Page header -->
     <div class="page-header">
       <div class="page-header-title">
-        <h1>รับข้อมูลผู้ป่วยจากโรงพยาบาล (Case Intake)</h1>
-        <p class="body-secondary">แปลงเอกสารรายงานผู้ป่วยด้วย OCR/AI แล้วให้เจ้าหน้าที่ตรวจสอบก่อนแจ้งเตือนทีมสอบสวนโรคและปักหมุดบนแผนที่ (ข้อมูลจำลอง)</p>
+        <h1>Alert &amp; Response Management</h1>
+        <p class="body-secondary">ติดตามการแจ้งเตือนโรคระบาด มอบหมายทีมรับผิดชอบ อัปเดตสถานะ และบันทึกสรุปเมื่อปิดเคส (ข้อมูลจำลอง ต่อยอดจากการแจ้งเตือนใน Outbreak Dashboard)</p>
       </div>
     </div>
 
-    <!-- 1) Upload panel -->
-    <div class="panel">
-      <div class="panel-header">
-        <h2>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M7 9l5-5 5 5"></path><path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"></path></svg>
-          อัปโหลดเอกสารรายงานผู้ป่วย
-        </h2>
-        <span class="body-secondary">รองรับไฟล์ PDF / JPEG จากโรงพยาบาลและ รพ.สต.</span>
+    <!-- Filters -->
+    <div class="filter-bar" role="region" aria-label="ตัวกรองการแจ้งเตือน">
+      <div class="filter-field">
+        <label for="filter-status">สถานะ (Status)</label>
+        <select id="filter-status">
+          <option value="all">ทุกสถานะ (All Status)</option>
+          <option value="new">ใหม่</option>
+          <option value="in_progress">กำลังดำเนินการ</option>
+          <option value="closed">ปิดเคสแล้ว</option>
+        </select>
       </div>
-
-      <div class="dropzone" id="dropzone">
-        <div class="dropzone-icon">
-          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M7 9l5-5 5 5"></path><path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"></path></svg>
-        </div>
-        <p class="dropzone-title">ลากไฟล์มาวางที่นี่เพื่ออัปโหลด</p>
-        <p class="dropzone-hint">หรือคลิกเพื่อเลือกไฟล์จากเครื่อง (PDF, JPEG ขนาดไม่เกิน 10MB) — ฟังก์ชันอัปโหลดจริงยังไม่เปิดใช้งานใน prototype นี้ ไฟล์ต้นฉบับจะถูกเก็บคู่กับแถวข้อมูลใน Google Drive โดยอัตโนมัติ</p>
-        <button type="button" class="btn btn-outline" disabled>เลือกไฟล์ (จำลอง)</button>
+      <div class="filter-field">
+        <label for="filter-severity">ความรุนแรง (Severity)</label>
+        <select id="filter-severity">
+          <option value="all">ทุกระดับ (All Severity)</option>
+          <option value="warning">เฝ้าระวัง</option>
+          <option value="danger">วิกฤต</option>
+        </select>
       </div>
-
-      <div class="upload-file-list" id="upload-file-list" aria-label="ไฟล์ที่อัปโหลดล่าสุด"></div>
+      <div class="filter-meta">
+        <button type="button" class="filter-reset-btn" id="btn-reset-filters">ล้างตัวกรอง</button>
+        <span class="updated-note" id="filter-result-note">--</span>
+      </div>
     </div>
 
-    <!-- 2) OCR review table -->
+    <!-- Alerts table + workflow (assign / update status / close case) -->
     <div class="panel">
       <div class="panel-header">
         <h2>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
-          ตรวจสอบผลการอ่านข้อมูล (OCR Review)
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.7 21a2 2 0 0 1-3.4 0"></path></svg>
+          ตารางแจ้งเตือน
         </h2>
-        <span class="body-secondary" id="ocr-panel-subtitle">--</span>
+        <span class="body-secondary">มอบหมายทีมรับผิดชอบ อัปเดตสถานะ และปิดเคสพร้อมบันทึกสรุป — human-in-the-loop ก่อนปิดเคสทุกครั้ง</span>
       </div>
 
       <div class="table-scroll">
-        <table class="data-table" id="ocr-table">
+        <table class="data-table">
           <thead>
             <tr>
-              <th>ไฟล์ต้นฉบับ</th>
-              <th>ชื่อ-สกุล / HN</th>
-              <th>ที่อยู่ / ตำบล-หมู่บ้าน</th>
-              <th>วันป่วย</th>
-              <th>ผลตรวจ</th>
-              <th>ตำแหน่งพิกัด</th>
+              <th>โรค</th>
+              <th>พื้นที่ / จังหวัด</th>
+              <th>ความรุนแรง</th>
+              <th>เวลา</th>
+              <th>ข้อความแจ้งเตือน</th>
               <th>สถานะ</th>
-              <th>การยืนยัน</th>
+              <th>ทีมที่มอบหมาย / การดำเนินการ</th>
             </tr>
           </thead>
-          <tbody id="ocr-table-body"></tbody>
+          <tbody id="alerts-table-body"></tbody>
         </table>
       </div>
+
+      <div class="region-legend">
+        <div class="region-legend-item"><span class="risk-dot status-new"></span>ใหม่ — ยังไม่มอบหมายทีม</div>
+        <div class="region-legend-item"><span class="risk-dot status-inprogress"></span>กำลังดำเนินการ — มอบหมายแล้ว รอปิดเคส</div>
+        <div class="region-legend-item"><span class="risk-dot status-closed"></span>ปิดเคสแล้ว — มีบันทึกสรุปแล้ว</div>
+      </div>
     </div>
-
-    <!-- 3 & 4) Spot map + Notification log -->
-    <section class="dashboard-grid">
-      <div class="stack">
-
-        <!-- Spot map panel -->
-        <div class="panel">
-          <div class="panel-header">
-            <h2>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 6v16l7-4 8 4 7-4V2l-7 4-8-4-7 4Z"></path><path d="M8 2v16M16 6v16"></path></svg>
-              แผนที่จุดเกิดเหตุ (Spot Map)
-            </h2>
-            <span class="body-secondary">ระดับตำบล/หมู่บ้าน · รัศมีเฝ้าระวัง 100 เมตร</span>
-          </div>
-          <div class="spotmap-wrap" id="spotmap-wrap"></div>
-          <div class="region-legend">
-            <div class="region-legend-item"><span class="pin-dot pin-normal"></span>หมุดยืนยันแล้ว (พิกัดแม่นยำสูง)</div>
-            <div class="region-legend-item"><span class="pin-dot pin-flagged"></span>พิกัดแม่นยำต่ำ (ยังไม่ปรับ)</div>
-            <div class="region-legend-item"><span class="pin-dot pin-adjusted"></span>ปรับพิกัดด้วยมือแล้ว</div>
-          </div>
-        </div>
-
-      </div>
-
-      <!-- Notification log -->
-      <div class="panel">
-        <div class="panel-header">
-          <h2>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13"></path><path d="M22 2 15 22l-4-9-9-4 20-7Z"></path></svg>
-            บันทึกการแจ้งเตือนทีมสอบสวนโรค
-          </h2>
-        </div>
-        <span class="body-secondary" id="notif-panel-subtitle" style="display:block;margin-bottom:12px;">--</span>
-        <div class="alert-list" id="notification-log"></div>
-      </div>
-
-    </section>
 
   </main>
 
@@ -189,6 +160,6 @@
   </div>
 </div>
 </div>
-<script src="case-intake.js"></script>
+<script src="alerts.js"></script>
 </body>
 </html>

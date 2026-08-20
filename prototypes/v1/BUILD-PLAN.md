@@ -198,3 +198,34 @@ Pain point ข้อ 5 จาก [ROADMAP.md](./../../ROADMAP.md) Phase 5 — �
 
 ### Design Reference
 อ้างอิง `DESIGN.md` เดิมให้เข้าชุดกับหน้าอื่น
+
+---
+
+## เพิ่มเติม 2026-08-20 (รอบ 7) — เปิดใช้หน้า "Alerts" (Alert & Response Management)
+
+### Requirement ต้นทาง
+[ROADMAP.md](./../../ROADMAP.md) Phase 6 — หน้า Alert & Response Management แบบเต็ม: workflow ติดตามการตอบสนองต่อการระบาด (มอบหมายงาน, อัปเดตสถานะ, ปิดเคส) ต่อยอดจาก mock alert 8 รายการที่มีอยู่แล้วใน `script.js` (แสดงผลใน Recent Alerts panel ของ Outbreak Dashboard)
+
+### Scope
+สร้าง `alerts.html` แล้วเปลี่ยนเมนู **"Alerts"** จาก placeholder disabled เป็น link ใช้งานได้จริงในทุกหน้า HTML ที่มีอยู่ (index.html, case-intake.html, case-analysis.html, control-plan.html, field-tracking.html, asm-coordination.html, reports.html) — เมนู "Reports" คงเดิม (เปิดใช้แล้วในรอบ 6)
+
+### โครงสร้างหน้า
+1. **ตารางแจ้งเตือน** — ต่อยอด 8 รายการ ALERTS จาก `script.js` (โรค, พื้นที่, ความรุนแรง, เวลา, ข้อความ) เพิ่ม field ใหม่: สถานะ (ใหม่ / กำลังดำเนินการ / ปิดเคสแล้ว) และทีมที่มอบหมาย
+2. **มอบหมายงาน** — dropdown เลือกทีม (ทีมสอบสวนโรค เขต 1-5 / ทีมพ่น 1-4 ชื่อสอดคล้องกับ case-analysis.js/control-plan.js/field-tracking.js) ต่อรายการที่ยังเป็น "ใหม่"
+3. **อัปเดตสถานะ** — เปลี่ยนสถานะไปข้างหน้า (ใหม่ → กำลังดำเนินการ → ปิดเคสแล้ว) พร้อม timestamp
+4. **ปิดเคส** — ต้องกรอกบันทึกสรุปสั้นๆ ก่อนปิดเคสได้ (human-in-the-loop)
+5. **ตัวกรอง** — สถานะ/ความรุนแรง ทำงาน client-side
+
+### Backlog/Feature ที่ไม่รวมในรอบนี้
+การเชื่อมข้อมูล real-time จริงกับ Dashboard/หน้าอื่น — mock ตาม Phase 6 ใน ROADMAP.md
+
+### Assumption ที่ตั้งไว้
+- ALERTS ต่อยอดจาก mock array เดิมใน script.js แต่เป็น state แยกในหน้านี้ ไม่ sync กลับไป Dashboard จริง
+- ทีมที่มอบหมายเป็นชื่อ mock สอดคล้องกับหน้าอื่น ไม่ใช่ query จริง
+- บันทึกปิดเคสเป็น free text เก็บใน state ของหน้านี้เท่านั้น
+
+### Version
+แก้ไข `prototypes/v1` เดิมในที่ (ไม่สร้าง v2)
+
+### Design Reference
+อ้างอิง `DESIGN.md` เดิมให้เข้าชุดกับหน้าอื่น

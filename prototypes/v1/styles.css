@@ -1766,3 +1766,37 @@ main.content-wrap {
   align-items: center;
   gap: 10px;
 }
+
+/* =========================================================
+   Alerts page — additions 2026-08-20 (รอบ 7)
+   Assign team / update status / close-case workflow inside the
+   alerts table. Reuses .data-table, .badge (badge-neutral /
+   badge-inprogress / badge-confirmed — workflow-status tones,
+   distinct from success/warning/danger which stay reserved for
+   disease severity per DESIGN.md ข้อ 3), .input-inline,
+   .row-preview / .line-preview-box (closed-case note row) and
+   .risk-dot (generic dot, reused here for the legend only).
+   ========================================================= */
+.risk-dot.status-new { background: var(--color-text-disabled); }
+.risk-dot.status-inprogress { background: var(--color-accent); }
+.risk-dot.status-closed { background: var(--color-primary); }
+
+.assign-controls,
+.close-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 210px;
+}
+
+.close-note-textarea {
+  min-height: 64px;
+  resize: vertical;
+}
+
+@media (max-width: 720px) {
+  .assign-controls,
+  .close-editor {
+    min-width: 160px;
+  }
+}
