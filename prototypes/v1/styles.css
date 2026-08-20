@@ -1711,3 +1711,58 @@ main.content-wrap {
     padding: var(--space-2) 8px;
   }
 }
+
+/* =========================================================
+   Reports page — additions 2026-08-20 (รอบ 6)
+   Period toggle / 5-up KPI grid / generated summary actions
+   ========================================================= */
+
+/* Fourth kpi-icon tone used only on this page (QC pass-rate card) —
+   reuses the same "tint chip, monochrome glyph" pattern as the
+   existing tone-primary/secondary/warning/danger/success chips. */
+.kpi-icon.tone-accent { background: rgba(201, 166, 107, 0.18); color: var(--color-text-secondary); }
+
+/* ---------------------------------------------------------
+   Period toggle (รายวัน / รายสัปดาห์) — two buttons grouped,
+   active state reuses .btn-primary, inactive reuses .btn-outline
+   --------------------------------------------------------- */
+.period-toggle-group {
+  display: flex;
+  gap: 8px;
+}
+
+.period-toggle-btn {
+  white-space: nowrap;
+}
+
+/* ---------------------------------------------------------
+   5-up KPI grid (Reports page has one more card than the
+   Dashboard's 4-up grid) — same card/tone styling, just an
+   extra responsive breakpoint tier
+   --------------------------------------------------------- */
+.kpi-grid-5 {
+  grid-template-columns: repeat(5, 1fr);
+}
+
+@media (max-width: 1240px) {
+  .kpi-grid-5 {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 720px) {
+  .kpi-grid-5 {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ---------------------------------------------------------
+   Stacked status badges next to the summary report actions
+   (ส่งผ่าน LINE / ดาวน์โหลด PDF can both be confirmed at once)
+   --------------------------------------------------------- */
+.status-stack {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
