@@ -107,3 +107,36 @@ AI clustering/OCR/chatbot จริง, การเชื่อมต่อ LIN
 
 ### Design Reference
 อ้างอิง `DESIGN.md` เดิมให้เข้าชุดกับหน้าอื่น
+
+---
+
+## เพิ่มเติม 2026-08-20 (รอบ 4) — หน้า Control Plan และ Field Tracking (ทีมควบคุมโรค/ทีมพ่น)
+
+### Requirement ต้นทาง
+Pain point ข้อ 3 จาก [ROADMAP.md](./../../ROADMAP.md) Phase 3 — ทีมควบคุมโรค (ทีมพ่น) ต้องการ: (1) auto-generate ใบขออนุมัติเบิกน้ำมัน/น้ำยาเคมี, (2) AI ร่างแผนปฏิบัติงานควบคุมโรค, (3) real-time tracking ทีมพ่นเทียบกับ spot map ที่วางแผนไว้, (4) AI vision ตรวจสอบรูปถ่ายภาคสนามว่าตรงพื้นที่/เวลาจริงไหม
+
+### Scope
+เพิ่ม 2 หน้าใหม่เข้าไปใน `prototypes/v1` เดิม (แก้ของเดิมในที่ ไม่สร้าง v2) พร้อมเพิ่มเมนู **"Control Plan"** และ **"Field Tracking"** ใน left rail ต่อจาก "Case Analysis" — ไม่แตะ "Alerts"/"Reports" ที่จองไว้สำหรับ phase อื่น
+
+### โครงสร้างหน้าที่ 1 — `control-plan.html`
+1. **ร่างใบขออนุมัติเบิกน้ำมัน/น้ำยาเคมี** — เลือกพื้นที่/cluster (reuse cluster ที่ยืนยันแล้วจาก case-analysis.js ถ้าเป็นไปได้ หรือ mock ชุดใหม่ที่สอดคล้องกัน) → generate เอกสารร่างจากข้อมูล (พื้นที่, จำนวนหลังคาเรือน, รัศมี) ในกล่องแก้ไขได้ พร้อมปุ่ม "ส่งขออนุมัติ" (mock เปลี่ยนสถานะรออนุมัติ → อนุมัติแล้ว)
+2. **ร่างแผนปฏิบัติงานควบคุมโรค** — generate แผนปฏิบัติงาน (ทีมที่มอบหมาย, วันที่ปฏิบัติงาน, ขั้นตอน) ในกล่องแก้ไขได้ พร้อมปุ่มยืนยันใช้งานแผน
+
+### โครงสร้างหน้าที่ 2 — `field-tracking.html`
+1. **Real-time tracking ทีมพ่น** — ต่อยอด spot map SVG แบบเดียวกับ case-intake.js/case-analysis.js แสดงตำแหน่ง/โซนของทีมพ่นแต่ละทีม พร้อมสีสถานะ (ยังไม่ถึง/กำลังพ่น/พ่นแล้ว) เทียบกับโซนที่วางแผนไว้ — mock เพราะ LINE ไม่มี continuous location API จริง (ตาม ROADMAP.md Phase 3)
+2. **AI vision QC รูปถ่ายภาคสนาม** — กริดการ์ดตัวแทนรูปภาพ (ใช้ icon/placeholder เพราะไม่มีไฟล์รูปจริง ไม่ใช้ภาพประกอบตกแต่งตาม DESIGN.md ข้อ 7) พร้อม badge ผลตรวจ (พิกัดตรง/ไม่ตรง, เวลาตรง/ไม่ตรง) — mock เพราะรูปจาก LINE มักถูกล้าง EXIF ออก (ตาม ROADMAP.md Phase 3)
+
+### Backlog/Feature ที่ไม่รวมในรอบนี้
+AI drafting/tracking/vision จริง, การเชื่อมต่อ backend/LINE จริง — ทั้งหมด mock ตาม Phase 3 ใน ROADMAP.md
+
+### Assumption ที่ตั้งไว้
+- ข้อมูลพื้นที่/cluster/ทีมพ่นเป็น mock data บริบทไทย
+- เอกสาร/แผนที่ generate เป็น template คงที่เติมค่าจากข้อมูล ไม่ใช่ AI generation จริง
+- ตำแหน่งทีมพ่นใน tracking เป็นพิกัด mock คงที่ ไม่ใช่ GPS log จริง
+- รูปถ่ายใน QC grid เป็น placeholder icon ไม่ใช่ไฟล์รูปจริง
+
+### Version
+แก้ไข `prototypes/v1` เดิมในที่ (ไม่สร้าง v2)
+
+### Design Reference
+อ้างอิง `DESIGN.md` เดิมให้เข้าชุดกับหน้าอื่น
