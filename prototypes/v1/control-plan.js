@@ -9,11 +9,20 @@
    รอบ 10 (2026-08-20): the workplan schedule table now has one row
    per currently-selected (area+location) pool item (not a fixed set
    of 4 team rows), with a user-editable team <select> per row (any
-   team can be assigned to any number of rows) and a Thai day/month/
-   ปี(พ.ศ.) <select> trio in place of the native date input. Rows are
-   grouped by assigned team (1->4) first, then sorted soonest->latest
-   by date+time within the same team. See getOrCreateWorkplanEntry(),
+   team can be assigned to any number of rows). Rows are grouped by
+   assigned team (1->4) first, then sorted soonest->latest by date+
+   time within the same team. See getOrCreateWorkplanEntry(),
    getSortedWorkplanRows(), sortWorkplanRows() below.
+
+   รอบ 12 (2026-08-20): each area/mock case now has a patientName
+   (shown in the area-selection checklist) and a caseFoundDate
+   ("Day 0" anchor). The workplan row date is no longer a free-form
+   day/month/ปี(พ.ศ.) select trio — it's a single Day 0/1/7 <select>
+   (dayOffset) added to the row's area.caseFoundDate, per the
+   standard dengue vector-control spraying schedule. Also added:
+   a "พิมพ์เป็น PDF" button (window.print(), shown once the approval
+   request has been sent) and the two panels' HTML order in
+   control-plan.html was swapped (workplan panel first).
    ========================================================= */
 (function () {
   "use strict";
@@ -36,12 +45,25 @@
      at each area's original default radius, the household count
      matches the figure hardcoded before this round (86/54/40/48).
      --------------------------------------------------------- */
+  // Mock "Day 0" anchor (วันพบเคส) per area, used by the workplan
+  // schedule's Day 0/1/7 <select> (รอบ 12) — a fixed number of days
+  // before "today" (varied per area for realism), normalized to
+  // midnight so date-only arithmetic (+0/+1/+7 days) stays exact.
+  function daysAgo(n) {
+    var d = new Date();
+    d.setHours(0, 0, 0, 0);
+    d.setDate(d.getDate() - n);
+    return d;
+  }
+
   var AREAS = [
     {
       id: 1,
       name: "ต.หนองบัว หมู่ 4 บ้านโนนสวรรค์",
       clusterRef: "กลุ่มไข้เลือดออก ต.หนองบัว (ยืนยันแล้ว)",
       riskLevel: "สูง",
+      patientName: "นายกิตติ มั่นคง",
+      caseFoundDate: daysAgo(3),
       locations: [
         { type: "home", label: "ที่อยู่ (บ้าน)", mockX: 15, mockY: 25, baseHouseholdsAt100m: 38, defaultRadius: 150 },
         { type: "work", label: "สถานที่ทำงาน/เรียน", name: "โรงเรียนบ้านโนนสวรรค์", mockX: 22, mockY: 15, baseHouseholdsAt100m: 25, defaultRadius: 100 }
@@ -52,6 +74,8 @@
       name: "ต.หนองบัว หมู่ 5 บ้านหนองบัวพัฒนา",
       clusterRef: "กลุ่มไข้เลือดออก ต.หนองบัว (ยืนยันแล้ว)",
       riskLevel: "สูง",
+      patientName: "นางสาวสุพรรณี ใจดี",
+      caseFoundDate: daysAgo(4),
       locations: [
         { type: "home", label: "ที่อยู่ (บ้าน)", mockX: 30, mockY: 55, baseHouseholdsAt100m: 54, defaultRadius: 100 },
         { type: "work", label: "สถานที่ทำงาน/เรียน", name: "ตลาดสดหนองบัวพัฒนา", mockX: 38, mockY: 62, baseHouseholdsAt100m: 32, defaultRadius: 100 }
@@ -62,6 +86,8 @@
       name: "ต.บ้านเป็ด หมู่ 3 บ้านเป็ดใหม่ + ศูนย์เด็กเล็ก",
       clusterRef: "กลุ่มมือ เท้า ปาก ต.บ้านเป็ด (รอยืนยัน)",
       riskLevel: "ปานกลาง",
+      patientName: "เด็กชายอนุชา ศรีสุข",
+      caseFoundDate: daysAgo(2),
       locations: [
         { type: "home", label: "ที่อยู่ (บ้าน)", mockX: 62, mockY: 20, baseHouseholdsAt100m: 40, defaultRadius: 100 },
         { type: "work", label: "สถานที่ทำงาน/เรียน", name: "ศูนย์พัฒนาเด็กเล็กบ้านเป็ด", mockX: 70, mockY: 28, baseHouseholdsAt100m: 45, defaultRadius: 100 }
@@ -72,6 +98,8 @@
       name: "ต.เกาะแก้ว หมู่ 5 บ้านหาดทราย",
       clusterRef: "เคสไข้เลือดออกยืนยันใหม่ (จาก Case Intake)",
       riskLevel: "ปานกลาง",
+      patientName: "นายประเสริฐ แสงทอง",
+      caseFoundDate: daysAgo(5),
       locations: [
         { type: "home", label: "ที่อยู่ (บ้าน)", mockX: 80, mockY: 70, baseHouseholdsAt100m: 48, defaultRadius: 100 },
         { type: "work", label: "สถานที่ทำงาน/เรียน", name: "แพปลาชุมชนบ้านหาดทราย", mockX: 88, mockY: 78, baseHouseholdsAt100m: 20, defaultRadius: 100 }
@@ -178,12 +206,14 @@
     return d + " " + m + " " + y;
   }
 
-  // Format a workplan schedule entry's {day, month(0-11), year(ค.ศ.)}
-  // parts as a Thai date string, without going through a Date-string
-  // round-trip (รอบ 10) — month/year here are already stored as plain
-  // numbers on the entry itself, not parsed from an <input type="date">.
-  function formatThaiDateFromParts(day, month, year) {
-    return day + " " + THAI_MONTHS[month] + " " + (year + 543);
+  // Format the Thai date for a workplan row's "Day 0/1/7" <select>
+  // (รอบ 12) — the row no longer stores its own day/month/year; the
+  // actual calendar date is derived from the row's area.caseFoundDate
+  // (mock "วันพบเคส") plus the chosen dayOffset (0, 1, or 7 days).
+  function formatThaiDateFromOffset(caseFoundDate, dayOffset) {
+    var offset = parseInt(dayOffset, 10);
+    var d = new Date(caseFoundDate.getFullYear(), caseFoundDate.getMonth(), caseFoundDate.getDate() + offset);
+    return formatThaiDate(d);
   }
 
   /* ---------------------------------------------------------
@@ -195,16 +225,16 @@
   for (var _h = 0; _h < 24; _h++) HOUR_OPTIONS.push(pad2(_h));
   var MINUTE_OPTIONS = ["00", "15", "30", "45"];
 
-  // Thai-year (พ.ศ.) <select> options for the workplan schedule table
-  // (รอบ 10) — stored/compared internally as ค.ศ., +543 only when
-  // rendering the option label. Covers the current ค.ศ. year plus the
-  // next 2 years, which is enough for the "tomorrow" default to never
-  // fall outside the range even right at a year boundary.
-  var YEAR_OPTIONS_CE = [];
-  (function () {
-    var baseYear = new Date().getFullYear();
-    for (var _y = 0; _y <= 2; _y++) YEAR_OPTIONS_CE.push(baseYear + _y);
-  })();
+  // "Day 0/1/7" <select> options for the workplan schedule table (รอบ 12)
+  // — standard dengue vector-control spraying schedule: spray on the day
+  // the case is found (Day 0), follow up the next day (Day 1), and once
+  // more on Day 7. Values are day offsets added to the row's area's mock
+  // caseFoundDate (see formatThaiDateFromOffset()/scheduleTimestamp()).
+  var DAY_OFFSET_OPTIONS = [
+    { value: 0, label: "Day 0 (วันพบเคส)" },
+    { value: 1, label: "Day 1" },
+    { value: 7, label: "Day 7" }
+  ];
 
   var TEAM_OPTIONS = [1, 2, 3, 4];
 
@@ -222,6 +252,8 @@
     approvalTextarea: document.getElementById("approval-textarea"),
     btnSendApproval: document.getElementById("btn-send-approval"),
     btnMockApprove: document.getElementById("btn-mock-approve"),
+    btnPrintApproval: document.getElementById("btn-print-approval"),
+    approvalPrintView: document.getElementById("approval-print-view"),
     approvalStatus: document.getElementById("approval-status"),
     btnGenerateWorkplan: document.getElementById("btn-generate-workplan"),
     workplanTextarea: document.getElementById("workplan-textarea"),
@@ -231,26 +263,32 @@
   };
 
   /* ---------------------------------------------------------
-     Control workplan schedule state (รอบ 10) — one row per
-     currently-selected (area+location) pool item, keyed by the
-     same `key` used by selectedKeys/radiusByKey above, instead of
+     Control workplan schedule state (รอบ 10, dates reworked รอบ 12) —
+     one row per currently-selected (area+location) pool item, keyed by
+     the same `key` used by selectedKeys/radiusByKey above, instead of
      the old "4 fixed teamId rows" model. Each entry holds its own
-     editable {assignedTeamId, day, month(0-11), year(ค.ศ.), hour,
-     minute} and is created lazily the first time its key is seen
-     (and never deleted when the user unchecks the area — matches
-     the radiusByKey caching pattern already used elsewhere in this
-     file, so re-checking an area restores its previous schedule).
+     editable {assignedTeamId, dayOffset, hour, minute} and is created
+     lazily the first time its key is seen (and never deleted when the
+     user unchecks the area — matches the radiusByKey caching pattern
+     already used elsewhere in this file, so re-checking an area
+     restores its previous schedule).
+
+     รอบ 12: the row's calendar date is no longer stored directly as
+     {day, month, year} — instead `dayOffset` ("0" | "1" | "7", stored
+     as a string like hour/minute) is added to the row's own
+     poolItem.area.caseFoundDate (mock "วันพบเคส" per area) to derive
+     the actual Thai date, matching the standard dengue Day 0/1/7
+     spraying schedule. See formatThaiDateFromOffset()/
+     scheduleTimestamp() below — both now need the row's poolItem
+     (for its area.caseFoundDate), not just the entry.
      --------------------------------------------------------- */
   var workplanEntryByKey = {};
 
   function getOrCreateWorkplanEntry(key, indexInPool) {
     if (!workplanEntryByKey[key]) {
-      var tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000);
       workplanEntryByKey[key] = {
         assignedTeamId: (indexInPool % 4) + 1, // round-robin 1->4 by selection order
-        day: tomorrow.getDate(),
-        month: tomorrow.getMonth(), // 0-11
-        year: tomorrow.getFullYear(), // ค.ศ. internally; +543 only for display
+        dayOffset: "0", // "0" | "1" | "7" — Day 0 (วันพบเคส) by default
         hour: indexInPool % 2 === 0 ? "08" : "09",
         minute: "00"
       };
@@ -258,11 +296,14 @@
     return workplanEntryByKey[key];
   }
 
-  function scheduleTimestamp(entry) {
+  // Needs poolItem (not just entry) so it can read poolItem.area.caseFoundDate
+  // — the Day 0 anchor that dayOffset is added to.
+  function scheduleTimestamp(entry, poolItem) {
+    var base = poolItem.area.caseFoundDate;
     return new Date(
-      entry.year,
-      entry.month,
-      entry.day,
+      base.getFullYear(),
+      base.getMonth(),
+      base.getDate() + parseInt(entry.dayOffset, 10),
       parseInt(entry.hour, 10),
       parseInt(entry.minute, 10)
     ).getTime();
@@ -275,7 +316,7 @@
       if (a.entry.assignedTeamId !== b.entry.assignedTeamId) {
         return a.entry.assignedTeamId - b.entry.assignedTeamId;
       }
-      return scheduleTimestamp(a.entry) - scheduleTimestamp(b.entry);
+      return scheduleTimestamp(a.entry, a.poolItem) - scheduleTimestamp(b.entry, b.poolItem);
     });
     return rows;
   }
@@ -294,9 +335,10 @@
 
   /* ---------------------------------------------------------
      Render: workplan schedule table, grouped by team (1->4) then
-     sorted soonest -> latest within a team — team <select>, day/
-     month/ปี(พ.ศ.) <select> trio, and 24h hour/minute <select>
-     pair all reuse .input-inline per DESIGN.md Input/Form guideline
+     sorted soonest -> latest within a team — team <select>, Day
+     0/1/7 <select> (รอบ 12, replacing the day/month/ปี(พ.ศ.) select
+     trio), and 24h hour/minute <select> pair all reuse .input-inline
+     per DESIGN.md Input/Form guideline
      --------------------------------------------------------- */
   function buildWorkplanRowEl(poolItem, entry) {
     var rowLabel = escapeHtml(poolItem.area.name) + " — " + escapeHtml(locDescriptor(poolItem.loc));
@@ -305,18 +347,10 @@
       return '<option value="' + t + '"' + (t === entry.assignedTeamId ? " selected" : "") + '>ทีมพ่น ' + t + '</option>';
     }).join("");
 
-    var dayOptionsHtml = "";
-    for (var d = 1; d <= 31; d++) {
-      dayOptionsHtml += '<option value="' + d + '"' + (d === entry.day ? " selected" : "") + '>' + pad2(d) + '</option>';
-    }
-
-    var monthOptionsHtml = THAI_MONTHS.map(function (label, idx) {
-      return '<option value="' + idx + '"' + (idx === entry.month ? " selected" : "") + '>' + label + '</option>';
+    var dayOffsetOptionsHtml = DAY_OFFSET_OPTIONS.map(function (opt) {
+      return '<option value="' + opt.value + '"' + (String(opt.value) === entry.dayOffset ? " selected" : "") + '>' + escapeHtml(opt.label) + '</option>';
     }).join("");
-
-    var yearOptionsHtml = YEAR_OPTIONS_CE.map(function (y) {
-      return '<option value="' + y + '"' + (y === entry.year ? " selected" : "") + '>' + (y + 543) + '</option>';
-    }).join("");
+    var dayOffsetDateText = formatThaiDateFromOffset(poolItem.area.caseFoundDate, entry.dayOffset);
 
     var hourOptionsHtml = HOUR_OPTIONS.map(function (h) {
       return '<option value="' + h + '"' + (h === entry.hour ? " selected" : "") + '>' + h + '</option>';
@@ -334,11 +368,10 @@
     tr.innerHTML =
       "<td><select class=\"input-inline\" data-field=\"team\" aria-label=\"ทีมพ่นที่รับผิดชอบ " + rowLabel + "\">" + teamOptionsHtml + "</select></td>" +
       "<td>" + areaCellHtml + "</td>" +
-      "<td><span class=\"date-select-group\">" +
-        "<select class=\"input-inline select-day\" data-field=\"day\" aria-label=\"วันที่ปฏิบัติงาน (วัน) " + rowLabel + "\">" + dayOptionsHtml + "</select>" +
-        "<select class=\"input-inline select-month\" data-field=\"month\" aria-label=\"วันที่ปฏิบัติงาน (เดือน) " + rowLabel + "\">" + monthOptionsHtml + "</select>" +
-        "<select class=\"input-inline select-year\" data-field=\"year\" aria-label=\"วันที่ปฏิบัติงาน (ปี พ.ศ.) " + rowLabel + "\">" + yearOptionsHtml + "</select>" +
-      "</span></td>" +
+      "<td>" +
+        "<select class=\"input-inline select-day-offset\" data-field=\"dayOffset\" aria-label=\"วันพ่น (Day 0/1/7) " + rowLabel + "\">" + dayOffsetOptionsHtml + "</select>" +
+        "<span class=\"cell-secondary\">" + escapeHtml(dayOffsetDateText) + "</span>" +
+      "</td>" +
       "<td><span class=\"time-select-group\">" +
         "<select class=\"input-inline select-hm\" data-field=\"hour\" aria-label=\"ชั่วโมงเริ่มปฏิบัติงาน (24 ชม.) " + rowLabel + "\">" + hourOptionsHtml + "</select>" +
         "<span class=\"time-select-sep\">:</span>" +
@@ -439,7 +472,8 @@
     var radius = getRadiusForKey(key, loc);
     var households = computeHouseholds(loc, radius);
     var inputId = "loc-" + key;
-    var label = loc.type === "home" ? loc.label : (loc.label + ": " + loc.name);
+    var locLabel = loc.type === "home" ? loc.label : (loc.label + ": " + loc.name);
+    var label = area.patientName + " — " + locLabel;
 
     var radiusOptionsHtml = RADIUS_OPTIONS.map(function (r) {
       return '<option value="' + r + '"' + (r === radius ? " selected" : "") + '>' + r + " เมตร</option>";
@@ -566,14 +600,26 @@
     return lines.join("\n");
   }
 
+  // Keeps the hidden #approval-print-view <pre> (รอบ 12) in sync with the
+  // editable textarea, so window.print() (triggered from "พิมพ์เป็น PDF")
+  // always prints the latest text the user sees/edited — a plain <pre>
+  // instead of the <textarea> itself so print output isn't clipped to a
+  // scrollable box. Uses textContent (not innerHTML) so no HTML-escaping
+  // is needed for arbitrary user-edited text.
+  function syncApprovalPrintView() {
+    if (els.approvalPrintView) els.approvalPrintView.textContent = els.approvalTextarea.value;
+  }
+
   function generateApproval() {
     var pool = getSelectedPool();
     if (pool.length === 0) return;
 
     els.approvalTextarea.value = buildApprovalText(pool);
+    syncApprovalPrintView();
     approvalState = "draft";
     els.btnSendApproval.disabled = false;
     els.btnMockApprove.style.display = "none";
+    els.btnPrintApproval.style.display = "none";
     els.approvalStatus.innerHTML = "";
   }
 
@@ -586,6 +632,8 @@
     els.approvalStatus.innerHTML = '<span class="badge badge-warning">รออนุมัติ &middot; ส่งเมื่อ ' + escapeHtml(approvalSentAtLabel) + "</span>";
     els.btnSendApproval.disabled = true;
     els.btnMockApprove.style.display = "";
+    els.btnPrintApproval.style.display = "";
+    syncApprovalPrintView();
   }
 
   function mockApprove() {
@@ -595,6 +643,15 @@
     approvalApprovedAtLabel = formatThaiDateTime(new Date());
     els.approvalStatus.innerHTML = '<span class="badge badge-confirmed">' + ICON_CHECK + "อนุมัติแล้ว &middot; " + escapeHtml(approvalApprovedAtLabel) + "</span>";
     els.btnMockApprove.style.display = "none";
+  }
+
+  // "พิมพ์เป็น PDF" (รอบ 12) — no PDF library involved; this just opens
+  // the browser's native print dialog (users choose "Save as PDF" as
+  // the print destination there), styled via the @media print rules in
+  // styles.css that hide everything except #approval-print-view.
+  function printApproval() {
+    syncApprovalPrintView();
+    window.print();
   }
 
   /* ---------------------------------------------------------
@@ -613,7 +670,7 @@
           var poolItem = row.poolItem;
           var entry = row.entry;
           var areaText = poolItem.area.name + " — " + locDescriptor(poolItem.loc) + " (" + poolItem.households + " หลังคาเรือน, รัศมี " + poolItem.radius + " ม.)";
-          var whenText = "ปฏิบัติงาน " + formatThaiDateFromParts(entry.day, entry.month, entry.year) + " เวลา " + entry.hour + ":" + entry.minute + " น.";
+          var whenText = "ปฏิบัติงาน Day " + entry.dayOffset + " (" + formatThaiDateFromOffset(poolItem.area.caseFoundDate, entry.dayOffset) + ") เวลา " + entry.hour + ":" + entry.minute + " น.";
           return (i + 1) + ". ทีมพ่น " + entry.assignedTeamId + " — รับผิดชอบ " + areaText + " — " + whenText;
         });
 
@@ -692,13 +749,11 @@
       var key = tr.getAttribute("data-key");
       var entry = workplanEntryByKey[key];
       if (!entry) return;
-      var field = input.getAttribute("data-field"); // "team" | "day" | "month" | "year" | "hour" | "minute"
+      var field = input.getAttribute("data-field"); // "team" | "dayOffset" | "hour" | "minute"
       if (field === "team") {
         entry.assignedTeamId = parseInt(input.value, 10);
-      } else if (field === "day" || field === "month" || field === "year") {
-        entry[field] = parseInt(input.value, 10);
       } else {
-        entry[field] = input.value; // hour/minute stay as zero-padded strings ("08", "00", ...)
+        entry[field] = input.value; // dayOffset ("0"/"1"/"7") and hour/minute all stay as plain strings
       }
       renderWorkplanSchedule(); // re-sorts (team asc, then soonest -> latest) and re-renders the whole table
     });
@@ -706,6 +761,8 @@
     els.btnGenerateApproval.addEventListener("click", generateApproval);
     els.btnSendApproval.addEventListener("click", sendApproval);
     els.btnMockApprove.addEventListener("click", mockApprove);
+    els.btnPrintApproval.addEventListener("click", printApproval);
+    els.approvalTextarea.addEventListener("input", syncApprovalPrintView);
     els.btnGenerateWorkplan.addEventListener("click", generateWorkplan);
     els.btnConfirmWorkplan.addEventListener("click", confirmWorkplan);
   }

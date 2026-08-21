@@ -1610,27 +1610,14 @@ main.content-wrap {
 }
 
 /* ---------------------------------------------------------
-   Thai day/month/ปี(พ.ศ.) select trio (รอบ 10), replacing the
-   native <input type="date"> in the workplan schedule table so
-   the date always reads/edits in Thai (day / Thai month / พ.ศ.)
-   regardless of browser/OS locale — same pattern as .time-select-group
+   Day 0/1/7 spraying-schedule <select> (รอบ 12), replacing the
+   Thai day/month/ปี(พ.ศ.) select trio from รอบ 10 — the actual
+   calendar date is now computed from the row's area.caseFoundDate
+   + the chosen offset and shown read-only via .cell-secondary
+   underneath (see control-plan.js formatThaiDateFromOffset()).
    --------------------------------------------------------- */
-.date-select-group {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  flex-wrap: wrap;
-}
-
-.select-day,
-.select-year {
-  width: 58px;
-  flex: 0 0 58px;
-}
-
-.select-month {
-  width: 66px;
-  flex: 0 0 66px;
+.select-day-offset {
+  margin-bottom: 4px;
 }
 
 /* Operational (non-epidemiological) status badge tones — reuse the
@@ -1685,6 +1672,58 @@ main.content-wrap {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-panel);
   background: var(--color-background);
+}
+
+/* =========================================================
+   Control Plan — "พิมพ์เป็น PDF" print view (2026-08-20 รอบ 12)
+
+   #approval-print-view is a hidden <pre> kept in sync with
+   #approval-textarea by control-plan.js (syncApprovalPrintView()).
+   It stays display:none on screen and only appears under
+   @media print, so window.print() (triggered by "พิมพ์เป็น PDF")
+   renders a plain, unscrollable copy of the approval document
+   instead of the editable textarea box.
+
+   Everything else on the page — left rail nav, page header,
+   footer, the workplan panel, and every control/input/button
+   inside the approval panel itself — is marked .no-print and
+   hidden for print, so the printed page contains only the
+   approval document text. Plain .no-print class selectors are
+   used (rather than a :has() selector) so this works consistently
+   across browsers regardless of :has() support.
+   ========================================================= */
+.print-only {
+  display: none;
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+
+  .print-only {
+    display: block;
+    white-space: pre-wrap;
+    font-family: var(--font-family);
+    font-size: 12pt;
+    line-height: 1.6;
+    color: #000;
+  }
+
+  .app-layout {
+    display: block;
+  }
+
+  .main-column {
+    width: 100%;
+  }
+
+  .panel {
+    box-shadow: none;
+    border: none;
+    padding: 0;
+    background: #fff;
+  }
 }
 
 .team-item-top {

@@ -354,3 +354,36 @@ Workflow ลงชื่อ/อนุมัติจริง 4 ขั้นต�
 
 ### Design Reference
 ข้อความใน textarea ล้วน ไม่มี UI เปลี่ยนแปลง
+
+---
+
+## เพิ่มเติม 2026-08-20 (รอบ 12) — ชื่อผู้ป่วยในรายการ, วันพ่น Day 0/1/7, พิมพ์เป็น PDF, สลับลำดับ 2 ส่วน
+
+### Requirement ต้นทาง
+1. รายการเลือกพื้นที่ให้ขึ้นชื่อ-สกุลผู้ป่วยนำหน้า (ยังเลือกที่อยู่/ที่ทำงาน-เรียนได้เหมือนเดิม)
+2. วันพ่นเลือกเป็น Day 0 / Day 1 / Day 7 (มาตรฐานงานควบคุมไข้เลือดออก: พ่นวันพบเคส, ตามผลวันถัดไป, ตามผลอีกครั้งวันที่ 7) คำนวณวันจริงจาก "วันพบเคส" (mock) ของแต่ละพื้นที่ + offset
+3. ปุ่ม "พิมพ์เป็น PDF" หลังส่งขออนุมัติ ใช้ `window.print()` + print stylesheet (ไม่มี CDN/library)
+4. สลับลำดับ: "ร่างแผนปฏิบัติงาน" ขึ้นก่อน "ร่างใบขออนุมัติเบิกน้ำมัน/น้ำยาเคมี"
+
+### Scope
+แก้ไข `prototypes/v1/control-plan.html`, `control-plan.js`, `styles.css` ในที่ (ไม่สร้าง v2)
+
+### รายละเอียด
+1. **เพิ่ม `patientName` ต่อ `AREAS[i]`** (mock ชื่อ-สกุลสมมติบริบทไทย สอดคล้อยกับ cluster/เคสเดิมที่มีอยู่) — แสดงนำหน้าในแต่ละแถว checkbox ของรายการเลือก (`renderAreaList()`/`buildAreaGroup()`) เช่น "นายกิตติ มั่นคง — ที่อยู่ (บ้าน)" / "นายกิตติ มั่นคง — สถานที่ทำงาน/เรียน: [ชื่อสถานที่]"
+2. **เพิ่ม `caseFoundDate` (Day 0 anchor) ต่อ `AREAS[i]`** เป็น mock date (เช่น 2-5 วันก่อนวันนี้ ให้สมจริง) — แทนที่ day/month/year select 3 ตัวในตารางกำหนดการด้วย **`<select data-field="dayOffset">`** ตัวเลือก "Day 0 (วันพบเคส)" / "Day 1" / "Day 7" (value 0/1/7) แสดงวันที่ไทยที่คำนวณได้ (`caseFoundDate + offset` วัน) เป็นข้อความข้าง select ไม่ต้องแก้ไขตรงได้ (คำนวณอัตโนมัติจาก offset ที่เลือก) — ปรับ `workplanEntryByKey`/`getOrCreateWorkplanEntry`/`scheduleTimestamp`/`formatThaiDateFromParts` ให้ใช้ `dayOffset` + `poolItem.area.caseFoundDate` แทน day/month/year แยก 3 ค่า (ลบ field day/month/year เดิมออกจาก entry, ลบ select วัน/เดือน/ปีและ CSS ที่เกี่ยวข้องถ้าไม่ใช้แล้ว)
+3. **ปุ่ม "พิมพ์เป็น PDF"** — โชว์ต่อจากปุ่ม "ส่งขออนุมัติ" เมื่อ `approvalState !== "draft"` (ส่งแล้ว) เท่านั้น กดแล้วเรียก `window.print()` — เพิ่ม `<style media="print">` (หรือ `@media print` ใน styles.css) ที่ซ่อน left rail nav, ปุ่มต่างๆ, panel อื่นที่ไม่เกี่ยวข้อง เหลือแค่เนื้อหา textarea ของใบขออนุมัติ (ให้แสดงเป็น text ที่อ่านง่ายตอนพิมพ์ ไม่ใช่กล่อง textarea ที่มี scrollbar — อาจต้อง render เนื้อหาเดียวกันไว้ใน `<pre>`/`<div>` ซ่อนไว้ปกติ (`display:none`) แล้วโชว์เฉพาะตอน print แทน textarea)
+4. **สลับลำดับ panel** ใน `control-plan.html`: ย้าย section "ร่างแผนปฏิบัติงานควบคุมโรค" ให้อยู่ก่อน section "ร่างใบขออนุมัติเบิกน้ำมัน/น้ำยาเคมี" (สลับ HTML block ทั้งสองส่วน คงเนื้อหา/id/logic เดิมทุกอย่าง แค่เปลี่ยนตำแหน่ง)
+
+### Backlog/Feature ที่ไม่รวมในรอบนี้
+Day 0/1/7 ไม่ตรวจสอบว่าซ้อนกับ workplan วันอื่นที่มีอยู่แล้ว, ไม่มีการปรับ `caseFoundDate` ผ่าน UI (เป็น mock คงที่ต่อพื้นที่)
+
+### Assumption ที่ตั้งไว้
+- `caseFoundDate` เป็น mock date คงที่ต่อพื้นที่ ไม่ผูกกับข้อมูลจริงจาก Case Intake
+- ชื่อผู้ป่วยเป็น mock ใหม่ที่ตั้งให้สอดคล้องกับ context เดิมของแต่ละ cluster ไม่ใช่ query จากหน้าอื่น
+- ปุ่มพิมพ์ PDF ใช้ browser print เท่านั้น ไม่มี PDF library
+
+### Version
+แก้ไข `prototypes/v1` เดิมในที่ (ไม่สร้าง v2)
+
+### Design Reference
+อ้างอิง `DESIGN.md` เดิม — print stylesheet เรียบง่าย ขาว-ดำอ่านง่าย ไม่ต้องคงโทนสีเดิมตอนพิมพ์

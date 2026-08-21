@@ -13,7 +13,7 @@
   <!-- ============================================================
        Navigation — left rail
        ============================================================ -->
-  <aside class="side-rail">
+  <aside class="side-rail no-print">
     <div class="rail-brand">
       <span class="rail-brand-mark">ai-dsrp</span>
       <span class="rail-brand-short">ai</span>
@@ -85,56 +85,21 @@
   <main class="content-wrap">
 
     <!-- Page header -->
-    <div class="page-header">
+    <div class="page-header no-print">
       <div class="page-header-title">
         <h1>แผนควบคุมโรคและขออนุมัติ (Control Plan)</h1>
         <p class="body-secondary">ช่วยทีมควบคุมโรค (ทีมพ่น) ร่างใบขออนุมัติเบิกน้ำมัน/น้ำยาเคมี และร่างแผนปฏิบัติงานควบคุมโรคจากข้อมูลพื้นที่/กลุ่มเคสที่ยืนยันแล้ว (ข้อมูลจำลอง)</p>
       </div>
     </div>
 
-    <!-- 1) Draft approval request -->
-    <div class="panel">
-      <div class="panel-header">
-        <h2>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 2h8l4 4v16H7a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2Z"></path><path d="M15 2v4h4"></path><path d="M9 13h6M9 17h6"></path></svg>
-          ร่างใบขออนุมัติเบิกน้ำมัน/น้ำยาเคมี
-        </h2>
-        <span class="body-secondary">เลือกพื้นที่ที่ต้องพ่นสารเคมี ระบบจะช่วยร่างเอกสารขออนุมัติจากข้อมูลพื้นที่ที่เลือก</span>
-      </div>
-
-      <div class="area-select-list" id="area-select-list"></div>
-      <p class="area-select-summary" id="area-select-summary">--</p>
-
-      <div class="minimap-panel">
-        <p class="body-secondary" style="margin-bottom:8px;">แผนที่จำลองตำแหน่งที่เลือกไว้ข้างบน — วงรัศมีจะใหญ่ขึ้นตามรัศมีที่เลือกต่อรายการ</p>
-        <div class="spotmap-wrap" id="control-plan-mini-map-wrap"></div>
-        <div class="region-legend">
-          <div class="region-legend-item"><span class="pin-dot pin-normal"></span>ที่อยู่ (บ้าน)</div>
-          <div class="region-legend-item"><span class="pin-dot pin-adjusted"></span>สถานที่ทำงาน/เรียน</div>
-        </div>
-      </div>
-
-      <div class="report-controls">
-        <button type="button" class="btn btn-primary" id="btn-generate-approval" disabled>สร้างร่างเอกสาร</button>
-      </div>
-
-      <textarea class="report-textarea" id="approval-textarea" rows="16" aria-label="ร่างใบขออนุมัติเบิกน้ำมัน/น้ำยาเคมี (แก้ไขได้)" placeholder="ร่างเอกสารจะปรากฏที่นี่หลังกด “สร้างร่างเอกสาร” — สามารถแก้ไขข้อความได้ก่อนส่งขออนุมัติ"></textarea>
-
-      <div class="report-actions">
-        <button type="button" class="btn btn-outline" id="btn-send-approval" disabled>ส่งขออนุมัติ</button>
-        <button type="button" class="btn btn-outline" id="btn-mock-approve" style="display:none;">อนุมัติ (จำลองผู้บริหารกดอนุมัติ)</button>
-        <span class="report-status" id="approval-status"></span>
-      </div>
-    </div>
-
-    <!-- 2) Draft control workplan -->
-    <div class="panel">
+    <!-- 1) Draft control workplan (สลับมาก่อนใบขออนุมัติ 2026-08-20 รอบ 12) -->
+    <div class="panel no-print">
       <div class="panel-header">
         <h2>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
           ร่างแผนปฏิบัติงานควบคุมโรค
         </h2>
-        <span class="body-secondary">มอบหมายทีมพ่น กำหนดวันปฏิบัติงาน และขั้นตอนพ่น/ป้องกัน ให้นักวิชาการตรวจสอบและแก้ไขต่อก่อนใช้งานจริง</span>
+        <span class="body-secondary">มอบหมายทีมพ่น กำหนดวันปฏิบัติงาน (Day 0/1/7) และขั้นตอนพ่น/ป้องกัน ให้นักวิชาการตรวจสอบและแก้ไขต่อก่อนใช้งานจริง</span>
       </div>
 
       <div class="table-scroll">
@@ -143,14 +108,14 @@
             <tr>
               <th>ทีมพ่น</th>
               <th>พื้นที่รับผิดชอบ</th>
-              <th>วันที่ปฏิบัติงาน</th>
+              <th>วันพ่น (Day 0/1/7)</th>
               <th>เวลาเริ่ม</th>
             </tr>
           </thead>
           <tbody id="workplan-schedule-body"></tbody>
         </table>
       </div>
-      <p class="area-select-summary">ตารางเพิ่ม/ลดแถวตามพื้นที่ที่เลือกไว้ด้านบนโดยอัตโนมัติ — เลือกทีมพ่นที่รับผิดชอบเองได้ (ทีมเดียวรับได้หลายพื้นที่) ตารางจัดกลุ่มตามทีมพ่น (ทีม 1 → 4) ก่อน แล้วเรียงตามวันที่/เวลาน้อยไปมากภายในทีมเดียวกัน — แก้ไขทีม/วันที่/เวลาแล้วตารางจะจัดกลุ่มและเรียงลำดับใหม่ให้ทันที</p>
+      <p class="area-select-summary">ตารางเพิ่ม/ลดแถวตามพื้นที่ที่เลือกไว้ด้านล่างโดยอัตโนมัติ — เลือกทีมพ่นที่รับผิดชอบเองได้ (ทีมเดียวรับได้หลายพื้นที่) วันพ่นเลือกได้ Day 0 (วันพบเคส) / Day 1 / Day 7 ตามมาตรฐานควบคุมไข้เลือดออก โดยระบบคำนวณวันที่ไทยจริงให้จากวันพบเคสของแต่ละพื้นที่ ตารางจัดกลุ่มตามทีมพ่น (ทีม 1 → 4) ก่อน แล้วเรียงตามวันที่/เวลาน้อยไปมากภายในทีมเดียวกัน — แก้ไขทีม/วันพ่น/เวลาแล้วตารางจะจัดกลุ่มและเรียงลำดับใหม่ให้ทันที</p>
 
       <div class="report-controls">
         <button type="button" class="btn btn-primary" id="btn-generate-workplan">สร้างร่างแผนปฏิบัติงาน</button>
@@ -164,9 +129,51 @@
       </div>
     </div>
 
+    <!-- 2) Draft approval request -->
+    <div class="panel">
+      <div class="panel-header no-print">
+        <h2>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 2h8l4 4v16H7a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2Z"></path><path d="M15 2v4h4"></path><path d="M9 13h6M9 17h6"></path></svg>
+          ร่างใบขออนุมัติเบิกน้ำมัน/น้ำยาเคมี
+        </h2>
+        <span class="body-secondary">เลือกพื้นที่ที่ต้องพ่นสารเคมี (ขึ้นชื่อ-สกุลผู้ป่วยนำหน้าแต่ละรายการ) ระบบจะช่วยร่างเอกสารขออนุมัติจากข้อมูลพื้นที่ที่เลือก</span>
+      </div>
+
+      <div class="area-select-list no-print" id="area-select-list"></div>
+      <p class="area-select-summary no-print" id="area-select-summary">--</p>
+
+      <div class="minimap-panel no-print">
+        <p class="body-secondary" style="margin-bottom:8px;">แผนที่จำลองตำแหน่งที่เลือกไว้ข้างบน — วงรัศมีจะใหญ่ขึ้นตามรัศมีที่เลือกต่อรายการ</p>
+        <div class="spotmap-wrap" id="control-plan-mini-map-wrap"></div>
+        <div class="region-legend">
+          <div class="region-legend-item"><span class="pin-dot pin-normal"></span>ที่อยู่ (บ้าน)</div>
+          <div class="region-legend-item"><span class="pin-dot pin-adjusted"></span>สถานที่ทำงาน/เรียน</div>
+        </div>
+      </div>
+
+      <div class="report-controls no-print">
+        <button type="button" class="btn btn-primary" id="btn-generate-approval" disabled>สร้างร่างเอกสาร</button>
+      </div>
+
+      <textarea class="report-textarea no-print" id="approval-textarea" rows="16" aria-label="ร่างใบขออนุมัติเบิกน้ำมัน/น้ำยาเคมี (แก้ไขได้)" placeholder="ร่างเอกสารจะปรากฏที่นี่หลังกด “สร้างร่างเอกสาร” — สามารถแก้ไขข้อความได้ก่อนส่งขออนุมัติ"></textarea>
+
+      <!-- Printable view (รอบ 12) — kept in sync with #approval-textarea via
+           control-plan.js syncApprovalPrintView(); hidden normally, shown
+           only under @media print (styles.css) so "พิมพ์เป็น PDF" prints a
+           plain readable document instead of a scrollable textarea box. -->
+      <pre id="approval-print-view" class="print-only"></pre>
+
+      <div class="report-actions no-print">
+        <button type="button" class="btn btn-outline" id="btn-send-approval" disabled>ส่งขออนุมัติ</button>
+        <button type="button" class="btn btn-outline" id="btn-mock-approve" style="display:none;">อนุมัติ (จำลองผู้บริหารกดอนุมัติ)</button>
+        <button type="button" class="btn btn-outline" id="btn-print-approval" style="display:none;">พิมพ์เป็น PDF</button>
+        <span class="report-status" id="approval-status"></span>
+      </div>
+    </div>
+
   </main>
 
-  <footer class="footer">
+  <footer class="footer no-print">
     AI Disease Surveillance &amp; Response Platform — Prototype v1 · ข้อมูลทั้งหมดเป็นข้อมูลจำลองเพื่อการสาธิตเท่านั้น
   </footer>
 
