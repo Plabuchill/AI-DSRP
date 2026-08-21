@@ -1609,6 +1609,30 @@ main.content-wrap {
   font-weight: 600;
 }
 
+/* ---------------------------------------------------------
+   Thai day/month/ปี(พ.ศ.) select trio (รอบ 10), replacing the
+   native <input type="date"> in the workplan schedule table so
+   the date always reads/edits in Thai (day / Thai month / พ.ศ.)
+   regardless of browser/OS locale — same pattern as .time-select-group
+   --------------------------------------------------------- */
+.date-select-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.select-day,
+.select-year {
+  width: 58px;
+  flex: 0 0 58px;
+}
+
+.select-month {
+  width: 66px;
+  flex: 0 0 66px;
+}
+
 /* Operational (non-epidemiological) status badge tones — reuse the
    dot + label badge pattern, kept distinct from success/warning/danger
    which are reserved for epidemiological status only. */

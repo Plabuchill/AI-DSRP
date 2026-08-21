@@ -5,6 +5,15 @@
    area names are kept consistent with case-analysis.js/case-intake.js
    mock data but not read from their live state, per BUILD-PLAN.md
    assumption for รอบ 4)
+
+   รอบ 10 (2026-08-20): the workplan schedule table now has one row
+   per currently-selected (area+location) pool item (not a fixed set
+   of 4 team rows), with a user-editable team <select> per row (any
+   team can be assigned to any number of rows) and a Thai day/month/
+   ปี(พ.ศ.) <select> trio in place of the native date input. Rows are
+   grouped by assigned team (1->4) first, then sorted soonest->latest
+   by date+time within the same team. See getOrCreateWorkplanEntry(),
+   getSortedWorkplanRows(), sortWorkplanRows() below.
    ========================================================= */
 (function () {
   "use strict";
@@ -169,18 +178,12 @@
     return d + " " + m + " " + y;
   }
 
-  /* ---------------------------------------------------------
-     Date-input (<input type="date">) helpers — parse/format the
-     "YYYY-MM-DD" value using local date components (avoids the
-     UTC-midnight parsing pitfall of `new Date(str)`).
-     --------------------------------------------------------- */
-  function toDateInputValue(date) {
-    return date.getFullYear() + "-" + pad2(date.getMonth() + 1) + "-" + pad2(date.getDate());
-  }
-
-  function parseDateInputValue(str) {
-    var parts = String(str).split("-");
-    return new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+  // Format a workplan schedule entry's {day, month(0-11), year(ค.ศ.)}
+  // parts as a Thai date string, without going through a Date-string
+  // round-trip (รอบ 10) — month/year here are already stored as plain
+  // numbers on the entry itself, not parsed from an <input type="date">.
+  function formatThaiDateFromParts(day, month, year) {
+    return day + " " + THAI_MONTHS[month] + " " + (year + 543);
   }
 
   /* ---------------------------------------------------------
@@ -191,6 +194,19 @@
   var HOUR_OPTIONS = [];
   for (var _h = 0; _h < 24; _h++) HOUR_OPTIONS.push(pad2(_h));
   var MINUTE_OPTIONS = ["00", "15", "30", "45"];
+
+  // Thai-year (พ.ศ.) <select> options for the workplan schedule table
+  // (รอบ 10) — stored/compared internally as ค.ศ., +543 only when
+  // rendering the option label. Covers the current ค.ศ. year plus the
+  // next 2 years, which is enough for the "tomorrow" default to never
+  // fall outside the range even right at a year boundary.
+  var YEAR_OPTIONS_CE = [];
+  (function () {
+    var baseYear = new Date().getFullYear();
+    for (var _y = 0; _y <= 2; _y++) YEAR_OPTIONS_CE.push(baseYear + _y);
+  })();
+
+  var TEAM_OPTIONS = [1, 2, 3, 4];
 
   var ICON_SEND = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13"></path><path d="M22 2 15 22l-4-9-9-4 20-7Z"></path></svg>';
   var ICON_CHECK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg>';
@@ -215,121 +231,136 @@
   };
 
   /* ---------------------------------------------------------
-     Control workplan schedule state — one row per spray team
-     (1-4), each with an editable date + 24h hour/minute select.
-     Default values replicate the old hardcoded logic (team 1-2 =
-     tomorrow, team 3-4 = day after tomorrow, 08:00 / 09:00) but
-     no longer store an `area` object directly — instead each row
-     is bound (boundKey) to one of the (area+location) items the
-     user has checked in the area-select panel above, resolved by
-     resolveWorkplanBindings() (รอบ 9).
+     Control workplan schedule state (รอบ 10) — one row per
+     currently-selected (area+location) pool item, keyed by the
+     same `key` used by selectedKeys/radiusByKey above, instead of
+     the old "4 fixed teamId rows" model. Each entry holds its own
+     editable {assignedTeamId, day, month(0-11), year(ค.ศ.), hour,
+     minute} and is created lazily the first time its key is seen
+     (and never deleted when the user unchecks the area — matches
+     the radiusByKey caching pattern already used elsewhere in this
+     file, so re-checking an area restores its previous schedule).
      --------------------------------------------------------- */
-  var today0 = new Date();
-  var day1 = new Date(today0.getTime() + 1 * 24 * 60 * 60 * 1000);
-  var day2 = new Date(today0.getTime() + 2 * 24 * 60 * 60 * 1000);
+  var workplanEntryByKey = {};
 
-  var workplanSchedule = [
-    { teamId: 1, teamLabel: "ทีมพ่น 1", date: toDateInputValue(day1), hour: "08", minute: "00", boundKey: null },
-    { teamId: 2, teamLabel: "ทีมพ่น 2", date: toDateInputValue(day1), hour: "09", minute: "00", boundKey: null },
-    { teamId: 3, teamLabel: "ทีมพ่น 3", date: toDateInputValue(day2), hour: "08", minute: "00", boundKey: null },
-    { teamId: 4, teamLabel: "ทีมพ่น 4", date: toDateInputValue(day2), hour: "09", minute: "00", boundKey: null }
-  ];
-
-  // Preferred legacy team <-> area(home) binding, kept only as a
-  // preference when that key is present in the current selection pool.
-  var LEGACY_TEAM_KEY = { 1: "1-home", 2: "2-home", 3: "3-home", 4: "4-home" };
-
-  function resolveWorkplanBindings() {
-    var pool = getSelectedPool();
-    var poolKeys = pool.map(function (item) { return item.key; });
-    var used = {};
-
-    workplanSchedule.forEach(function (entry) { entry.boundKey = null; });
-
-    // pass 1: legacy preferred key per team, if still in the pool
-    workplanSchedule.forEach(function (entry) {
-      var preferred = LEGACY_TEAM_KEY[entry.teamId];
-      if (preferred && poolKeys.indexOf(preferred) !== -1 && !used[preferred]) {
-        entry.boundKey = preferred;
-        used[preferred] = true;
-      }
-    });
-
-    // pass 2: fill any team still unbound with any unused pool item (in order)
-    workplanSchedule.forEach(function (entry) {
-      if (entry.boundKey) return;
-      for (var i = 0; i < pool.length; i++) {
-        if (!used[pool[i].key]) {
-          entry.boundKey = pool[i].key;
-          used[pool[i].key] = true;
-          break;
-        }
-      }
-    });
-  }
-
-  function findPoolItem(pool, key) {
-    for (var i = 0; i < pool.length; i++) {
-      if (pool[i].key === key) return pool[i];
+  function getOrCreateWorkplanEntry(key, indexInPool) {
+    if (!workplanEntryByKey[key]) {
+      var tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000);
+      workplanEntryByKey[key] = {
+        assignedTeamId: (indexInPool % 4) + 1, // round-robin 1->4 by selection order
+        day: tomorrow.getDate(),
+        month: tomorrow.getMonth(), // 0-11
+        year: tomorrow.getFullYear(), // ค.ศ. internally; +543 only for display
+        hour: indexInPool % 2 === 0 ? "08" : "09",
+        minute: "00"
+      };
     }
-    return null;
+    return workplanEntryByKey[key];
   }
 
   function scheduleTimestamp(entry) {
-    if (!entry.date || !entry.hour || !entry.minute) return Number.MAX_SAFE_INTEGER;
-    var dateParts = entry.date.split("-");
-    if (dateParts.length !== 3) return Number.MAX_SAFE_INTEGER;
-    var dt = new Date(
-      parseInt(dateParts[0], 10),
-      parseInt(dateParts[1], 10) - 1,
-      parseInt(dateParts[2], 10),
+    return new Date(
+      entry.year,
+      entry.month,
+      entry.day,
       parseInt(entry.hour, 10),
       parseInt(entry.minute, 10)
-    );
-    return dt.getTime();
+    ).getTime();
   }
 
-  function sortWorkplanSchedule() {
-    workplanSchedule.sort(function (a, b) { return scheduleTimestamp(a) - scheduleTimestamp(b); });
+  // Two-level sort: group by assigned team (1->4) first, then by
+  // date+time (soonest -> latest) within the same team.
+  function sortWorkplanRows(rows) {
+    rows.sort(function (a, b) {
+      if (a.entry.assignedTeamId !== b.entry.assignedTeamId) {
+        return a.entry.assignedTeamId - b.entry.assignedTeamId;
+      }
+      return scheduleTimestamp(a.entry) - scheduleTimestamp(b.entry);
+    });
+    return rows;
+  }
+
+  // Builds the current {poolItem, entry} rows (one per selected
+  // area+location), lazily creating any missing schedule entry, then
+  // sorts them per sortWorkplanRows(). Shared by the table renderer
+  // and buildWorkplanText() so both always agree on row order.
+  function getSortedWorkplanRows() {
+    var pool = getSelectedPool();
+    var rows = pool.map(function (item, i) {
+      return { poolItem: item, entry: getOrCreateWorkplanEntry(item.key, i) };
+    });
+    return sortWorkplanRows(rows);
   }
 
   /* ---------------------------------------------------------
-     Render: workplan schedule table (sorted soonest -> latest) —
-     inline date input + 24h hour/minute <select> pair reuse
-     .input-inline per DESIGN.md Input/Form guideline
+     Render: workplan schedule table, grouped by team (1->4) then
+     sorted soonest -> latest within a team — team <select>, day/
+     month/ปี(พ.ศ.) <select> trio, and 24h hour/minute <select>
+     pair all reuse .input-inline per DESIGN.md Input/Form guideline
      --------------------------------------------------------- */
+  function buildWorkplanRowEl(poolItem, entry) {
+    var rowLabel = escapeHtml(poolItem.area.name) + " — " + escapeHtml(locDescriptor(poolItem.loc));
+
+    var teamOptionsHtml = TEAM_OPTIONS.map(function (t) {
+      return '<option value="' + t + '"' + (t === entry.assignedTeamId ? " selected" : "") + '>ทีมพ่น ' + t + '</option>';
+    }).join("");
+
+    var dayOptionsHtml = "";
+    for (var d = 1; d <= 31; d++) {
+      dayOptionsHtml += '<option value="' + d + '"' + (d === entry.day ? " selected" : "") + '>' + pad2(d) + '</option>';
+    }
+
+    var monthOptionsHtml = THAI_MONTHS.map(function (label, idx) {
+      return '<option value="' + idx + '"' + (idx === entry.month ? " selected" : "") + '>' + label + '</option>';
+    }).join("");
+
+    var yearOptionsHtml = YEAR_OPTIONS_CE.map(function (y) {
+      return '<option value="' + y + '"' + (y === entry.year ? " selected" : "") + '>' + (y + 543) + '</option>';
+    }).join("");
+
+    var hourOptionsHtml = HOUR_OPTIONS.map(function (h) {
+      return '<option value="' + h + '"' + (h === entry.hour ? " selected" : "") + '>' + h + '</option>';
+    }).join("");
+    var minuteOptionsHtml = MINUTE_OPTIONS.map(function (m) {
+      return '<option value="' + m + '"' + (m === entry.minute ? " selected" : "") + '>' + m + '</option>';
+    }).join("");
+
+    var areaCellHtml =
+      '<span class="cell-primary">' + escapeHtml(poolItem.area.name) + ' &mdash; ' + escapeHtml(locDescriptor(poolItem.loc)) + '</span>' +
+      '<span class="cell-secondary">' + poolItem.households + ' หลังคาเรือน (รัศมี ' + poolItem.radius + ' ม.) &middot; ' + escapeHtml(poolItem.area.clusterRef) + '</span>';
+
+    var tr = document.createElement("tr");
+    tr.setAttribute("data-key", poolItem.key);
+    tr.innerHTML =
+      "<td><select class=\"input-inline\" data-field=\"team\" aria-label=\"ทีมพ่นที่รับผิดชอบ " + rowLabel + "\">" + teamOptionsHtml + "</select></td>" +
+      "<td>" + areaCellHtml + "</td>" +
+      "<td><span class=\"date-select-group\">" +
+        "<select class=\"input-inline select-day\" data-field=\"day\" aria-label=\"วันที่ปฏิบัติงาน (วัน) " + rowLabel + "\">" + dayOptionsHtml + "</select>" +
+        "<select class=\"input-inline select-month\" data-field=\"month\" aria-label=\"วันที่ปฏิบัติงาน (เดือน) " + rowLabel + "\">" + monthOptionsHtml + "</select>" +
+        "<select class=\"input-inline select-year\" data-field=\"year\" aria-label=\"วันที่ปฏิบัติงาน (ปี พ.ศ.) " + rowLabel + "\">" + yearOptionsHtml + "</select>" +
+      "</span></td>" +
+      "<td><span class=\"time-select-group\">" +
+        "<select class=\"input-inline select-hm\" data-field=\"hour\" aria-label=\"ชั่วโมงเริ่มปฏิบัติงาน (24 ชม.) " + rowLabel + "\">" + hourOptionsHtml + "</select>" +
+        "<span class=\"time-select-sep\">:</span>" +
+        "<select class=\"input-inline select-hm\" data-field=\"minute\" aria-label=\"นาทีเริ่มปฏิบัติงาน " + rowLabel + "\">" + minuteOptionsHtml + "</select>" +
+      "</span></td>";
+    return tr;
+  }
+
   function renderWorkplanSchedule() {
-    sortWorkplanSchedule();
-    resolveWorkplanBindings();
-    var pool = getSelectedPool();
+    var rows = getSortedWorkplanRows();
 
     els.workplanScheduleBody.innerHTML = "";
-    workplanSchedule.forEach(function (entry) {
-      var poolItem = entry.boundKey ? findPoolItem(pool, entry.boundKey) : null;
-      var areaCellHtml = poolItem
-        ? '<span class="cell-primary">' + escapeHtml(poolItem.area.name) + ' &mdash; ' + escapeHtml(locDescriptor(poolItem.loc)) + '</span>' +
-          '<span class="cell-secondary">' + poolItem.households + ' หลังคาเรือน (รัศมี ' + poolItem.radius + ' ม.) &middot; ' + escapeHtml(poolItem.area.clusterRef) + '</span>'
-        : '<span class="cell-secondary">ยังไม่เลือกพื้นที่ &mdash; กรุณาเลือกพื้นที่/ตำแหน่งในส่วน &ldquo;ร่างใบขออนุมัติเบิกน้ำมัน/น้ำยาเคมี&rdquo; ก่อน</span>';
 
-      var hourOptionsHtml = HOUR_OPTIONS.map(function (h) {
-        return '<option value="' + h + '"' + (h === entry.hour ? " selected" : "") + '>' + h + '</option>';
-      }).join("");
-      var minuteOptionsHtml = MINUTE_OPTIONS.map(function (m) {
-        return '<option value="' + m + '"' + (m === entry.minute ? " selected" : "") + '>' + m + '</option>';
-      }).join("");
+    if (rows.length === 0) {
+      var trEmpty = document.createElement("tr");
+      trEmpty.innerHTML = '<td colspan="4"><span class="cell-secondary">ยังไม่เลือกพื้นที่ &mdash; กรุณาเลือกพื้นที่/ตำแหน่งในส่วน &ldquo;ร่างใบขออนุมัติเบิกน้ำมัน/น้ำยาเคมี&rdquo; ก่อน</span></td>';
+      els.workplanScheduleBody.appendChild(trEmpty);
+      return;
+    }
 
-      var tr = document.createElement("tr");
-      tr.setAttribute("data-team-id", entry.teamId);
-      tr.innerHTML =
-        "<td><span class=\"cell-primary\">" + escapeHtml(entry.teamLabel) + "</span></td>" +
-        "<td>" + areaCellHtml + "</td>" +
-        "<td><input type=\"date\" class=\"input-inline\" data-field=\"date\" value=\"" + escapeHtml(entry.date) + "\" aria-label=\"วันที่ปฏิบัติงาน " + escapeHtml(entry.teamLabel) + "\"></td>" +
-        "<td><span class=\"time-select-group\">" +
-          "<select class=\"input-inline select-hm\" data-field=\"hour\" aria-label=\"ชั่วโมงเริ่มปฏิบัติงาน (24 ชม.) " + escapeHtml(entry.teamLabel) + "\">" + hourOptionsHtml + "</select>" +
-          "<span class=\"time-select-sep\">:</span>" +
-          "<select class=\"input-inline select-hm\" data-field=\"minute\" aria-label=\"นาทีเริ่มปฏิบัติงาน " + escapeHtml(entry.teamLabel) + "\">" + minuteOptionsHtml + "</select>" +
-        "</span></td>";
-      els.workplanScheduleBody.appendChild(tr);
+    rows.forEach(function (row) {
+      els.workplanScheduleBody.appendChild(buildWorkplanRowEl(row.poolItem, row.entry));
     });
   }
 
@@ -533,20 +564,19 @@
      generation, see BUILD-PLAN.md assumption)
      --------------------------------------------------------- */
   function buildWorkplanText() {
-    sortWorkplanSchedule(); // ensure the wording order matches the table's current (soonest -> latest) order
-    resolveWorkplanBindings();
-    var pool = getSelectedPool();
+    // Group by team (1->4), sorted soonest -> latest within each team —
+    // matches the table's current row order (รอบ 10).
+    var rows = getSortedWorkplanRows();
 
-    var assignmentLines = workplanSchedule.map(function (entry, i) {
-      var poolItem = entry.boundKey ? findPoolItem(pool, entry.boundKey) : null;
-      var whenText = (entry.date && entry.hour && entry.minute)
-        ? "ปฏิบัติงาน " + formatThaiDate(parseDateInputValue(entry.date)) + " เวลา " + entry.hour + ":" + entry.minute + " น."
-        : "ยังไม่กำหนดวันที่/เวลาปฏิบัติงาน";
-      var areaText = poolItem
-        ? poolItem.area.name + " — " + locDescriptor(poolItem.loc) + " (" + poolItem.households + " หลังคาเรือน, รัศมี " + poolItem.radius + " ม.)"
-        : "ยังไม่เลือกพื้นที่/ตำแหน่ง";
-      return (i + 1) + ". " + entry.teamLabel + " — รับผิดชอบ " + areaText + " — " + whenText;
-    });
+    var assignmentLines = rows.length === 0
+      ? ["ยังไม่เลือกพื้นที่/ตำแหน่ง — กรุณาเลือกพื้นที่ในส่วน “ร่างใบขออนุมัติเบิกน้ำมัน/น้ำยาเคมี” ก่อนสร้างแผนปฏิบัติงาน"]
+      : rows.map(function (row, i) {
+          var poolItem = row.poolItem;
+          var entry = row.entry;
+          var areaText = poolItem.area.name + " — " + locDescriptor(poolItem.loc) + " (" + poolItem.households + " หลังคาเรือน, รัศมี " + poolItem.radius + " ม.)";
+          var whenText = "ปฏิบัติงาน " + formatThaiDateFromParts(entry.day, entry.month, entry.year) + " เวลา " + entry.hour + ":" + entry.minute + " น.";
+          return (i + 1) + ". ทีมพ่น " + entry.assignedTeamId + " — รับผิดชอบ " + areaText + " — " + whenText;
+        });
 
     var lines = [
       "แผนปฏิบัติงานควบคุมโรค (ร่างโดยระบบ AI)",
@@ -618,17 +648,20 @@
     els.workplanScheduleBody.addEventListener("change", function (e) {
       var input = e.target.closest("[data-field]");
       if (!input) return;
-      var tr = input.closest("tr[data-team-id]");
+      var tr = input.closest("tr[data-key]");
       if (!tr) return;
-      var teamId = parseInt(tr.getAttribute("data-team-id"), 10);
-      var entry = null;
-      for (var i = 0; i < workplanSchedule.length; i++) {
-        if (workplanSchedule[i].teamId === teamId) { entry = workplanSchedule[i]; break; }
-      }
+      var key = tr.getAttribute("data-key");
+      var entry = workplanEntryByKey[key];
       if (!entry) return;
-      var field = input.getAttribute("data-field"); // "date" | "hour" | "minute"
-      entry[field] = input.value;
-      renderWorkplanSchedule(); // re-sorts (soonest -> latest), re-resolves bindings, and re-renders the whole table
+      var field = input.getAttribute("data-field"); // "team" | "day" | "month" | "year" | "hour" | "minute"
+      if (field === "team") {
+        entry.assignedTeamId = parseInt(input.value, 10);
+      } else if (field === "day" || field === "month" || field === "year") {
+        entry[field] = parseInt(input.value, 10);
+      } else {
+        entry[field] = input.value; // hour/minute stay as zero-padded strings ("08", "00", ...)
+      }
+      renderWorkplanSchedule(); // re-sorts (team asc, then soonest -> latest) and re-renders the whole table
     });
 
     els.btnGenerateApproval.addEventListener("click", generateApproval);
