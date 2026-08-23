@@ -8,3 +8,7 @@
 - ขอบเขตของโปรเจกต์ (scope) — สิ่งที่ทำ และสิ่งที่ไม่ทำ
 
 เอกสารในโฟลเดอร์นี้ควรเป็น **ต้นทาง (source of truth)** ของความต้องการ ก่อนที่จะถูกแตกไปเป็นแผนงานใน [[../02-plan/index|02-plan]] และงานย่อยใน [[../03-task/index|03-task]]
+
+## เอกสารที่มีอยู่
+
+- [`FEATURE-LIST.md`](./FEATURE-LIST.md) — Feature List ทั้งระบบ รวบรวมจาก Requirement (pain point 5 ข้อ) และ Product Backlog ([[../../../ROADMAP.md|ROADMAP.md]])

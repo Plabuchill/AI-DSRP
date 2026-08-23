@@ -41,7 +41,7 @@
 - ผู้ตรวจสอบผลและ sign-off ปิดรอบทดสอบ: เจ้าของโปรเจกต์/ผู้ยืนยัน scope (ผู้ที่อนุมัติ BUILD-PLAN.md ของ prototypes/v1)
 
 ## 6. Risks & Assumptions
-- Assumption: เนื่องจากยังไม่มี Requirement/Backlog/Feature List/User Journey อย่างเป็นทางการ เอกสารชุดนี้ตั้ง Feature ID เอง (FR-DASH-01 ถึง FR-DASH-06) โดยอ้างอิงจาก 6 ส่วนของ UI ที่ระบุใน BUILD-PLAN.md เพื่อรักษา traceability
+- Assumption (ประวัติ): ตอนเขียนเอกสารชุดนี้ครั้งแรกยังไม่มี Requirement/Backlog/Feature List/User Journey อย่างเป็นทางการ จึงตั้ง Feature ID เอง (FR-DASH-01 ถึง FR-DASH-06) โดยอ้างอิงจาก 6 ส่วนของ UI ที่ระบุใน BUILD-PLAN.md เพื่อรักษา traceability — ปัจจุบันมี [Feature List](../../../01-requirements/01-spec/FEATURE-LIST.md) (`FEAT-DASH-01`..`06`) และ [User Journey](../../../02-design/01-prototypes/USER-JOURNEY-outbreak-dashboard.md) อย่างเป็นทางการแล้ว ตรงกับ FR-DASH ID ชุดนี้แบบ 1:1 ไม่ต้องเปลี่ยนเลขเดิม
 - Assumption: ข้อมูลทั้งหมดในหน้าเป็น mock data คงที่ (deterministic pseudo-random ที่ seed ตายตัว) จึงสามารถระบุค่าคาดหวัง (expected result) แบบเจาะจงได้ในหลาย test case โดยไม่ต้องพึ่งข้อมูล real-time
 - ความเสี่ยง: Region Risk Grid ไม่ได้ "ซ่อน" region ที่ไม่ตรงกับ filter ภูมิภาคที่เลือก แต่ใช้วิธี "ลด opacity" (dim) แทน — พฤติกรรมนี้อาจถูกเข้าใจผิดว่าเป็นบั๊กหากไม่ได้อ่านโค้ดหรือเอกสารนี้ก่อน จึงระบุไว้ชัดเจนใน Acceptance Criteria และ Test Case ที่เกี่ยวข้อง (FR-DASH-03)
 - ความเสี่ยง: การทดสอบ responsive layout อาศัยการปรับขนาดหน้าต่างเบราว์เซอร์/DevTools device toolbar เป็นหลัก ไม่ได้ทดสอบบนอุปกรณ์จริงทุกรุ่น ผลอาจแตกต่างเล็กน้อยบนอุปกรณ์จริง

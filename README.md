@@ -8,27 +8,27 @@
 
 ```
 ├── DESIGN.md              # Design system หลัก (Earth Tone + Minimalist + Muji) ทุก prototype ต้องอ้างอิงไฟล์นี้
+├── ROADMAP.md             # แผนงานเต็มแบ่งเป็นเฟส
 ├── prototypes/
-│   └── v1/                # Prototype ปัจจุบัน
-│       ├── index.html         # หน้า Outbreak Dashboard — KPI, แผนที่ความเสี่ยงตามภูมิภาค, กราฟแนวโน้มเคส, การแจ้งเตือนล่าสุด, ตัวกรอง
-│       ├── case-intake.html   # หน้า Case Intake — รับข้อมูลผู้ป่วยจากโรงพยาบาล (อัปโหลดเอกสาร, ตรวจสอบ/แก้ไขผล OCR, แจ้งเตือนทีมสอบสวนโรค, spot map)
-│       ├── script.js / case-intake.js
-│       ├── styles.css
-│       └── BUILD-PLAN.md      # แผนที่ยืนยันแล้วของแต่ละฟีเจอร์ใน v1 (scope, assumption, ประวัติการแก้ไข)
-└── test-docs/
-    └── v1/                # เอกสาร QA ของ prototype v1
-        ├── TEST-PLAN.md
-        ├── ACCEPTANCE-CRITERIA.md
-        ├── TEST-CASES.xlsx
-        └── BUILD-PLAN.md
+│   └── v1/                # Prototype ปัจจุบัน — 8 หน้า (index/case-intake/case-analysis/control-plan/
+│                          #   field-tracking/asm-coordination/reports/alerts) + BUILD-PLAN.md ประวัติการตัดสินใจ
+└── docs/                  # Index vault (Obsidian) — สารบัญ/เอกสารที่ไม่ได้อยู่ที่ root โดยตรง
+    ├── 01-requirements/01-spec/FEATURE-LIST.md      # Feature List ทั้งระบบ
+    ├── 02-design/01-prototypes/USER-JOURNEY-*.md    # User Journey แต่ละโมดูล
+    └── 03-testing/01-test-plan/v1/                  # TEST-PLAN.md, ACCEPTANCE-CRITERIA.md, TEST-CASES.xlsx
 ```
+
+`docs/` เป็นแค่สารบัญที่ชี้กลับมาที่ root — `DESIGN.md`, `ROADMAP.md`, `prototypes/` ที่ root คือของจริงชุดเดียว (ไม่มีสำเนาซ้ำใน `docs/`) เพื่อไม่ให้ 2 ชุดไม่ตรงกัน
 
 ## ฟีเจอร์หลักใน Prototype v1
 
+ดูรายละเอียดครบทุกฟีเจอร์/สถานะได้ที่ [Feature List](./docs/01-requirements/01-spec/FEATURE-LIST.md) — สรุปสั้นๆ 8 หน้า:
+
 - **Outbreak Dashboard** — ภาพรวมสถานการณ์การระบาด: จำนวนเคส, พื้นที่เสี่ยง, แนวโน้ม, การแจ้งเตือนล่าสุด พร้อมตัวกรองตามโรค/ภูมิภาค/ช่วงวันที่
 - **Case Intake** — รับเคสจากโรงพยาบาล (PDF/JPEG) → จำลองผล OCR/AI extraction เป็นตาราง → ตรวจสอบและแก้ไขข้อมูลที่ผิดพลาดได้ก่อนยืนยัน (human-in-the-loop) → เมื่อยืนยันแล้วระบบ auto-route แจ้งเตือนไปยังทีมสอบสวนโรคตามพื้นที่ พร้อมปักหมุด + วงรัศมี 100 เมตรบน spot map
+- **Case Analysis**, **Control Plan**, **Field Tracking**, **ASM Coordination**, **Reports**, **Alerts** — ดูรายละเอียดใน Feature List ด้านบน
 
-ทั้งสองหน้าใช้ mock data บริบทประเทศไทย และออกแบบให้เปิดใช้งานแบบออฟไลน์ได้ (ไม่พึ่งพา CDN หรือ map tile ภายนอก)
+ทุกหน้าใช้ mock data บริบทประเทศไทย และออกแบบให้เปิดใช้งานแบบออฟไลน์ได้ (ไม่พึ่งพา CDN หรือ map tile ภายนอก)
 
 ## วิธีเปิดดู Prototype
 
@@ -44,7 +44,9 @@ npx http-server prototypes/v1 -p 8743 -c-1
 
 - [DESIGN.md](./DESIGN.md) — Design system (สี, typography, spacing, component guideline)
 - [prototypes/v1/BUILD-PLAN.md](./prototypes/v1/BUILD-PLAN.md) — แผนและ requirement ต้นทางของแต่ละฟีเจอร์
-- [test-docs/v1/TEST-PLAN.md](./test-docs/v1/TEST-PLAN.md), [ACCEPTANCE-CRITERIA.md](./test-docs/v1/ACCEPTANCE-CRITERIA.md), [TEST-CASES.xlsx](./test-docs/v1/TEST-CASES.xlsx) — แผนทดสอบและเกณฑ์การยอมรับของ prototype v1
+- [docs/01-requirements/01-spec/FEATURE-LIST.md](./docs/01-requirements/01-spec/FEATURE-LIST.md) — Feature List ทั้งระบบ
+- [docs/02-design/01-prototypes/USER-JOURNEY-outbreak-dashboard.md](./docs/02-design/01-prototypes/USER-JOURNEY-outbreak-dashboard.md) — User Journey ตัวอย่าง
+- [docs/03-testing/01-test-plan/v1/](./docs/03-testing/01-test-plan/v1/) — TEST-PLAN.md, ACCEPTANCE-CRITERIA.md, TEST-CASES.xlsx (แผนทดสอบและเกณฑ์การยอมรับของ prototype v1)
 
 ## Roadmap
 

@@ -1,6 +1,6 @@
 # Acceptance Criteria — Outbreak Dashboard (prototypes/v1) — test-docs/v1
 
-อ้างอิงจาก `prototypes/v1/BUILD-PLAN.md` และการอ่านโค้ดจริงใน `prototypes/v1/index.html` / `prototypes/v1/script.js` เนื่องจากยังไม่มี Requirement/Backlog ID อย่างเป็นทางการ เอกสารนี้ตั้ง Feature ID เอง (FR-DASH-01 ถึง FR-DASH-06) ตาม 6 ส่วนของ UI ที่ยืนยันไว้ในแผน
+อ้างอิงจาก `prototypes/v1/BUILD-PLAN.md` และการอ่านโค้ดจริงใน `prototypes/v1/index.html` / `prototypes/v1/script.js` เดิมตอนเขียนเอกสารนี้ยังไม่มี Requirement/Backlog ID อย่างเป็นทางการ จึงตั้ง Feature ID เอง (FR-DASH-01 ถึง FR-DASH-06) ตาม 6 ส่วนของ UI ที่ยืนยันไว้ในแผน — **อัปเดต**: ภายหลังมี [Feature List](../../../01-requirements/01-spec/FEATURE-LIST.md) (หมวด `FEAT-DASH`, ตรงกับ FR-DASH-01 ถึง 06 แบบ 1:1) และ [User Journey](../../../02-design/01-prototypes/USER-JOURNEY-outbreak-dashboard.md) อย่างเป็นทางการแล้ว — FR-DASH ID ชุดนี้ยังใช้ต่อเนื่องเหมือนเดิมโดยไม่เปลี่ยนเลข เพื่อไม่ให้ traceability ที่มีอยู่แล้วขาดตอน
 
 ## FR-DASH-01 — Navigation (Left Rail)
 

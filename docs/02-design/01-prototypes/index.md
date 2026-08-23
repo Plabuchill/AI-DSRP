@@ -9,3 +9,7 @@
 ใช้สำหรับสื่อสารและตกลงหน้าตาของระบบก่อนลงมือพัฒนาจริง โดยอ้างอิงความต้องการจาก [[../../01-requirements/01-spec/index|01-spec]] และส่งต่อรายละเอียดเชิงระบบให้ [[../02-technical/index|02-technical]]
 
 > **โค้ด Prototype จริง (คลิกดูได้)** อยู่ที่ [`/prototypes/v1/`](../../../prototypes/v1/) ที่ root ของโปรเจกต์ (ไม่ได้ก็อปปี้มาไว้ในนี้ เพื่อไม่ให้มี 2 ชุดที่อาจไม่ตรงกัน) — เปิด `index.html` ในเบราว์เซอร์ หรือดู `BUILD-PLAN.md` ในโฟลเดอร์เดียวกันสำหรับประวัติการตัดสินใจแต่ละรอบ
+
+## เอกสารที่มีอยู่
+
+- [`USER-JOURNEY-outbreak-dashboard.md`](./USER-JOURNEY-outbreak-dashboard.md) — journey แรกของโปรเจกต์ (เจ้าหน้าที่เฝ้าระวังโรคใช้ Outbreak Dashboard) อ้างอิง [[../../01-requirements/01-spec/FEATURE-LIST|FEATURE-LIST.md]] และตรงกับ Test Spec ที่มีอยู่แล้วใน [[../../03-testing/01-test-plan/index|03-testing/01-test-plan]]
