@@ -14,3 +14,5 @@
 ## เอกสารที่มีอยู่
 
 - [`HIGH-LEVEL-ARCHITECTURE.md`](./HIGH-LEVEL-ARCHITECTURE.md) — สถาปัตยกรรมระดับสูง (สถานะปัจจุบัน + เป้าหมายตาม [[../../../ROADMAP.md|ROADMAP.md]]), data flow หลัก, และข้อจำกัดทางเทคนิคที่ต้องพิจารณาก่อนสร้างจริง
+- [`DATA-MODEL.md`](./DATA-MODEL.md) — conceptual data model ของโมดูล Case Intake (`FEAT-INTAKE-*`): ER Diagram + Entity Dictionary + cross-cutting concerns (audit trail, soft delete) ยังไม่ผูกกับ database engine ใดๆ
+- [`API-SPEC.md`](./API-SPEC.md) — conceptual API spec ของโมดูล Case Intake (`FEAT-INTAKE-*`): operation list + payload ตัวอย่างระดับ field ยังไม่ผูกกับ REST/GraphQL หรือ transport protocol ใดๆ
