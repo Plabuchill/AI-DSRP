@@ -23,6 +23,49 @@
    a "พิมพ์เป็น PDF" button (window.print(), shown once the approval
    request has been sent) and the two panels' HTML order in
    control-plan.html was swapped (workplan panel first).
+
+   รอบ 13 (2026-08-21): the patient's name is now each case's primary
+   heading everywhere (area-selection card, workplan table, approval
+   document); the old "select home AND/OR work via checkbox" model
+   (selectedKeys) is gone — every case is always in the plan, and each
+   case's card instead has a 2-button tab pair to pick exactly ONE
+   active location ("ชุมชน (ที่อยู่)" | "ชุมชน (ที่ทำงาน)") at a time,
+   tracked in activeLocTypeByAreaId. Home locations gained real
+   editable address/houseNo text inputs (previously just a static
+   "ที่อยู่ (บ้าน)" label); work locations' name field is now editable
+   too (previously static mock text). See getSelectedPool(),
+   buildAreaGroup()/buildAreaFieldsHtml() below.
+
+   รอบ 16 (2026-08-21): a case can now have BOTH locations active at
+   once (some cases need vector control at home AND at work/school).
+   activeLocTypeByAreaId (single string per case) was replaced with
+   activeLocTypesByAreaId (array of 1-2 strings per case); the same
+   2 tab buttons now toggle membership in that array instead of
+   exclusive-selecting, and buildAreaGroup() renders one labeled
+   field block per active location when there are 2. getSelectedPool()
+   now returns one pool item per active location (so a case with both
+   active contributes 2 items, e.g. keys "1-home" and "1-work").
+
+   รอบ 17 (2026-08-21): the workplan schedule table gained a "สถานะ
+   พ่นแล้ว" Day 0/1/7 checkbox group per row (state: sprayDoneByKey,
+   keyed by the same pool-item `key` as workplanEntryByKey — so a
+   case's home and work locations track spraying completion
+   independently). Rows fully done (all 3 days checked) are filtered
+   out of both the rendered table and buildWorkplanText() — see
+   isSprayFullyDone(), renderWorkplanSchedule() below. This only
+   affects the workplan schedule table, not the approval-request
+   area-selection list/mini-map.
+
+   รอบ 18 (2026-08-21): each AREAS[i] now has a mock sourceFile
+   filename (fresh mock, same naming convention as case-intake.js's
+   CASES[].fileName but not read from that page's live state — see
+   the AREAS comment below). A ".file-link" (reusing case-intake.js's
+   .file-link CSS class + ICON_FILE SVG markup, copied into this file
+   as its own ICON_FILE constant — no cross-file import) is rendered
+   once per case, right after the patientName heading, in
+   buildAreaGroup() only (not in the workplan table or mini-map, per
+   BUILD-PLAN.md รอบ 18 scope). Clicking it just preventDefault()s,
+   same mock behaviour as case-intake.js.
    ========================================================= */
 (function () {
   "use strict";
@@ -44,6 +87,16 @@
      locations' baseHouseholdsAt100m is back-calculated so that,
      at each area's original default radius, the household count
      matches the figure hardcoded before this round (86/54/40/48).
+
+     รอบ 18 (2026-08-21): each area also has a `sourceFile` — a fresh
+     mock original-document filename (PDF/JPEG scan from the
+     hospital), named with the same convention as case-intake.js's
+     CASES[].fileName ("{หน่วยงาน}_{บริบท}_{เลข}.{pdf|jpg}"). This is
+     a brand-new mock value per BUILD-PLAN.md รอบ 18 — it is NOT
+     matched 1:1 against any CASES[] entry in case-intake.js (patient
+     names/areas across the two files were never designed to line up
+     — see the file-level comment above); it just gives each case
+     here a plausible "ไฟล์ต้นฉบับ" link for UX continuity.
      --------------------------------------------------------- */
   // Mock "Day 0" anchor (วันพบเคส) per area, used by the workplan
   // schedule's Day 0/1/7 <select> (รอบ 12) — a fixed number of days
@@ -64,8 +117,9 @@
       riskLevel: "สูง",
       patientName: "นายกิตติ มั่นคง",
       caseFoundDate: daysAgo(3),
+      sourceFile: "รพ.สต.หนองบัว_dengue_58112.pdf",
       locations: [
-        { type: "home", label: "ที่อยู่ (บ้าน)", mockX: 15, mockY: 25, baseHouseholdsAt100m: 38, defaultRadius: 150 },
+        { type: "home", label: "ที่อยู่ (บ้าน)", address: "ต.หนองบัว หมู่ 4 บ้านโนนสวรรค์", houseNo: "45", mockX: 15, mockY: 25, baseHouseholdsAt100m: 38, defaultRadius: 150 },
         { type: "work", label: "สถานที่ทำงาน/เรียน", name: "โรงเรียนบ้านโนนสวรรค์", mockX: 22, mockY: 15, baseHouseholdsAt100m: 25, defaultRadius: 100 }
       ]
     },
@@ -76,8 +130,9 @@
       riskLevel: "สูง",
       patientName: "นางสาวสุพรรณี ใจดี",
       caseFoundDate: daysAgo(4),
+      sourceFile: "รพ.สต.หนองบัว_dengue_58140.pdf",
       locations: [
-        { type: "home", label: "ที่อยู่ (บ้าน)", mockX: 30, mockY: 55, baseHouseholdsAt100m: 54, defaultRadius: 100 },
+        { type: "home", label: "ที่อยู่ (บ้าน)", address: "ต.หนองบัว หมู่ 5 บ้านหนองบัวพัฒนา", houseNo: "12", mockX: 30, mockY: 55, baseHouseholdsAt100m: 54, defaultRadius: 100 },
         { type: "work", label: "สถานที่ทำงาน/เรียน", name: "ตลาดสดหนองบัวพัฒนา", mockX: 38, mockY: 62, baseHouseholdsAt100m: 32, defaultRadius: 100 }
       ]
     },
@@ -88,8 +143,9 @@
       riskLevel: "ปานกลาง",
       patientName: "เด็กชายอนุชา ศรีสุข",
       caseFoundDate: daysAgo(2),
+      sourceFile: "รพ.สต.บ้านเป็ด_hfmd_58305.jpg",
       locations: [
-        { type: "home", label: "ที่อยู่ (บ้าน)", mockX: 62, mockY: 20, baseHouseholdsAt100m: 40, defaultRadius: 100 },
+        { type: "home", label: "ที่อยู่ (บ้าน)", address: "ต.บ้านเป็ด หมู่ 3 บ้านเป็ดใหม่", houseNo: "8", mockX: 62, mockY: 20, baseHouseholdsAt100m: 40, defaultRadius: 100 },
         { type: "work", label: "สถานที่ทำงาน/เรียน", name: "ศูนย์พัฒนาเด็กเล็กบ้านเป็ด", mockX: 70, mockY: 28, baseHouseholdsAt100m: 45, defaultRadius: 100 }
       ]
     },
@@ -98,10 +154,11 @@
       name: "ต.เกาะแก้ว หมู่ 5 บ้านหาดทราย",
       clusterRef: "เคสไข้เลือดออกยืนยันใหม่ (จาก Case Intake)",
       riskLevel: "ปานกลาง",
-      patientName: "นายประเสริฐ แสงทอง",
+      patientName: "นางสาวละออ แสงจันทร์",
       caseFoundDate: daysAgo(5),
+      sourceFile: "รพ.สต.เกาะแก้ว_dengue_58890.pdf",
       locations: [
-        { type: "home", label: "ที่อยู่ (บ้าน)", mockX: 80, mockY: 70, baseHouseholdsAt100m: 48, defaultRadius: 100 },
+        { type: "home", label: "ที่อยู่ (บ้าน)", address: "ต.เกาะแก้ว หมู่ 5 บ้านหาดทราย อ.เมือง จ.สงขลา", houseNo: "21", mockX: 80, mockY: 70, baseHouseholdsAt100m: 48, defaultRadius: 100 },
         { type: "work", label: "สถานที่ทำงาน/เรียน", name: "แพปลาชุมชนบ้านหาดทราย", mockX: 88, mockY: 78, baseHouseholdsAt100m: 20, defaultRadius: 100 }
       ]
     }
@@ -109,11 +166,22 @@
 
   var RADIUS_OPTIONS = [100, 150, 200];
 
-  // Pre-select the "home" location of every area by default — replicates the
-  // previous demo (all 4 areas had a usable default) now that the workplan
-  // table (รอบ 9) reads its team<->area binding from this same selection pool
-  // instead of a hardcoded getAreaById() reference.
-  var selectedKeys = ["1-home", "2-home", "3-home", "4-home"];
+  // รอบ 13 (2026-08-21): every mock case is always part of the plan now —
+  // there is no more include/exclude selection. Instead each case (area)
+  // has an active-location "tab" set — "home" (ที่อยู่/บ้าน) and/or "work"
+  // (สถานที่ทำงาน/เรียน) — defaulting to just "home" to match the previous
+  // default preselect.
+  //
+  // รอบ 16 (2026-08-21): a case can have BOTH locations active at once (it
+  // used to be exactly one, exclusive) — so this is now an array of 1-2
+  // location-type strings per case, not a single string. getSelectedPool()
+  // below returns one pool item per active location, so it can return more
+  // than AREAS.length items when any case has 2 active locations. Order is
+  // normalized via LOC_TYPE_ORDER (home always listed/rendered before work)
+  // regardless of which tab the user toggled on first.
+  var LOC_TYPE_ORDER = ["home", "work"];
+  var activeLocTypesByAreaId = {};
+  AREAS.forEach(function (area) { activeLocTypesByAreaId[area.id] = ["home"]; });
 
   // radius chosen per (area+location) key — lazily defaulted from
   // location.defaultRadius the first time a key is read.
@@ -149,17 +217,21 @@
   }
 
   /* ---------------------------------------------------------
-     Pool of currently-selected (area + location) items, each with
-     the radius/household figures resolved from current state.
-     Shared by both the approval-draft panel and the workplan
-     schedule table below.
+     Pool of every case's currently-active location(s) (home and/or
+     work, per activeLocTypesByAreaId), each with the radius/household
+     figures resolved from current state. At least AREAS.length items
+     (one per case) — more when a case has both locations active
+     (รอบ 16) — there is no more empty-selection state. Shared by both
+     the approval-draft panel and the workplan schedule table below.
      --------------------------------------------------------- */
   function getSelectedPool() {
     var pool = [];
     AREAS.forEach(function (area) {
-      area.locations.forEach(function (loc) {
+      var activeTypes = activeLocTypesByAreaId[area.id] || ["home"];
+      LOC_TYPE_ORDER.filter(function (t) { return activeTypes.indexOf(t) !== -1; }).forEach(function (locType) {
+        var loc = findLocation(area.id, locType);
+        if (!loc) return;
         var key = getLocationKey(area.id, loc.type);
-        if (selectedKeys.indexOf(key) === -1) return;
         var radius = getRadiusForKey(key, loc);
         pool.push({
           key: key,
@@ -181,8 +253,13 @@
       .replace(/"/g, "&quot;");
   }
 
+  // รอบ 13: home locations now describe the real editable address+house
+  // number fields instead of the generic "ที่อยู่ (บ้าน)" label; work
+  // locations still describe the editable "name" field.
   function locDescriptor(loc) {
-    return loc.type === "home" ? "ที่อยู่ (บ้าน)" : ("สถานที่ทำงาน/เรียน: " + loc.name);
+    return loc.type === "home"
+      ? ("ที่อยู่: " + loc.address + " เลขที่ " + loc.houseNo)
+      : ("ที่ทำงาน/เรียน: " + loc.name);
   }
 
   /* ---------------------------------------------------------
@@ -217,6 +294,55 @@
   }
 
   /* ---------------------------------------------------------
+     รอบ 14: workplan date filter — lets the user pick a single
+     calendar date and see which rows' computed Day 0/1/7 date falls
+     on it. All helpers below only compare year/month/day (never the
+     row's hour/minute).
+
+     รอบ 15: the filter's input changed from a native <input
+     type="date"> to a วัน/เดือน/ปี พ.ศ. <select> trio (#workplan-
+     date-filter-day/-month/-year — see els below), since the native
+     picker rendered/accepted dates per browser/OS locale, not
+     guaranteed Thai. Because a <select> always has *some* option
+     selected (unlike an empty date input), "ล้างตัวกรอง" can no
+     longer represent "no date chosen" by clearing the control's
+     value — instead a separate workplanDateFilterActive flag tracks
+     whether the filter is currently "on" (see getWorkplanFilterDate()
+     below and the button handlers in initEvents()).
+     --------------------------------------------------------- */
+
+  // Whether the due-date filter is currently active (รอบ 15, replacing
+  // the รอบ 14 "input has a value" check, since the day/month/year
+  // <select> trio always has some value selected). Starts true so the
+  // default-to-today filter is immediately useful on page load (matches
+  // รอบ 14's original default behaviour).
+  var workplanDateFilterActive = true;
+
+  function sameYMD(a, b) {
+    return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+  }
+
+  // A row's actual calendar date (year/month/day only, ignoring hour/
+  // minute) — same base+offset arithmetic as formatThaiDateFromOffset(),
+  // kept separate since callers here need a Date object, not text.
+  function scheduleDateOnly(entry, poolItem) {
+    var base = poolItem.area.caseFoundDate;
+    return new Date(base.getFullYear(), base.getMonth(), base.getDate() + parseInt(entry.dayOffset, 10));
+  }
+
+  // Current filter value as a Date (null when workplanDateFilterActive
+  // is false, i.e. "ล้างตัวกรอง" was pressed) — read fresh every render
+  // so it always reflects whatever the user currently has selected in
+  // the day/month/year <select> trio (รอบ 15).
+  function getWorkplanFilterDate() {
+    if (!workplanDateFilterActive) return null;
+    var day = parseInt(els.workplanDateFilterDay.value, 10);
+    var month = parseInt(els.workplanDateFilterMonth.value, 10); // 0-11
+    var year = parseInt(els.workplanDateFilterYear.value, 10); // ค.ศ. (stored value; +543 only when displayed)
+    return new Date(year, month, day);
+  }
+
+  /* ---------------------------------------------------------
      24-hour time <select> options — guarantees a 24h display
      regardless of browser/OS locale (native <input type="time">
      can render an AM/PM picker on some locales).
@@ -224,6 +350,24 @@
   var HOUR_OPTIONS = [];
   for (var _h = 0; _h < 24; _h++) HOUR_OPTIONS.push(pad2(_h));
   var MINUTE_OPTIONS = ["00", "15", "30", "45"];
+
+  /* ---------------------------------------------------------
+     วัน/เดือน/ปี พ.ศ. <select> option lists for the workplan due-date
+     filter (รอบ 15) — day 01-31 (fixed range regardless of month, same
+     simplification as รอบ 10's original day/month/year trio); month
+     reuses THAI_MONTHS (values 0-11); year spans "this year" (ค.ศ.,
+     read at page load) through +2 years ahead, displayed as พ.ศ.
+     (+543) only — see populateWorkplanDateFilterSelects() below.
+     --------------------------------------------------------- */
+  var WP_DAY_OPTIONS = [];
+  for (var _d = 1; _d <= 31; _d++) WP_DAY_OPTIONS.push(pad2(_d));
+
+  var WP_YEAR_OPTIONS = (function () {
+    var years = [];
+    var startYear = new Date().getFullYear();
+    for (var i = 0; i <= 2; i++) years.push(startYear + i);
+    return years;
+  })();
 
   // "Day 0/1/7" <select> options for the workplan schedule table (รอบ 12)
   // — standard dengue vector-control spraying schedule: spray on the day
@@ -240,6 +384,12 @@
 
   var ICON_SEND = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13"></path><path d="M22 2 15 22l-4-9-9-4 20-7Z"></path></svg>';
   var ICON_CHECK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg>';
+
+  // รอบ 18: same document icon markup as case-intake.js's ICON_FILE —
+  // copied here as this file's own constant (no cross-file import, per
+  // BUILD-PLAN.md รอบ 18 scope/this file's existing no-shared-state
+  // convention).
+  var ICON_FILE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2h6l1 4H8l1-4Z"></path><path d="M6 6h12l1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L6 6Z"></path></svg>';
 
   /* ---------------------------------------------------------
      DOM refs
@@ -259,19 +409,29 @@
     workplanTextarea: document.getElementById("workplan-textarea"),
     btnConfirmWorkplan: document.getElementById("btn-confirm-workplan"),
     workplanStatus: document.getElementById("workplan-status"),
-    workplanScheduleBody: document.getElementById("workplan-schedule-body")
+    workplanScheduleBody: document.getElementById("workplan-schedule-body"),
+    workplanDateFilterDay: document.getElementById("workplan-date-filter-day"),
+    workplanDateFilterMonth: document.getElementById("workplan-date-filter-month"),
+    workplanDateFilterYear: document.getElementById("workplan-date-filter-year"),
+    btnWorkplanDateToday: document.getElementById("btn-workplan-date-today"),
+    btnWorkplanDateClear: document.getElementById("btn-workplan-date-clear"),
+    workplanDueSummary: document.getElementById("workplan-due-summary"),
+    workplanHiddenNote: document.getElementById("workplan-hidden-note")
   };
 
   /* ---------------------------------------------------------
-     Control workplan schedule state (รอบ 10, dates reworked รอบ 12) —
-     one row per currently-selected (area+location) pool item, keyed by
-     the same `key` used by selectedKeys/radiusByKey above, instead of
-     the old "4 fixed teamId rows" model. Each entry holds its own
-     editable {assignedTeamId, dayOffset, hour, minute} and is created
-     lazily the first time its key is seen (and never deleted when the
-     user unchecks the area — matches the radiusByKey caching pattern
-     already used elsewhere in this file, so re-checking an area
-     restores its previous schedule).
+     Control workplan schedule state (รอบ 10, dates reworked รอบ 12,
+     selection model reworked รอบ 13, multi-location-per-case reworked
+     รอบ 16) — one row per pool item (one per case, per
+     activeLocTypesByAreaId/getSelectedPool() above — 2 rows for a case
+     with both locations active), keyed by the same `key` used by
+     radiusByKey above, instead of the old "4 fixed teamId rows" model.
+     Each entry holds its own editable {assignedTeamId, dayOffset, hour,
+     minute} and is created lazily the first time its key is seen (and
+     never deleted when the user switches a case's active tab away from
+     it — matches the radiusByKey caching pattern already used
+     elsewhere in this file, so switching back restores its previous
+     schedule).
 
      รอบ 12: the row's calendar date is no longer stored directly as
      {day, month, year} — instead `dayOffset` ("0" | "1" | "7", stored
@@ -294,6 +454,32 @@
       };
     }
     return workplanEntryByKey[key];
+  }
+
+  /* ---------------------------------------------------------
+     รอบ 17: "สถานะพ่นแล้ว" (spray-completed) state — separate from
+     workplanEntryByKey above, which tracks the *upcoming* scheduled
+     spray (team/day/time), not whether each Day 0/1/7 has actually
+     been sprayed yet. Keyed by the same pool-item `key` (e.g.
+     "1-home" / "1-work") so a case's home and work locations track
+     completion independently (รอบ 16 note in BUILD-PLAN.md). Default
+     is false for all 3 days; never deleted when a row is hidden or a
+     case's active-location tab is toggled off, so re-enabling a
+     location later restores its previous spray-completion state.
+     --------------------------------------------------------- */
+  var sprayDoneByKey = {};
+
+  function getOrCreateSprayDone(key) {
+    if (!sprayDoneByKey[key]) {
+      sprayDoneByKey[key] = { 0: false, 1: false, 7: false };
+    }
+    return sprayDoneByKey[key];
+  }
+
+  // A row is fully done (and should be hidden from the workplan table /
+  // buildWorkplanText()) once all 3 days are checked off.
+  function isSprayFullyDone(sprayDone) {
+    return !!(sprayDone && sprayDone[0] && sprayDone[1] && sprayDone[7]);
   }
 
   // Needs poolItem (not just entry) so it can read poolItem.area.caseFoundDate
@@ -321,14 +507,20 @@
     return rows;
   }
 
-  // Builds the current {poolItem, entry} rows (one per selected
-  // area+location), lazily creating any missing schedule entry, then
-  // sorts them per sortWorkplanRows(). Shared by the table renderer
-  // and buildWorkplanText() so both always agree on row order.
+  // Builds the current {poolItem, entry, sprayDone} rows (one per selected
+  // area+location), lazily creating any missing schedule entry / spray-done
+  // record, then sorts them per sortWorkplanRows(). Shared by the table
+  // renderer and buildWorkplanText() so both always agree on row order —
+  // includes every row (done or not); callers that only want rows still
+  // needing action must filter with isSprayFullyDone() themselves (รอบ 17).
   function getSortedWorkplanRows() {
     var pool = getSelectedPool();
     var rows = pool.map(function (item, i) {
-      return { poolItem: item, entry: getOrCreateWorkplanEntry(item.key, i) };
+      return {
+        poolItem: item,
+        entry: getOrCreateWorkplanEntry(item.key, i),
+        sprayDone: getOrCreateSprayDone(item.key)
+      };
     });
     return sortWorkplanRows(rows);
   }
@@ -337,11 +529,12 @@
      Render: workplan schedule table, grouped by team (1->4) then
      sorted soonest -> latest within a team — team <select>, Day
      0/1/7 <select> (รอบ 12, replacing the day/month/ปี(พ.ศ.) select
-     trio), and 24h hour/minute <select> pair all reuse .input-inline
+     trio), 24h hour/minute <select> pair, and (รอบ 17) a "สถานะพ่นแล้ว"
+     Day 0/1/7 checkbox group, all reuse .input-inline/native checkbox
      per DESIGN.md Input/Form guideline
      --------------------------------------------------------- */
-  function buildWorkplanRowEl(poolItem, entry) {
-    var rowLabel = escapeHtml(poolItem.area.name) + " — " + escapeHtml(locDescriptor(poolItem.loc));
+  function buildWorkplanRowEl(poolItem, entry, isDue, sprayDone) {
+    var rowLabel = escapeHtml(poolItem.area.patientName) + " — " + escapeHtml(locDescriptor(poolItem.loc));
 
     var teamOptionsHtml = TEAM_OPTIONS.map(function (t) {
       return '<option value="' + t + '"' + (t === entry.assignedTeamId ? " selected" : "") + '>ทีมพ่น ' + t + '</option>';
@@ -360,41 +553,130 @@
     }).join("");
 
     var areaCellHtml =
-      '<span class="cell-primary">' + escapeHtml(poolItem.area.name) + ' &mdash; ' + escapeHtml(locDescriptor(poolItem.loc)) + '</span>' +
-      '<span class="cell-secondary">' + poolItem.households + ' หลังคาเรือน (รัศมี ' + poolItem.radius + ' ม.) &middot; ' + escapeHtml(poolItem.area.clusterRef) + '</span>';
+      '<span class="cell-primary">' + escapeHtml(poolItem.area.patientName) + '</span>' +
+      '<span class="cell-secondary">' + escapeHtml(locDescriptor(poolItem.loc)) + ' &middot; ' + poolItem.households + ' หลังคาเรือน (รัศมี ' + poolItem.radius + ' ม.) &middot; ' + escapeHtml(poolItem.area.clusterRef) + '</span>';
+
+    // รอบ 14: "ครบกำหนด" badge, appended right after the computed date
+    // text, only when this row's date matches the #workplan-date-filter
+    // value — reuses .badge/.badge-warning (no new badge tone added).
+    var dueBadgeHtml = isDue ? ' <span class="badge badge-warning">ครบกำหนด</span>' : "";
+
+    // รอบ 17: 3 independent Day 0/1/7 "พ่นแล้ว" checkboxes — plain native
+    // checkboxes (no new component), each labeled and bound to
+    // sprayDoneByKey[poolItem.key][day] via data-field="sprayDone" +
+    // data-day so the delegated change handler in initEvents() can tell
+    // them apart from the team/dayOffset/hour/minute <select>s above.
+    var sprayDoneHtml = [0, 1, 7].map(function (dayNum) {
+      var checkedAttr = sprayDone && sprayDone[dayNum] ? " checked" : "";
+      return (
+        '<label class="spray-done-item">' +
+          '<input type="checkbox" data-field="sprayDone" data-day="' + dayNum + '"' + checkedAttr + ' aria-label="พ่นแล้ว Day ' + dayNum + ' — ' + rowLabel + '">' +
+          '<span>Day ' + dayNum + '</span>' +
+        '</label>'
+      );
+    }).join("");
 
     var tr = document.createElement("tr");
     tr.setAttribute("data-key", poolItem.key);
+    if (isDue) tr.className = "row-due-selected";
     tr.innerHTML =
       "<td><select class=\"input-inline\" data-field=\"team\" aria-label=\"ทีมพ่นที่รับผิดชอบ " + rowLabel + "\">" + teamOptionsHtml + "</select></td>" +
       "<td>" + areaCellHtml + "</td>" +
       "<td>" +
         "<select class=\"input-inline select-day-offset\" data-field=\"dayOffset\" aria-label=\"วันพ่น (Day 0/1/7) " + rowLabel + "\">" + dayOffsetOptionsHtml + "</select>" +
-        "<span class=\"cell-secondary\">" + escapeHtml(dayOffsetDateText) + "</span>" +
+        "<span class=\"cell-secondary\">" + escapeHtml(dayOffsetDateText) + dueBadgeHtml + "</span>" +
       "</td>" +
       "<td><span class=\"time-select-group\">" +
         "<select class=\"input-inline select-hm\" data-field=\"hour\" aria-label=\"ชั่วโมงเริ่มปฏิบัติงาน (24 ชม.) " + rowLabel + "\">" + hourOptionsHtml + "</select>" +
         "<span class=\"time-select-sep\">:</span>" +
         "<select class=\"input-inline select-hm\" data-field=\"minute\" aria-label=\"นาทีเริ่มปฏิบัติงาน " + rowLabel + "\">" + minuteOptionsHtml + "</select>" +
-      "</span></td>";
+      "</span></td>" +
+      "<td><span class=\"spray-done-group\">" + sprayDoneHtml + "</span></td>";
     return tr;
   }
 
+  // รอบ 14: renders #workplan-due-summary right below the date-filter
+  // bar — text content depends on the filter state (see BUILD-PLAN.md
+  // รอบ 14 ข้อ 2): no date chosen -> no message at all; date chosen but
+  // nobody due -> "ไม่มีเคส..."; date chosen with matches -> named list.
+  function renderWorkplanDueSummary(filterDate, dueList) {
+    if (filterDate === null) {
+      els.workplanDueSummary.textContent = "";
+      return;
+    }
+    if (dueList.length === 0) {
+      els.workplanDueSummary.textContent = "ไม่มีเคสครบกำหนดพ่นในวันที่เลือก";
+      return;
+    }
+    var namesText = dueList.map(function (d) {
+      return escapeHtml(d.patientName) + " (ทีมพ่น " + d.teamId + ")";
+    }).join(", ");
+    els.workplanDueSummary.innerHTML =
+      "วันที่ " + escapeHtml(formatThaiDate(filterDate)) + " มีเคสครบกำหนดพ่น " + dueList.length + " ราย: " + namesText;
+  }
+
+  // รอบ 17: reports how many rows are currently hidden from the table
+  // because they've been marked "พ่นแล้ว" for all of Day 0/1/7 — shown
+  // regardless of whether the due-date filter above is active, so users
+  // always know some rows aren't being displayed rather than assuming
+  // there's simply nothing left to do.
+  function renderWorkplanHiddenNote(hiddenCount) {
+    els.workplanHiddenNote.textContent = hiddenCount > 0
+      ? "(ซ่อน " + hiddenCount + " รายการที่พ่นครบ Day 0/1/7 แล้ว)"
+      : "";
+  }
+
+  // Fills the day/month/year <select> option lists once at startup
+  // (รอบ 15) — the options themselves never change during the session,
+  // only which option is selected (see setWorkplanDateFilterSelects()).
+  function populateWorkplanDateFilterSelects() {
+    els.workplanDateFilterDay.innerHTML = WP_DAY_OPTIONS.map(function (d) {
+      return '<option value="' + d + '">' + d + '</option>';
+    }).join("");
+    els.workplanDateFilterMonth.innerHTML = THAI_MONTHS.map(function (m, i) {
+      return '<option value="' + i + '">' + escapeHtml(m) + '</option>';
+    }).join("");
+    els.workplanDateFilterYear.innerHTML = WP_YEAR_OPTIONS.map(function (y) {
+      return '<option value="' + y + '">' + (y + 543) + '</option>'; // display พ.ศ., store ค.ศ.
+    }).join("");
+  }
+
+  // Sets all 3 <select>s to match a given Date (used for the initial
+  // "default to today" and the "วันนี้" button, รอบ 15).
+  function setWorkplanDateFilterSelects(date) {
+    els.workplanDateFilterDay.value = pad2(date.getDate());
+    els.workplanDateFilterMonth.value = String(date.getMonth());
+    els.workplanDateFilterYear.value = String(date.getFullYear());
+  }
+
+  // รอบ 17: rows that are fully "พ่นแล้ว" (Day 0/1/7 all checked) are
+  // filtered out of the rendered table entirely — this filter runs after
+  // team-grouping/sorting so the remaining rows keep their existing order.
   function renderWorkplanSchedule() {
-    var rows = getSortedWorkplanRows();
+    var allRows = getSortedWorkplanRows();
+    var visibleRows = allRows.filter(function (row) { return !isSprayFullyDone(row.sprayDone); });
+    var hiddenCount = allRows.length - visibleRows.length;
+    var filterDate = getWorkplanFilterDate();
+    var dueList = [];
 
     els.workplanScheduleBody.innerHTML = "";
 
-    if (rows.length === 0) {
-      var trEmpty = document.createElement("tr");
-      trEmpty.innerHTML = '<td colspan="4"><span class="cell-secondary">ยังไม่เลือกพื้นที่ &mdash; กรุณาเลือกพื้นที่/ตำแหน่งในส่วน &ldquo;ร่างใบขออนุมัติเบิกน้ำมัน/น้ำยาเคมี&rdquo; ก่อน</span></td>';
-      els.workplanScheduleBody.appendChild(trEmpty);
-      return;
+    if (visibleRows.length === 0) {
+      var emptyTr = document.createElement("tr");
+      emptyTr.innerHTML = '<td colspan="5" class="table-empty-note">ทุกรายการพ่นควบคุมโรคครบ Day 0/1/7 แล้ว ไม่มีรายการที่ต้องดำเนินการเพิ่มเติม</td>';
+      els.workplanScheduleBody.appendChild(emptyTr);
+    } else {
+      visibleRows.forEach(function (row) {
+        var isDue = filterDate !== null && sameYMD(scheduleDateOnly(row.entry, row.poolItem), filterDate);
+        if (isDue) {
+          dueList.push({ patientName: row.poolItem.area.patientName, teamId: row.entry.assignedTeamId });
+        }
+        els.workplanScheduleBody.appendChild(buildWorkplanRowEl(row.poolItem, row.entry, isDue, row.sprayDone));
+      });
     }
 
-    rows.forEach(function (row) {
-      els.workplanScheduleBody.appendChild(buildWorkplanRowEl(row.poolItem, row.entry));
-    });
+    renderWorkplanDueSummary(filterDate, dueList);
+    renderWorkplanHiddenNote(hiddenCount);
   }
 
   /* ---------------------------------------------------------
@@ -440,13 +722,13 @@
       var isHome = item.loc.type === "home";
       var color = isHome ? "#8A9A5B" : "#7A6A53"; // secondary = home, primary = work/school, matches .pin-normal/.pin-adjusted
       var pixelRadius = 22 * (item.radius / 100);
-      var pinTitle = escapeHtml(item.area.name) + " — " + escapeHtml(locDescriptor(item.loc)) + " &middot; รัศมี " + item.radius + " ม. &middot; " + item.households + " หลังคาเรือน (ประมาณ)";
+      var pinTitle = escapeHtml(item.area.patientName) + " — " + escapeHtml(locDescriptor(item.loc)) + " &middot; รัศมี " + item.radius + " ม. &middot; " + item.households + " หลังคาเรือน (ประมาณ)";
 
       parts.push('<g class="minimap-pin-group">');
       parts.push('<circle cx="' + px + '" cy="' + py + '" r="' + pixelRadius + '" fill="' + color + '" fill-opacity="0.14" stroke="' + color + '" stroke-width="1.5"></circle>');
       parts.push('<circle cx="' + px + '" cy="' + py + '" r="6" fill="' + color + '"></circle>');
       parts.push('<text x="' + px + '" y="' + (py - pixelRadius - 8) + '" text-anchor="middle" font-size="11" font-weight="600" fill="#33291F" font-family="Inter, system-ui, sans-serif">' + (isHome ? "บ้าน" : "ที่ทำงาน/เรียน") + '</text>');
-      parts.push('<text x="' + px + '" y="' + (py + pixelRadius + 16) + '" text-anchor="middle" font-size="10" fill="#6E6355" font-family="Inter, system-ui, sans-serif">' + escapeHtml(item.area.name.split(" ")[0]) + '</text>');
+      parts.push('<text x="' + px + '" y="' + (py + pixelRadius + 16) + '" text-anchor="middle" font-size="10" fill="#6E6355" font-family="Inter, system-ui, sans-serif">' + escapeHtml(item.area.patientName) + '</text>');
       parts.push('<title>' + pinTitle + '</title>');
       parts.push('</g>');
     });
@@ -461,54 +743,112 @@
 
   /* ---------------------------------------------------------
      Render: area/location selection list + running summary +
-     mini-map. Each area renders a small group with 2 rows
-     (home / work-or-school), each independently checkable with
-     its own radius <select> (100/150/200 m) driving a live
-     household estimate = baseHouseholdsAt100m * (radius/100)^2.
+     mini-map (รอบ 13 rewrite, toggle behaviour updated รอบ 16).
+     Each case's card is headed by the patient's name; a 2-button
+     tab pair ("ชุมชน (ที่อยู่)" / "ชุมชน (ที่ทำงาน)") toggles which
+     location(s) are active per case (activeLocTypesByAreaId — 1 or
+     both at once) — the fields shown below the tabs change to
+     match: address+house-no text inputs for "home", a single
+     workplace/school-name text input for "work" — both cases
+     followed by the same radius <select> (100/150/200 m) driving a
+     live household estimate = baseHouseholdsAt100m * (radius/100)^2.
+     When both locations are active, each gets its own labeled field
+     block (own address/name + own radius + own household count —
+     never shared). All text inputs are directly editable (not
+     read-only mock text) and sync back into AREAS[i].locations[j]
+     immediately on "input".
      --------------------------------------------------------- */
-  function buildLocationRow(area, loc) {
+  function buildAreaFieldsHtml(area, loc) {
     var key = getLocationKey(area.id, loc.type);
-    var checked = selectedKeys.indexOf(key) !== -1;
     var radius = getRadiusForKey(key, loc);
     var households = computeHouseholds(loc, radius);
-    var inputId = "loc-" + key;
-    var locLabel = loc.type === "home" ? loc.label : (loc.label + ": " + loc.name);
-    var label = area.patientName + " — " + locLabel;
 
     var radiusOptionsHtml = RADIUS_OPTIONS.map(function (r) {
       return '<option value="' + r + '"' + (r === radius ? " selected" : "") + '>' + r + " เมตร</option>";
     }).join("");
 
+    var fieldsHtml = loc.type === "home"
+      ? (
+          '<div class="area-select-field-row">' +
+            '<label class="area-select-field-label">ที่อยู่' +
+              '<input type="text" class="input-inline" data-area-id="' + area.id + '" data-loc-type="home" data-field="address" value="' + escapeHtml(loc.address) + '" aria-label="ที่อยู่ &mdash; ' + escapeHtml(area.patientName) + '">' +
+            '</label>' +
+            '<label class="area-select-field-label field-houseno">เลขที่' +
+              '<input type="text" class="input-inline" data-area-id="' + area.id + '" data-loc-type="home" data-field="houseNo" value="' + escapeHtml(loc.houseNo) + '" aria-label="เลขที่บ้าน &mdash; ' + escapeHtml(area.patientName) + '">' +
+            '</label>' +
+          '</div>'
+        )
+      : (
+          '<div class="area-select-field-row">' +
+            '<label class="area-select-field-label">สถานที่ทำงาน/เรียน' +
+              '<input type="text" class="input-inline" data-area-id="' + area.id + '" data-loc-type="work" data-field="name" value="' + escapeHtml(loc.name) + '" aria-label="สถานที่ทำงาน/เรียน &mdash; ' + escapeHtml(area.patientName) + '">' +
+            '</label>' +
+          '</div>'
+        );
+
     return (
-      '<div class="area-select-item">' +
-        '<input type="checkbox" id="' + inputId + '" data-area-id="' + area.id + '" data-loc-type="' + loc.type + '"' + (checked ? " checked" : "") + '>' +
-        '<label class="area-select-body" for="' + inputId + '">' +
-          '<span class="area-select-top">' +
-            '<span class="area-select-name">' + escapeHtml(label) + '</span>' +
-          '</span>' +
-          '<span class="area-select-meta">' +
-            '<span>' + households + ' หลังคาเรือน (ประมาณจากรัศมีที่เลือก)</span>' +
-          '</span>' +
-        '</label>' +
+      '<div class="area-select-fields">' +
+        fieldsHtml +
         '<div class="area-select-controls">' +
           '<label class="area-select-radius-label">รัศมี ' +
-            '<select class="input-inline input-inline-sm radius-select" data-area-id="' + area.id + '" data-loc-type="' + loc.type + '" aria-label="รัศมีที่ต้องพ่น &mdash; ' + escapeHtml(area.name) + ' (' + escapeHtml(label) + ')">' + radiusOptionsHtml + '</select>' +
+            '<select class="input-inline input-inline-sm radius-select" data-area-id="' + area.id + '" data-loc-type="' + loc.type + '" aria-label="รัศมีที่ต้องพ่น &mdash; ' + escapeHtml(area.patientName) + '">' + radiusOptionsHtml + '</select>' +
           '</label>' +
+          '<span class="area-select-meta"><span>' + households + ' หลังคาเรือน (ประมาณจากรัศมีที่เลือก)</span></span>' +
         '</div>' +
       '</div>'
     );
   }
 
+  // รอบ 16: the 2 tab buttons are now independent on/off toggles (not an
+  // exclusive pair) — both can show active at once. When 2 locations are
+  // active, the field block from buildAreaFieldsHtml() is rendered once
+  // per active location (in home-then-work order), each preceded by a
+  // sub-heading so the two stay visually distinct; with only 1 active
+  // (the common case) it renders exactly as รอบ 13 did, with no heading.
   function buildAreaGroup(area) {
-    var rows = area.locations.map(function (loc) { return buildLocationRow(area, loc); }).join("");
+    var activeTypes = activeLocTypesByAreaId[area.id] || ["home"];
+    var homeActive = activeTypes.indexOf("home") !== -1;
+    var workActive = activeTypes.indexOf("work") !== -1;
+
+    var tabHomeClass = "btn btn-sm loc-tab-btn " + (homeActive ? "btn-primary" : "btn-outline");
+    var tabWorkClass = "btn btn-sm loc-tab-btn " + (workActive ? "btn-primary" : "btn-outline");
+
+    var orderedActiveTypes = LOC_TYPE_ORDER.filter(function (t) { return activeTypes.indexOf(t) !== -1; });
+    var showSubHeadings = orderedActiveTypes.length > 1;
+    var subHeadingText = { home: "ชุมชน (ที่อยู่)", work: "ชุมชน (ที่ทำงาน)" };
+
+    var fieldSectionsHtml = orderedActiveTypes.map(function (locType) {
+      var loc = findLocation(area.id, locType);
+      var headingHtml = showSubHeadings
+        ? '<div class="area-select-subheading">' + escapeHtml(subHeadingText[locType]) + '</div>'
+        : "";
+      return headingHtml + buildAreaFieldsHtml(area, loc);
+    }).join("");
+
+    // รอบ 18: "ไฟล์ต้นฉบับ" link right after the patientName heading —
+    // reuses .file-link + ICON_FILE from case-intake.js's pattern
+    // exactly (href="#", mock preventDefault() on click — see the
+    // .file-link click handler in initEvents() below).
+    var fileLinkHtml =
+      '<a class="file-link" href="#" data-file="' + escapeHtml(area.sourceFile) + '" title="เปิดไฟล์ต้นฉบับใน Google Drive (จำลอง) &mdash; ' + escapeHtml(area.sourceFile) + '">' +
+        ICON_FILE + "ไฟล์ต้นฉบับ" +
+      '</a>';
+
     return (
       '<div class="area-select-group">' +
         '<div class="area-select-group-head">' +
-          '<span class="area-select-name">' + escapeHtml(area.name) + '</span>' +
+          '<span class="area-select-name-group">' +
+            '<span class="area-select-name">' + escapeHtml(area.patientName) + '</span>' +
+            fileLinkHtml +
+          '</span>' +
           '<span class="badge badge-' + (area.riskLevel === "สูง" ? "warning" : "neutral") + '">ความเสี่ยง' + escapeHtml(area.riskLevel) + '</span>' +
         '</div>' +
-        '<div class="area-select-group-meta">อ้างอิง: ' + escapeHtml(area.clusterRef) + '</div>' +
-        '<div class="area-select-locations">' + rows + '</div>' +
+        '<div class="area-select-group-meta">' + escapeHtml(area.name) + ' &middot; ' + escapeHtml(area.clusterRef) + '</div>' +
+        '<div class="loc-tab-group" role="group" aria-label="เลือกสถานที่ควบคุมโรคของ ' + escapeHtml(area.patientName) + ' (เลือกได้มากกว่า 1 แห่ง)">' +
+          '<button type="button" class="' + tabHomeClass + '" data-area-id="' + area.id + '" data-loc-type="home" aria-pressed="' + homeActive + '">ชุมชน (ที่อยู่)</button>' +
+          '<button type="button" class="' + tabWorkClass + '" data-area-id="' + area.id + '" data-loc-type="work" aria-pressed="' + workActive + '">ชุมชน (ที่ทำงาน)</button>' +
+        '</div>' +
+        fieldSectionsHtml +
       '</div>'
     );
   }
@@ -518,11 +858,16 @@
 
     var pool = getSelectedPool();
     var totalHouseholds = pool.reduce(function (sum, item) { return sum + item.households; }, 0);
-    els.areaSelectSummary.textContent = pool.length === 0
-      ? "ยังไม่ได้เลือกพื้นที่/ตำแหน่ง — เลือกอย่างน้อย 1 รายการเพื่อสร้างร่างเอกสาร"
-      : "เลือกแล้ว " + pool.length + " รายการ (พื้นที่/ตำแหน่ง) · รวม " + totalHouseholds + " หลังคาเรือน (ประมาณ)";
+    // รอบ 16: pool.length can now exceed AREAS.length when a case has both
+    // "home" and "work" active at once, so the summary counts "จุดควบคุมโรค"
+    // (control-plan sites/pool items) alongside the underlying case count.
+    els.areaSelectSummary.textContent =
+      "ทุกเคสอยู่ในแผนเสมอ — ทั้งหมด " + pool.length + " จุดควบคุมโรค (จาก " + AREAS.length + " เคส) · รวม " + totalHouseholds + " หลังคาเรือน (ประมาณ)";
 
-    els.btnGenerateApproval.disabled = pool.length === 0;
+    // รอบ 13: every case is always in the plan, so the pool is never
+    // empty — the "สร้างร่างเอกสาร" button no longer needs to be
+    // disabled based on pool.length.
+    els.btnGenerateApproval.disabled = false;
 
     renderMiniMap(pool);
   }
@@ -551,7 +896,7 @@
     var lubricantLiters = Math.max(2, pool.length * 2);
 
     var siteListText = pool.map(function (item, i) {
-      return (i + 1) + ". " + item.area.name + " — " + locDescriptor(item.loc) + " (" + item.households + " หลังคาเรือน, รัศมี " + item.radius + " ม.)";
+      return (i + 1) + ". " + item.area.patientName + " — " + locDescriptor(item.loc) + " (" + item.households + " หลังคาเรือน, รัศมี " + item.radius + " ม.)";
     }).join("\n");
 
     var lines = [
@@ -611,8 +956,7 @@
   }
 
   function generateApproval() {
-    var pool = getSelectedPool();
-    if (pool.length === 0) return;
+    var pool = getSelectedPool(); // at least AREAS.length items (one per case, more if a case has both locations active — รอบ 16)
 
     els.approvalTextarea.value = buildApprovalText(pool);
     syncApprovalPrintView();
@@ -661,18 +1005,20 @@
      --------------------------------------------------------- */
   function buildWorkplanText() {
     // Group by team (1->4), sorted soonest -> latest within each team —
-    // matches the table's current row order (รอบ 10).
-    var rows = getSortedWorkplanRows();
+    // matches the table's current row order (รอบ 10). รอบ 17: excludes
+    // rows already fully "พ่นแล้ว" (Day 0/1/7 all checked), matching
+    // exactly what's currently visible in #workplan-schedule-table.
+    var rows = getSortedWorkplanRows().filter(function (row) { return !isSprayFullyDone(row.sprayDone); });
 
-    var assignmentLines = rows.length === 0
-      ? ["ยังไม่เลือกพื้นที่/ตำแหน่ง — กรุณาเลือกพื้นที่ในส่วน “ร่างใบขออนุมัติเบิกน้ำมัน/น้ำยาเคมี” ก่อนสร้างแผนปฏิบัติงาน"]
-      : rows.map(function (row, i) {
+    var assignmentLines = rows.length > 0
+      ? rows.map(function (row, i) {
           var poolItem = row.poolItem;
           var entry = row.entry;
-          var areaText = poolItem.area.name + " — " + locDescriptor(poolItem.loc) + " (" + poolItem.households + " หลังคาเรือน, รัศมี " + poolItem.radius + " ม.)";
+          var areaText = poolItem.area.patientName + " — " + locDescriptor(poolItem.loc) + " (" + poolItem.households + " หลังคาเรือน, รัศมี " + poolItem.radius + " ม.)";
           var whenText = "ปฏิบัติงาน Day " + entry.dayOffset + " (" + formatThaiDateFromOffset(poolItem.area.caseFoundDate, entry.dayOffset) + ") เวลา " + entry.hour + ":" + entry.minute + " น.";
           return (i + 1) + ". ทีมพ่น " + entry.assignedTeamId + " — รับผิดชอบ " + areaText + " — " + whenText;
-        });
+        })
+      : ["(ไม่มีรายการที่ต้องปฏิบัติงาน — ทุกรายการพ่นควบคุมโรคครบ Day 0/1/7 แล้ว)"];
 
     var lines = [
       "แผนปฏิบัติงานควบคุมโรค (ร่างโดยระบบ AI)",
@@ -710,27 +1056,73 @@
     if (!text) return;
 
     els.workplanStatus.innerHTML = '<span class="badge badge-confirmed">' + ICON_CHECK + "ยืนยันใช้แผนนี้แล้ว &middot; " + formatThaiDateTime(new Date()) + "</span>";
+
+    // รอบ 20: once the workplan is confirmed, carry the user straight on
+    // to the next step (drafting the fuel/chemical approval request)
+    // instead of leaving them to scroll down and find it themselves.
+    var approvalPanel = document.getElementById("control-plan-approval-panel");
+    if (approvalPanel) approvalPanel.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
   /* ---------------------------------------------------------
      Event wiring
      --------------------------------------------------------- */
   function initEvents() {
-    els.areaSelectList.addEventListener("change", function (e) {
-      var checkbox = e.target.closest('input[type="checkbox"][data-area-id]');
-      if (checkbox) {
-        var key = getLocationKey(parseInt(checkbox.getAttribute("data-area-id"), 10), checkbox.getAttribute("data-loc-type"));
-        var idx = selectedKeys.indexOf(key);
-        if (checkbox.checked && idx === -1) {
-          selectedKeys.push(key);
-        } else if (!checkbox.checked && idx !== -1) {
-          selectedKeys.splice(idx, 1);
-        }
-        renderAreaList();
-        renderWorkplanSchedule();
-        return;
+    // Tab click (รอบ 16: independent on/off toggle, not exclusive-select) —
+    // clicking a tab that's NOT active adds it to that case's active-location
+    // set (so both "home" and "work" can be active together); clicking a tab
+    // that IS active removes it, but only if the other location is also
+    // active (a case must always keep at least 1 active location — clicking
+    // the sole remaining active tab is a no-op). Re-renders the whole list
+    // (fields shown depend on the active set) plus the workplan table/
+    // mini-map that read from the same pool.
+    // รอบ 18: "ไฟล์ต้นฉบับ" link click — mock only, same behaviour as
+    // case-intake.js's .file-link handler (no real file to open in this
+    // static prototype).
+    els.areaSelectList.addEventListener("click", function (e) {
+      var fileLink = e.target.closest(".file-link");
+      if (fileLink) {
+        e.preventDefault();
       }
+    });
 
+    els.areaSelectList.addEventListener("click", function (e) {
+      var tabBtn = e.target.closest(".loc-tab-btn");
+      if (!tabBtn) return;
+      var areaId = parseInt(tabBtn.getAttribute("data-area-id"), 10);
+      var locType = tabBtn.getAttribute("data-loc-type");
+      var activeTypes = activeLocTypesByAreaId[areaId] || ["home"];
+      var idx = activeTypes.indexOf(locType);
+      if (idx === -1) {
+        activeTypes = activeTypes.concat([locType]);
+      } else if (activeTypes.length > 1) {
+        activeTypes = activeTypes.filter(function (t) { return t !== locType; });
+      } // else: sole remaining active tab — no-op, keep at least 1 active
+      activeLocTypesByAreaId[areaId] = activeTypes;
+      renderAreaList();
+      renderWorkplanSchedule();
+    });
+
+    // Address / house-no / workplace-name text inputs — sync straight into
+    // AREAS[i].locations[j] on every keystroke (no separate save step).
+    // Deliberately does NOT re-render #area-select-list itself (that would
+    // rebuild the input's innerHTML and steal focus/caret mid-typing) —
+    // only the mini-map/workplan table, which live in separate containers,
+    // are refreshed so their location-detail text stays in sync live.
+    els.areaSelectList.addEventListener("input", function (e) {
+      var fieldInput = e.target.closest("input[data-field]");
+      if (!fieldInput) return;
+      var areaId = parseInt(fieldInput.getAttribute("data-area-id"), 10);
+      var locType = fieldInput.getAttribute("data-loc-type");
+      var field = fieldInput.getAttribute("data-field"); // "address" | "houseNo" | "name"
+      var loc = findLocation(areaId, locType);
+      if (!loc) return;
+      loc[field] = fieldInput.value;
+      renderMiniMap(getSelectedPool());
+      renderWorkplanSchedule();
+    });
+
+    els.areaSelectList.addEventListener("change", function (e) {
       var radiusSelect = e.target.closest("select.radius-select");
       if (radiusSelect) {
         var rKey = getLocationKey(parseInt(radiusSelect.getAttribute("data-area-id"), 10), radiusSelect.getAttribute("data-loc-type"));
@@ -747,15 +1139,52 @@
       var tr = input.closest("tr[data-key]");
       if (!tr) return;
       var key = tr.getAttribute("data-key");
+      var field = input.getAttribute("data-field"); // "team" | "dayOffset" | "hour" | "minute" | "sprayDone"
+
+      // รอบ 17: "สถานะพ่นแล้ว" Day 0/1/7 checkboxes update sprayDoneByKey
+      // (separate from workplanEntryByKey below) — re-rendering afterwards
+      // may hide this row entirely if all 3 days are now checked.
+      if (field === "sprayDone") {
+        var sprayDone = getOrCreateSprayDone(key);
+        var day = input.getAttribute("data-day");
+        sprayDone[day] = input.checked;
+        renderWorkplanSchedule();
+        return;
+      }
+
       var entry = workplanEntryByKey[key];
       if (!entry) return;
-      var field = input.getAttribute("data-field"); // "team" | "dayOffset" | "hour" | "minute"
       if (field === "team") {
         entry.assignedTeamId = parseInt(input.value, 10);
       } else {
         entry[field] = input.value; // dayOffset ("0"/"1"/"7") and hour/minute all stay as plain strings
       }
       renderWorkplanSchedule(); // re-sorts (team asc, then soonest -> latest) and re-renders the whole table
+    });
+
+    // รอบ 14: date filter bar above the workplan table — every change
+    // just re-runs renderWorkplanSchedule(), which already re-reads the
+    // filter value on every call (see getWorkplanFilterDate() above), so
+    // rows/badges/summary all stay in sync without any extra state.
+    // รอบ 15: the native date input is now a day/month/year <select>
+    // trio — changing any one of the 3 (re-)activates the filter (a
+    // select always has some value chosen, so "active" is tracked
+    // separately via workplanDateFilterActive rather than an empty
+    // input value).
+    [els.workplanDateFilterDay, els.workplanDateFilterMonth, els.workplanDateFilterYear].forEach(function (sel) {
+      sel.addEventListener("change", function () {
+        workplanDateFilterActive = true;
+        renderWorkplanSchedule();
+      });
+    });
+    els.btnWorkplanDateToday.addEventListener("click", function () {
+      setWorkplanDateFilterSelects(new Date());
+      workplanDateFilterActive = true;
+      renderWorkplanSchedule();
+    });
+    els.btnWorkplanDateClear.addEventListener("click", function () {
+      workplanDateFilterActive = false;
+      renderWorkplanSchedule();
     });
 
     els.btnGenerateApproval.addEventListener("click", generateApproval);
@@ -768,6 +1197,13 @@
   }
 
   function init() {
+    // รอบ 14: default the date filter to today so the highlight/summary
+    // are immediately useful on page load (per BUILD-PLAN.md assumption).
+    // รอบ 15: populate the day/month/year <select> option lists first,
+    // then set them to today (workplanDateFilterActive already defaults
+    // to true above).
+    populateWorkplanDateFilterSelects();
+    setWorkplanDateFilterSelects(new Date());
     renderAreaList();
     renderWorkplanSchedule();
     initEvents();

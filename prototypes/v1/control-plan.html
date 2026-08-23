@@ -102,20 +102,50 @@
         <span class="body-secondary">มอบหมายทีมพ่น กำหนดวันปฏิบัติงาน (Day 0/1/7) และขั้นตอนพ่น/ป้องกัน ให้นักวิชาการตรวจสอบและแก้ไขต่อก่อนใช้งานจริง</span>
       </div>
 
+      <!-- รอบ 14: date filter — highlights any workplan row whose
+           computed Day 0/1/7 date matches the chosen date, plus a text
+           summary of who's due that day. Purely additive: does not hide
+           rows, does not touch team/dayOffset/hour/minute controls.
+           รอบ 15: the native <input type="date"> from รอบ 14 is replaced
+           with a วัน/เดือน/ปี พ.ศ. <select> trio (Thai calendar), so the
+           picker always reads/displays พ.ศ. regardless of browser/OS
+           locale — same reasoning as the 24h hour/minute <select> pair
+           and the Day 0/1/7 <select> elsewhere on this page. -->
+      <div class="report-controls">
+        <div class="filter-field">
+          <span class="filter-field-label" id="workplan-date-filter-label">กรองดูวันครบกำหนดพ่น</span>
+          <span class="time-select-group" role="group" aria-labelledby="workplan-date-filter-label">
+            <select class="input-inline select-wp-day" id="workplan-date-filter-day" aria-label="วัน (กรองวันครบกำหนดพ่น)"></select>
+            <span class="time-select-sep">/</span>
+            <select class="input-inline select-wp-month" id="workplan-date-filter-month" aria-label="เดือน (กรองวันครบกำหนดพ่น)"></select>
+            <span class="time-select-sep">/</span>
+            <select class="input-inline select-wp-year" id="workplan-date-filter-year" aria-label="ปี พ.ศ. (กรองวันครบกำหนดพ่น)"></select>
+          </span>
+        </div>
+        <button type="button" class="btn btn-outline btn-sm" id="btn-workplan-date-today">วันนี้</button>
+        <button type="button" class="btn btn-outline btn-sm" id="btn-workplan-date-clear">ล้างตัวกรอง</button>
+      </div>
+      <p class="area-select-summary" id="workplan-due-summary"></p>
+
       <div class="table-scroll">
         <table class="data-table" id="workplan-schedule-table">
           <thead>
             <tr>
               <th>ทีมพ่น</th>
-              <th>พื้นที่รับผิดชอบ</th>
+              <th>ชื่อ-สกุลผู้ป่วย</th>
               <th>วันพ่น (Day 0/1/7)</th>
               <th>เวลาเริ่ม</th>
+              <th>สถานะพ่นแล้ว</th>
             </tr>
           </thead>
           <tbody id="workplan-schedule-body"></tbody>
         </table>
       </div>
-      <p class="area-select-summary">ตารางเพิ่ม/ลดแถวตามพื้นที่ที่เลือกไว้ด้านล่างโดยอัตโนมัติ — เลือกทีมพ่นที่รับผิดชอบเองได้ (ทีมเดียวรับได้หลายพื้นที่) วันพ่นเลือกได้ Day 0 (วันพบเคส) / Day 1 / Day 7 ตามมาตรฐานควบคุมไข้เลือดออก โดยระบบคำนวณวันที่ไทยจริงให้จากวันพบเคสของแต่ละพื้นที่ ตารางจัดกลุ่มตามทีมพ่น (ทีม 1 → 4) ก่อน แล้วเรียงตามวันที่/เวลาน้อยไปมากภายในทีมเดียวกัน — แก้ไขทีม/วันพ่น/เวลาแล้วตารางจะจัดกลุ่มและเรียงลำดับใหม่ให้ทันที</p>
+      <!-- รอบ 17: reports how many rows are currently hidden from the table
+           above because they're marked "พ่นแล้ว" for all of Day 0/1/7 —
+           shown regardless of the due-date filter's state. -->
+      <p class="area-select-summary" id="workplan-hidden-note"></p>
+      <p class="area-select-summary">แต่ละจุดควบคุมโรค (ที่อยู่/ที่ทำงาน ต่อเคส) มี 1 แถวเสมอ — เคสที่เปิดใช้ทั้ง 2 ตำแหน่งพร้อมกันในส่วน "ร่างใบขออนุมัติเบิกน้ำมัน/น้ำยาเคมี" ด้านล่างจะมี 2 แถวแยกกัน — เลือกทีมพ่นที่รับผิดชอบเองได้ (ทีมเดียวรับได้หลายเคส) วันพ่นเลือกได้ Day 0 (วันพบเคส) / Day 1 / Day 7 ตามมาตรฐานควบคุมไข้เลือดออก โดยระบบคำนวณวันที่ไทยจริงให้จากวันพบเคสของแต่ละเคส ตารางจัดกลุ่มตามทีมพ่น (ทีม 1 → 4) ก่อน แล้วเรียงตามวันที่/เวลาน้อยไปมากภายในทีมเดียวกัน — แก้ไขทีม/วันพ่น/เวลาแล้วตารางจะจัดกลุ่มและเรียงลำดับใหม่ให้ทันที ติ๊กช่อง "สถานะพ่นแล้ว" ครบทั้ง Day 0/1/7 เมื่อไร แถวนั้นจะถูกซ่อนออกจากตารางโดยอัตโนมัติ</p>
 
       <div class="report-controls">
         <button type="button" class="btn btn-primary" id="btn-generate-workplan">สร้างร่างแผนปฏิบัติงาน</button>
@@ -130,13 +160,13 @@
     </div>
 
     <!-- 2) Draft approval request -->
-    <div class="panel">
+    <div class="panel" id="control-plan-approval-panel">
       <div class="panel-header no-print">
         <h2>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 2h8l4 4v16H7a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2Z"></path><path d="M15 2v4h4"></path><path d="M9 13h6M9 17h6"></path></svg>
           ร่างใบขออนุมัติเบิกน้ำมัน/น้ำยาเคมี
         </h2>
-        <span class="body-secondary">เลือกพื้นที่ที่ต้องพ่นสารเคมี (ขึ้นชื่อ-สกุลผู้ป่วยนำหน้าแต่ละรายการ) ระบบจะช่วยร่างเอกสารขออนุมัติจากข้อมูลพื้นที่ที่เลือก</span>
+        <span class="body-secondary">แต่ละเคสขึ้นชื่อ-สกุลผู้ป่วยนำหน้าเสมอ — เปิดใช้แท็บ "ชุมชน (ที่อยู่)" และ/หรือ "ชุมชน (ที่ทำงาน)" ต่อเคสได้ทั้งคู่พร้อมกัน (อย่างน้อยต้องเปิด 1 แท็บเสมอ) แล้วกรอก/แก้ไขที่อยู่ เลขที่ หรือสถานที่ทำงาน/เรียนได้จริงแยกกันคนละชุด ระบบจะช่วยร่างเอกสารขออนุมัติจากข้อมูลที่กรอกไว้</span>
       </div>
 
       <div class="area-select-list no-print" id="area-select-list"></div>

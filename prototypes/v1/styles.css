@@ -314,7 +314,8 @@ main.content-wrap {
   min-width: 160px;
 }
 
-.filter-field label {
+.filter-field label,
+.filter-field-label {
   font-size: var(--fs-caption);
   font-weight: 600;
   color: var(--color-text-secondary);
@@ -1018,6 +1019,13 @@ main.content-wrap {
   background: var(--color-background);
 }
 
+/* รอบ 14: highlights a workplan row whose computed Day 0/1/7 date
+   matches #workplan-date-filter — reuses the warning tone already used
+   by .badge-warning/.alert-icon.badge-warning (no new color added). */
+.data-table tbody tr.row-due-selected {
+  background: var(--color-warning-bg);
+}
+
 .cell-primary {
   display: block;
   font-weight: 600;
@@ -1529,6 +1537,16 @@ main.content-wrap {
   flex-wrap: wrap;
 }
 
+/* รอบ 18: keeps the patientName heading and its "ไฟล์ต้นฉบับ" .file-link
+   adjacent (as a pair) inside .area-select-group-head, while the risk
+   badge still sits at the far right via the head's justify-content. */
+.area-select-name-group {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  flex-wrap: wrap;
+}
+
 .area-select-group-meta {
   font-size: var(--fs-caption);
   color: var(--color-text-secondary);
@@ -1540,21 +1558,78 @@ main.content-wrap {
   gap: var(--space-2);
 }
 
-/* Location rows nested inside a group reuse .area-select-item, but the
-   checkbox is no longer wrapped by the same <label> as the radius
-   <select> below it (avoids the browser's implicit label->control click
-   forwarding from swallowing clicks meant for the <select>). */
-.area-select-group .area-select-item {
-  background: var(--color-background);
+/* ---------------------------------------------------------
+   รอบ 13 (2026-08-21): "ชุมชน (ที่อยู่)" / "ชุมชน (ที่ทำงาน)" tab
+   pair — one location active at a time per case, reusing .btn/
+   .btn-primary (active tab)/.btn-outline (inactive tab), same
+   pattern as .period-toggle-group on the Reports page.
+   --------------------------------------------------------- */
+.loc-tab-group {
+  display: flex;
+  gap: 8px;
   flex-wrap: wrap;
+}
+
+.loc-tab-btn {
+  white-space: nowrap;
+}
+
+/* ---------------------------------------------------------
+   รอบ 16 (2026-08-21): sub-heading shown above each location's field
+   block only when a case has BOTH "home" and "work" active at once,
+   splitting what used to be a single field block (รอบ 13) into two
+   labeled, stacked sections instead. A dashed top border on the 2nd
+   block visually separates the pair without introducing a new
+   container/border color.
+   --------------------------------------------------------- */
+.area-select-subheading {
+  font-size: var(--fs-caption);
+  font-weight: 700;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.area-select-fields + .area-select-subheading {
+  padding-top: var(--space-2);
+  border-top: 1px dashed var(--color-border);
+}
+
+/* Editable fields shown under the active tab (address+house-no for
+   "home", workplace/school name for "work"), replacing the old
+   checkbox+static-label row (.area-select-item) from รอบ 9-12. */
+.area-select-fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.area-select-field-row {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.area-select-field-label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: var(--fs-caption);
+  color: var(--color-text-secondary);
+  flex: 1 1 220px;
+  min-width: 160px;
+}
+
+.area-select-field-label.field-houseno {
+  flex: 0 0 110px;
+  min-width: 90px;
 }
 
 .area-select-controls {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  flex: 0 0 100%;
-  margin-left: 28px; /* aligns under the row's label text, past the checkbox */
+  flex-wrap: wrap;
 }
 
 .area-select-radius-label {
@@ -1568,12 +1643,6 @@ main.content-wrap {
 .input-inline-sm {
   width: 110px;
   flex: 0 0 110px;
-}
-
-@media (max-width: 720px) {
-  .area-select-controls {
-    margin-left: 0;
-  }
 }
 
 /* ---------------------------------------------------------
@@ -1618,6 +1687,65 @@ main.content-wrap {
    --------------------------------------------------------- */
 .select-day-offset {
   margin-bottom: 4px;
+}
+
+/* ---------------------------------------------------------
+   วัน/เดือน/ปี พ.ศ. <select> trio for the workplan due-date filter
+   (รอบ 15), replacing the native <input type="date"> from รอบ 14 —
+   reuses .time-select-group as the grouping wrapper (same pattern as
+   the hour:minute pair above).
+   --------------------------------------------------------- */
+.select-wp-day {
+  width: 62px;
+  flex: 0 0 62px;
+}
+
+.select-wp-month {
+  width: 86px;
+  flex: 0 0 86px;
+}
+
+.select-wp-year {
+  width: 84px;
+  flex: 0 0 84px;
+}
+
+/* ---------------------------------------------------------
+   รอบ 17 (2026-08-21): "สถานะพ่นแล้ว" Day 0/1/7 checkbox group, one
+   per workplan schedule row — plain native checkboxes styled like
+   .area-select-item's existing checkbox (16x16, accent-color
+   primary), just grouped 3-across with a short "Day N" label each.
+   --------------------------------------------------------- */
+.spray-done-group {
+  display: inline-flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.spray-done-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--fs-caption);
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.spray-done-item input[type="checkbox"] {
+  width: 15px;
+  height: 15px;
+  accent-color: var(--color-primary);
+  cursor: pointer;
+}
+
+/* Empty-state row shown in #workplan-schedule-body when every row has
+   been marked "พ่นแล้ว" for Day 0/1/7 and is therefore hidden. */
+.table-empty-note {
+  text-align: center;
+  padding: var(--space-4) var(--space-2);
+  color: var(--color-text-secondary);
+  font-style: italic;
 }
 
 /* Operational (non-epidemiological) status badge tones — reuse the
