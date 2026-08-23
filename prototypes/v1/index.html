@@ -111,66 +111,65 @@
       </div>
       <div class="filter-meta">
         <button type="button" class="filter-reset-btn" id="btn-reset-filters">ล้างตัวกรอง</button>
-        <span class="updated-note" id="last-updated-note">อัปเดตล่าสุด: 16 ส.ค. 2569, 08:30 น.</span>
+        <span class="updated-note" id="date-range-note">ช่วงข้อมูล: --</span>
       </div>
     </div>
 
-    <!-- KPI cards -->
-    <section class="kpi-grid" aria-label="ตัวชี้วัดหลัก">
-      <div class="card kpi-card">
-        <div class="kpi-card-top">
-          <div>
-            <div class="kpi-value" id="kpi-active-cases">--</div>
-            <div class="kpi-label">Total Active Cases</div>
-          </div>
-          <div class="kpi-icon tone-primary">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>
-          </div>
-        </div>
-        <span class="kpi-trend" id="kpi-active-cases-trend">--</span>
+    <!-- Stat tiles (แทน KPI 4 การ์ดเดิม) -->
+    <section class="stat-tile-grid" aria-label="สถิติผู้ป่วยสรุป">
+      <div class="stat-tile tone-accent-tint">
+        <span class="stat-tile-value" id="stat-new-total">--</span>
+        <span class="stat-tile-label">รายใหม่วันนี้</span>
       </div>
-
-      <div class="card kpi-card">
-        <div class="kpi-card-top">
-          <div>
-            <div class="kpi-value" id="kpi-new-today">--</div>
-            <div class="kpi-label">New Cases Today</div>
-          </div>
-          <div class="kpi-icon tone-secondary">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"></path></svg>
-          </div>
-        </div>
-        <span class="kpi-trend" id="kpi-new-today-trend">--</span>
+      <div class="stat-tile tone-secondary-tint">
+        <span class="stat-tile-value" id="stat-new-out">--</span>
+        <span class="stat-tile-label">รายใหม่นอกพื้นที่</span>
       </div>
-
-      <div class="card kpi-card">
-        <div class="kpi-card-top">
-          <div>
-            <div class="kpi-value" id="kpi-outbreak-zones">--</div>
-            <div class="kpi-label">Active Outbreak Zones</div>
-          </div>
-          <div class="kpi-icon tone-warning">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 2 21h20L12 2Z"></path><path d="M12 9v5M12 17h.01"></path></svg>
-          </div>
-        </div>
-        <span class="kpi-trend neutral" id="kpi-outbreak-zones-note">--</span>
+      <div class="stat-tile tone-primary-tint">
+        <span class="stat-tile-value" id="stat-cum-in">--</span>
+        <span class="stat-tile-label">ในพื้นที่สะสม</span>
       </div>
-
-      <div class="card kpi-card">
-        <div class="kpi-card-top">
-          <div>
-            <div class="kpi-value" id="kpi-risk-level">--</div>
-            <div class="kpi-label">Overall Risk Level</div>
-          </div>
-          <div class="kpi-icon tone-danger" id="kpi-risk-icon-wrap">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4.5 8-11V5l-8-3-8 3v6c0 6.5 8 11 8 11Z"></path></svg>
-          </div>
-        </div>
-        <span class="kpi-trend" id="kpi-risk-level-note">--</span>
+      <div class="stat-tile tone-secondary-tint">
+        <span class="stat-tile-value" id="stat-cum-out">--</span>
+        <span class="stat-tile-label">นอกพื้นที่สะสม</span>
+      </div>
+      <div class="stat-tile tone-accent-tint">
+        <span class="stat-tile-value" id="stat-cum-total">--</span>
+        <span class="stat-tile-label">รวมผู้ป่วยสะสม</span>
       </div>
     </section>
 
-    <!-- Main grid: region risk grid + trend chart | alerts -->
+    <!-- อัตราป่วยต่อแสนประชากร + ตารางแยกตามเพศ -->
+    <section class="two-col-grid">
+      <div class="panel">
+        <div class="panel-header">
+          <h2>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M2 12h20"></path><circle cx="12" cy="12" r="9"></circle></svg>
+            อัตราป่วยต่อแสนประชากร
+          </h2>
+        </div>
+        <div class="rate-card-value" id="rate-value">--</div>
+        <div class="rate-card-unit">ต่อประชากรแสนคน</div>
+        <p class="rate-card-note" id="rate-pop-note">--</p>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header">
+          <h2>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"></circle><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"></path></svg>
+            จำแนกตามเพศ
+          </h2>
+        </div>
+        <table class="data-table">
+          <thead>
+            <tr><th>เพศ</th><th>จำนวนเคส</th><th>ร้อยละ</th><th>สัดส่วน</th></tr>
+          </thead>
+          <tbody id="gender-table-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Main grid: region risk grid + trend charts | alerts -->
     <section class="dashboard-grid">
       <div class="stack">
 
@@ -189,9 +188,26 @@
             <div class="region-legend-item"><span class="risk-dot risk-warning"></span>เฝ้าระวัง</div>
             <div class="region-legend-item"><span class="risk-dot risk-danger"></span>วิกฤต / เกินเกณฑ์</div>
           </div>
+          <p class="body-secondary zone-risk-summary" id="zone-risk-summary">--</p>
         </div>
 
-        <!-- Trend chart -->
+        <!-- Weekly seasonal trend chart -->
+        <div class="panel">
+          <div class="panel-header">
+            <h2>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"></path><path d="M7 14c2-4 4 3 6-2s3 4 5-1"></path></svg>
+              แนวโน้มรายสัปดาห์ เทียบปีก่อน
+            </h2>
+            <span class="body-secondary" id="weekly-chart-subtitle">รายสัปดาห์ทั้งปี (52 สัปดาห์)</span>
+          </div>
+          <div class="chart-wrap" id="weekly-chart-wrap"></div>
+          <div class="chart-legend">
+            <div class="chart-legend-item"><span class="chart-legend-swatch" style="background:var(--color-secondary);opacity:0.55"></span><span id="weekly-legend-prior">ค่ามัธยฐานปีก่อน</span></div>
+            <div class="chart-legend-item"><span class="chart-legend-swatch" style="background:var(--color-primary)"></span><span id="weekly-legend-current">ปีปัจจุบัน</span></div>
+          </div>
+        </div>
+
+        <!-- Daily trend chart -->
         <div class="panel">
           <div class="panel-header">
             <h2>
@@ -222,10 +238,124 @@
 
     </section>
 
+    <!-- ตารางกลุ่มอายุ + การ์ดสถิติอายุ -->
+    <section class="dashboard-grid">
+      <div class="panel">
+        <div class="panel-header">
+          <h2>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M12 20V4M20 20v14"></path></svg>
+            ผู้ป่วยจำแนกตามกลุ่มอายุ
+          </h2>
+        </div>
+        <table class="data-table">
+          <thead>
+            <tr><th>ช่วงอายุ</th><th>จำนวนเคส</th><th>ร้อยละ</th><th>อัตราป่วย/แสนปกครอง</th></tr>
+          </thead>
+          <tbody id="age-table-body"></tbody>
+        </table>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header">
+          <h2>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 3"></path></svg>
+            สถิติอายุผู้ป่วย
+          </h2>
+        </div>
+        <div class="mini-stat-list">
+          <div class="mini-stat-item"><span class="mini-stat-label">อายุมากที่สุด</span><span class="mini-stat-value" id="age-oldest">--</span></div>
+          <div class="mini-stat-item"><span class="mini-stat-label">อายุมัธยฐาน (Median)</span><span class="mini-stat-value" id="age-median">--</span></div>
+          <div class="mini-stat-item"><span class="mini-stat-label">อายุน้อยที่สุด</span><span class="mini-stat-value" id="age-youngest">--</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Pie chart การวินิจฉัย (DF/DHF) + ตารางอาชีพ -->
+    <section class="dashboard-grid">
+      <div class="panel">
+        <div class="panel-header">
+          <h2>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M12 3v9l6 3"></path></svg>
+            การวินิจฉัยโรค (DF/DHF)
+          </h2>
+        </div>
+        <p class="body-secondary" id="diagnosis-pie-note" hidden>แสดงเมื่อเลือกตัวกรองโรคเป็นไข้เลือดออก (Dengue Fever) เท่านั้น</p>
+        <div class="pie-chart-row">
+          <div class="pie-chart-svg" id="diagnosis-pie-wrap"></div>
+          <div class="pie-legend" id="diagnosis-pie-legend"></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header">
+          <h2>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="13" rx="2"></rect><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+            ผู้ป่วยจำแนกตามอาชีพ
+          </h2>
+        </div>
+        <table class="data-table">
+          <thead>
+            <tr><th>อาชีพ</th><th>จำนวนเคส</th><th>ร้อยละ</th></tr>
+          </thead>
+          <tbody id="occupation-table-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ตารางชุมชน -->
+    <section class="panel" aria-label="ผู้ป่วยจำแนกตามชุมชน">
+      <div class="panel-header">
+        <h2>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s7-5.5 7-12a7 7 0 0 0-14 0c0 6.5 7 12 7 12Z"></path><circle cx="12" cy="10" r="2.5"></circle></svg>
+          ชุมชนที่มีจำนวนเคสสูงสุด
+        </h2>
+        <span class="body-secondary">Top 8 ชุมชนตามจำนวนเคสสะสม</span>
+      </div>
+      <table class="data-table">
+        <thead>
+          <tr><th>อันดับ</th><th>ชุมชน</th><th>เขตบริการ</th><th>ทีมสอบสวนโรค</th><th>จำนวนเคส</th><th>ร้อยละ</th></tr>
+        </thead>
+        <tbody id="community-table-body"></tbody>
+      </table>
+    </section>
+
+    <!-- ตารางเขตบริการ + ตารางป่วยจาก -->
+    <section class="dashboard-grid">
+      <div class="panel">
+        <div class="panel-header">
+          <h2>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"></rect><rect x="14" y="3" width="7" height="7" rx="1"></rect><rect x="3" y="14" width="7" height="7" rx="1"></rect><rect x="14" y="14" width="7" height="7" rx="1"></rect></svg>
+            เขตบริการ — เรียงตามอัตราป่วย
+          </h2>
+        </div>
+        <table class="data-table">
+          <thead>
+            <tr><th>เขตบริการ</th><th>จำนวนเคส</th><th>ประชากร</th><th>อัตราป่วย/แสนประชากร</th></tr>
+          </thead>
+          <tbody id="service-zone-table-body"></tbody>
+        </table>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header">
+          <h2>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><circle cx="12" cy="12" r="9"></circle></svg>
+            ป่วยจาก
+          </h2>
+        </div>
+        <table class="data-table">
+          <thead>
+            <tr><th>หมวด</th><th>จำนวน</th><th>ร้อยละ</th></tr>
+          </thead>
+          <tbody id="outside-area-table-body"></tbody>
+        </table>
+      </div>
+    </section>
+
   </main>
 
   <footer class="footer">
-    AI Disease Surveillance &amp; Response Platform — Prototype v1 · ข้อมูลทั้งหมดเป็นข้อมูลจำลองเพื่อการสาธิตเท่านั้น
+    จัดทำโดยกลุ่มงานเวชกรรมสังคม กองการแพทย์ — AI Disease Surveillance &amp; Response Platform (Prototype v1) · ข้อมูลทั้งหมดเป็นข้อมูลจำลองเพื่อการสาธิตเท่านั้น ไม่ใช่ข้อมูลผู้ป่วยจริง
   </footer>
 
   </div>

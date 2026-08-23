@@ -2163,3 +2163,187 @@ main.content-wrap {
   font-size: var(--fs-caption);
   color: var(--color-text-primary);
 }
+
+.zone-risk-summary {
+  margin-top: var(--space-2);
+}
+
+/* =========================================================
+   Outbreak Dashboard — additions 2026-08-23 (รอบ 22)
+   Stat tiles / attack-rate card / gender-age-occupation-community
+   tables / weekly seasonal chart / DF-DHF donut / outside-area table.
+   Category tints reuse DESIGN.md ข้อ 2.1's rule: success/warning/danger
+   stay reserved for real epidemiological status, so these new
+   "หมวดข้อมูล" cards use plain 10-15% tints of primary/secondary/accent
+   instead (primary = ในพื้นที่, secondary = นอกพื้นที่, accent = รวม/สรุป).
+   ========================================================= */
+
+/* ---------------------------------------------------------
+   Stat tiles (5-up, replaces the old 4-card KPI grid)
+   --------------------------------------------------------- */
+.stat-tile-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: var(--space-2);
+}
+
+.stat-tile {
+  padding: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border-radius: var(--radius-panel);
+  border: 1px solid var(--color-border);
+}
+
+.stat-tile.tone-primary-tint {
+  background: rgba(122, 106, 83, 0.10);
+  border-color: rgba(122, 106, 83, 0.30);
+}
+.stat-tile.tone-secondary-tint {
+  background: rgba(138, 154, 91, 0.10);
+  border-color: rgba(138, 154, 91, 0.30);
+}
+.stat-tile.tone-accent-tint {
+  background: rgba(201, 166, 107, 0.12);
+  border-color: rgba(201, 166, 107, 0.35);
+}
+
+.stat-tile-value {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  line-height: 1.15;
+}
+
+.stat-tile-label {
+  font-size: var(--fs-small);
+  color: var(--color-text-secondary);
+  font-weight: 500;
+}
+
+@media (max-width: 1240px) {
+  .stat-tile-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 720px) {
+  .stat-tile-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ---------------------------------------------------------
+   Two-column grid (attack-rate card + gender table, pie + occupation,
+   service-zone table + outside-area table)
+   --------------------------------------------------------- */
+.two-col-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+  align-items: start;
+}
+
+@media (max-width: 1080px) {
+  .two-col-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ---------------------------------------------------------
+   อัตราป่วยต่อแสนประชากร card
+   --------------------------------------------------------- */
+.rate-card-value {
+  font-size: 44px;
+  font-weight: 700;
+  color: var(--color-primary);
+  line-height: 1.1;
+}
+
+.rate-card-unit {
+  font-size: var(--fs-small);
+  color: var(--color-text-secondary);
+  font-weight: 600;
+  margin-top: 2px;
+}
+
+.rate-card-note {
+  margin-top: var(--space-2);
+  font-size: var(--fs-caption);
+  color: var(--color-text-secondary);
+}
+
+/* ---------------------------------------------------------
+   Mini stat list (age oldest/median/youngest) — reuses the same
+   bordered-row look as .team-item/.cluster-item
+   --------------------------------------------------------- */
+.mini-stat-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.mini-stat-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-panel);
+  background: var(--color-background);
+}
+
+.mini-stat-label {
+  font-size: var(--fs-small);
+  color: var(--color-text-secondary);
+  font-weight: 600;
+}
+
+.mini-stat-value {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+/* ---------------------------------------------------------
+   DF/DHF diagnosis donut chart
+   --------------------------------------------------------- */
+.pie-chart-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.pie-chart-svg svg {
+  display: block;
+}
+
+.pie-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* [hidden] must win over the .pie-legend flex display above — same fix
+   already applied to .zone-community-list[hidden] (รอบ 21) for the same
+   equal-specificity reason. */
+.pie-legend[hidden] {
+  display: none;
+}
+
+.pie-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--fs-small);
+  color: var(--color-text-secondary);
+}
+
+.pie-legend-swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
