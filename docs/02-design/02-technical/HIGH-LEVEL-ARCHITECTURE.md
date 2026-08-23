@@ -107,6 +107,60 @@ sequenceDiagram
   Dash-->>Dash: สรุป KPI/HI-CI ส่งผู้บริหาร
 ```
 
+## 3B. Data Flow ตาม User Journey — Outbreak Dashboard
+
+Diagram นี้แปลงมาจากขั้นตอนจริงใน [[../01-prototypes/USER-JOURNEY-outbreak-dashboard|USER-JOURNEY-outbreak-dashboard.md]] (persona: สมศักดิ์ สุขวัฒน์ เจ้าหน้าที่เฝ้าระวังโรค) แบบ 1:1 ต่อ step — ใช้คำศัพท์ปัจจุบันที่ตรงกับ `prototypes/v1/index.html` จริง (เช่น "เขตบริการ", "Stat tiles", "แผนที่ความเสี่ยงตามเขตบริการ") แทนคำเดิมในเอกสาร journey ("ภูมิภาค", "KPI Cards") ที่เขียนไว้ก่อนหน้าจะปรับโครงสร้าง 2 รอบหลังสุด
+
+```mermaid
+sequenceDiagram
+  participant จนท as เจ้าหน้าที่เฝ้าระวังโรค
+  participant Dash as Outbreak Dashboard UI
+  participant Filter as Filter State (โรค/เขตบริการ/ช่วงวัน)
+
+  Note over จนท,Dash: Journey Step 1 — เปิด index.html (Dashboard)
+  จนท->>Dash: เปิดหน้า Dashboard
+  Dash-->>จนท: Left rail แสดง wordmark, เมนู Dashboard active, เมนูอื่น placeholder
+
+  Note over จนท,Dash: Journey Step 2 — ดู Stat tiles ภาพรวม
+  Dash-->>จนท: แสดง Stat tiles ทุกโรค/ทุกเขตบริการ (ค่าเริ่มต้น)
+
+  Note over จนท,Dash: Journey Step 3 — สังเกตแผนที่ความเสี่ยงตามเขตบริการ
+  Dash-->>จนท: แสดงครบทุกเขตบริการ พร้อมสีระดับความเสี่ยง + จำนวนเคสสะสม
+
+  Note over จนท,Filter: Journey Step 4 — กรอง Filter (โรค+เขตบริการ)
+  จนท->>Filter: ตั้งค่าตัวกรองให้แคบลง
+  Filter-->>Dash: เงื่อนไข AND ใหม่
+  Dash-->>จนท: ทุก panel อัปเดตพร้อมกันทันที
+
+  Note over จนท,Dash: Journey Step 5 — ดู Trend Chart
+  Dash-->>จนท: กราฟรายวัน + ค่าเฉลี่ยเคลื่อนที่ 3 วัน ตามตัวกรองที่ตั้งไว้
+
+  Note over จนท,Dash: Journey Step 6 — ดู Recent Alerts Panel
+  Dash-->>จนท: รายการแจ้งเตือนที่ตรงเงื่อนไข พร้อม severity/พื้นที่/เวลา
+
+  alt Step 7a — เห็นสัญญาณชัดเจน (วิกฤต + แนวโน้มเพิ่ม)
+    จนท->>จนท: ตัดสินใจ escalate ผ่านช่องทางนอกระบบ (โทร/LINE)
+    Note over จนท: เมนู Cases/Alerts ยังเป็น placeholder — Backlog: FEAT-INTAKE-08, FEAT-ALERT-03
+  else Step 7b — ไม่พบสัญญาณผิดปกติ
+    จนท->>Filter: กด "ล้างตัวกรอง"
+    Filter-->>Dash: คืนค่าเริ่มต้น
+    Dash-->>จนท: ทุก panel กลับสู่มุมมองภาพรวม
+  end
+```
+
+### Journey Step ↔ Diagram interaction ↔ Feature ID
+
+| Journey Step | Interaction ใน Diagram | Feature ID |
+|---|---|---|
+| 1. เปิด index.html (Dashboard) | จนท->>Dash: เปิดหน้า Dashboard / Dash-->>จนท: left rail + เมนู | FEAT-DASH-01 |
+| 2. ดู Stat tiles ภาพรวม | Dash-->>จนท: แสดง Stat tiles ค่าเริ่มต้น | FEAT-DASH-02 |
+| 3. สังเกตแผนที่ความเสี่ยงตามเขตบริการ | Dash-->>จนท: แสดงครบทุกเขตบริการ + สีความเสี่ยง | FEAT-DASH-03 |
+| 4. กรอง Filter (โรค+เขตบริการ) | จนท->>Filter / Filter-->>Dash / Dash-->>จนท: panel อัปเดตพร้อมกัน | FEAT-DASH-06 |
+| 5. ดู Trend Chart | Dash-->>จนท: กราฟรายวัน + ค่าเฉลี่ยเคลื่อนที่ 3 วัน | FEAT-DASH-04 |
+| 6. ดู Recent Alerts Panel | Dash-->>จนท: รายการแจ้งเตือนตรงเงื่อนไข | FEAT-DASH-05 |
+| 7a. เห็นสัญญาณชัดเจน → escalate นอกระบบ | alt branch: จนท->>จนท ตัดสินใจ escalate | Backlog: FEAT-INTAKE-08, FEAT-ALERT-03 |
+| 7b. ไม่พบสัญญาณผิดปกติ → ล้างตัวกรอง | else branch: จนท->>Filter / Filter-->>Dash / Dash-->>จนท | FEAT-DASH-06 |
+
 ## 4. ข้อจำกัดทางเทคนิคที่ต้องพิจารณาก่อนสร้างจริง
 
 อ้างอิงจากคำเตือนที่มีอยู่แล้วใน ROADMAP.md:
