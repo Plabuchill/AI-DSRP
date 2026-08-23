@@ -20,10 +20,10 @@ Feature ID ในเอกสารนี้เป็นการตั้งข
 |---|---|---|---|
 | FEAT-DASH-01 | Navigation (Left Rail) | wordmark, active state, เมนู placeholder ของหน้าอื่นที่ยังไม่เปิดใช้ | ✅ |
 | FEAT-DASH-02 | KPI Cards | Total Active Cases, New Cases Today, Active Outbreak Zones, Overall Risk Level | ✅ |
-| FEAT-DASH-03 | Region Risk Grid | 6 ภาค ระบายสีตามระดับความเสี่ยง (ปกติ/เฝ้าระวัง/วิกฤต) | ✅ |
+| FEAT-DASH-03 | Zone Risk Grid | 4 เขตบริการ (ครอบคลุมชุมชนย่อยรวม 63 ชุมชน) ระบายสีตามระดับความเสี่ยง (ปกติ/เฝ้าระวัง/วิกฤต) พร้อม accordion ขยายดูรายชื่อชุมชน/ทีมสอบสวนโรคที่รับผิดชอบต่อเขต | ✅ |
 | FEAT-DASH-04 | Trend Chart | แนวโน้มเคสรายวัน + เส้นค่าเฉลี่ยเคลื่อนที่ 3 วัน | ✅ |
 | FEAT-DASH-05 | Recent Alerts Panel | รายการแจ้งเตือนล่าสุด พร้อม severity badge | ✅ |
-| FEAT-DASH-06 | Filter | กรองตามโรค/ภูมิภาค/ช่วงวันที่ ทั้ง 4 ส่วนข้างต้นพร้อมกัน | ✅ |
+| FEAT-DASH-06 | Filter | กรองตามโรค/เขตบริการ/ช่วงวันที่ ทั้ง 4 ส่วนข้างต้นพร้อมกัน | ✅ |
 
 > Test Spec ของโมดูลนี้: [[../../03-testing/01-test-plan/v1/TEST-PLAN|TEST-PLAN.md]] / [[../../03-testing/01-test-plan/v1/ACCEPTANCE-CRITERIA|ACCEPTANCE-CRITERIA.md]] — FR-DASH-01 ถึง 06 ตรงกับ FEAT-DASH-01 ถึง 06 ข้างต้นแบบ 1:1
 > User Journey ของโมดูลนี้: [[../../02-design/01-prototypes/USER-JOURNEY-outbreak-dashboard|USER-JOURNEY-outbreak-dashboard.md]]

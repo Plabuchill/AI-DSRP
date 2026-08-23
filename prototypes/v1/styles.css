@@ -523,11 +523,13 @@ main.content-wrap {
 }
 
 /* ---------------------------------------------------------
-   Region risk grid ("map")
+   Zone risk grid ("map") — 4 เขตบริการ (รอบ 21: was a 6-region grid,
+   repeat(3,1fr); 2 columns reads better now with the community
+   accordion list that can expand under each cell)
    --------------------------------------------------------- */
 .region-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: var(--space-2);
 }
 
@@ -844,7 +846,7 @@ main.content-wrap {
     grid-template-columns: 1fr;
   }
   .region-grid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: 1fr;
   }
   .filter-bar {
     flex-direction: column;
@@ -2098,4 +2100,66 @@ main.content-wrap {
   .close-editor {
     min-width: 160px;
   }
+}
+
+/* =========================================================
+   Outbreak Dashboard — additions 2026-08-23 (รอบ 21)
+   Zone risk grid community accordion (6 ภาคทั่วประเทศ -> เขตบริการ 4 เขต
+   + ชุมชน 63 แห่ง). Reuses .region-cell/.region-grid/.badge/.badge-neutral
+   as-is (no new container/border/color language) — only the toggle
+   button + expanded community list below each cell are new.
+   ========================================================= */
+.zone-toggle-btn {
+  margin-top: 4px;
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-family);
+  font-size: var(--fs-caption);
+  font-weight: 600;
+  color: var(--color-primary);
+  background: none;
+  border: none;
+  padding: 2px 0;
+  cursor: pointer;
+}
+
+.zone-toggle-btn:hover {
+  text-decoration: underline;
+}
+
+.zone-toggle-btn svg {
+  flex-shrink: 0;
+  transition: transform 0.15s ease;
+}
+
+.zone-toggle-btn[aria-expanded="true"] svg {
+  transform: rotate(180deg);
+}
+
+.zone-community-list {
+  margin-top: 6px;
+  padding-top: var(--space-1);
+  border-top: 1px dashed var(--color-border);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.zone-community-list[hidden] {
+  display: none;
+}
+
+.zone-community-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.zone-community-name {
+  font-size: var(--fs-caption);
+  color: var(--color-text-primary);
 }

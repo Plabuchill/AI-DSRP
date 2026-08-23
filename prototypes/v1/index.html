@@ -88,7 +88,7 @@
     <div class="page-header">
       <div class="page-header-title">
         <h1>Outbreak Dashboard</h1>
-        <p class="body-secondary">ภาพรวมการเฝ้าระวังโรคระบาดทั่วประเทศแบบเรียลไทม์ (ข้อมูลจำลอง)</p>
+        <p class="body-secondary">ภาพรวมการเฝ้าระวังโรคระบาดในเขตเทศบาลแบบเรียลไทม์ (ข้อมูลจำลอง)</p>
       </div>
     </div>
 
@@ -98,8 +98,8 @@
         <select id="filter-disease"></select>
       </div>
       <div class="filter-field">
-        <label for="filter-region">ภูมิภาค (Region)</label>
-        <select id="filter-region"></select>
+        <label for="filter-zone">เขตบริการ (Service Zone)</label>
+        <select id="filter-zone"></select>
       </div>
       <div class="filter-field">
         <label for="filter-range">ช่วงเวลา (Date Range)</label>
@@ -179,11 +179,11 @@
           <div class="panel-header">
             <h2>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 6v16l7-4 8 4 7-4V2l-7 4-8-4-7 4Z"></path><path d="M8 2v16M16 6v16"></path></svg>
-              แผนที่ความเสี่ยงตามภูมิภาค
+              แผนที่ความเสี่ยงตามเขตบริการ
             </h2>
-            <span class="body-secondary" id="region-panel-subtitle">เคสสะสมช่วง 14 วันล่าสุด</span>
+            <span class="body-secondary" id="zone-panel-subtitle">เคสสะสมช่วง 14 วันล่าสุด</span>
           </div>
-          <div class="region-grid" id="region-grid"></div>
+          <div class="region-grid" id="zone-grid"></div>
           <div class="region-legend">
             <div class="region-legend-item"><span class="risk-dot risk-success"></span>ปกติ / ควบคุมได้</div>
             <div class="region-legend-item"><span class="risk-dot risk-warning"></span>เฝ้าระวัง</div>
