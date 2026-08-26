@@ -29,7 +29,7 @@ Skill นี้เป็นสมาชิกลำดับที่ 3 ขอ�
 รับได้หลายทาง ไม่จำเป็นต้องมีครบ:
 
 - **Requirement ทางเทคนิค** — เช่น non-functional requirement (scale, security, compliance/PDPA), ข้อจำกัดที่ต้องยึด (ต้องใช้ LINE OA, ต้องเก็บข้อมูลในประเทศ), เทคโนโลยีที่อยากใช้/ห้ามใช้, งบ/ทีมที่มี
-- **อ้างอิงเอกสารที่มีอยู่แล้ว** — `ROADMAP.md` (phase ที่จะโฟกัส), `FEATURE-LIST.md` (Feature ID ที่ต้องออกแบบรองรับ), `docs/02-design/01-prototypes/USER-JOURNEY-*.md` (ลำดับขั้นตอนที่ผู้ใช้แต่ละบทบาทเดินผ่านระบบ — **ใช้เป็นฐานหลักของ Data Flow diagram** ดู Step 3), `prototypes/vN/BUILD-PLAN.md` (สิ่งที่ prototype ทำไปแล้ว ต้องมี architecture รองรับ)
+- **อ้างอิงเอกสารที่มีอยู่แล้ว** — `ROADMAP.md` (phase ที่จะโฟกัส), `FEATURE-LIST.md` (Feature ID ที่ต้องออกแบบรองรับ), `docs/02-design/01-prototypes/USER-JOURNEY-*.md` (ลำดับขั้นตอนที่ผู้ใช้แต่ละบทบาทเดินผ่านระบบ — **ใช้เป็นฐานหลักของ Data Flow diagram** ดู Step 3), `prototypes/vN/BUILD-PLAN.md` (สิ่งที่ prototype ทำไปแล้ว ต้องมี architecture รองรับ), `docs/02-design/02-technical/TECH-STACK.md` (ถ้ามี — เทคโนโลยีจริงที่ยืนยันแล้วต่อ component ดู "Tech Stack Integration" ท้าย Step 3)
 - **คำถามเปิด** — เช่น "ควรออกแบบระบบยังไงดี" โดยไม่มี input อื่น ให้ตอบด้วยการถามกลับว่าจะโฟกัสที่ทั้งระบบ หรือเฉพาะ module/phase ไหนก่อน อย่าเดา scope เอง
 
 ถ้า module ที่จะทำ Data Flow ยังไม่มี User Journey doc ให้บันทึกเป็นจุดที่ต้องถามใน Step 3 (Ambiguity Protocol) ว่าจะเขียน Data Flow จาก Feature List แทน (เร็วกว่าแต่หยาบกว่า) หรือสร้าง User Journey ก่อน (ตรงกับ flow ผู้ใช้จริงกว่าแต่ต้องใช้เวลาเพิ่ม) — ไม่ต้องเดาเอง
@@ -85,7 +85,17 @@ Build Plan ควรมีอย่างน้อย:
 5. **ขอบเขต Decision Log/ADR** — จะบันทึกในไฟล์เดียวกัน หรือแยกไฟล์ต่อ decision
 6. **Reference ที่ใช้** — ROADMAP.md phase ไหน, Feature ID ไหนจาก FEATURE-LIST.md, User Journey ไหน, BUILD-PLAN.md ของ prototype ไหน (ถ้ามี)
 7. **Version decision** — แก้ในที่ หรือ archive แล้วเขียนใหม่ (จาก Step 2)
-8. **ยืนยัน**: เอกสารรอบนี้เป็น **conceptual** — ไม่ผูกมัดกับ technical stack เจาะจง เว้นแต่ผู้ใช้ระบุมาชัดเจนใน Requirement/Ambiguity Protocol
+8. **ยืนยัน**: เอกสารรอบนี้เป็น **conceptual** — ไม่ผูกมัดกับ technical stack เจาะจง เว้นแต่ผู้ใช้ระบุมาชัดเจนใน Requirement/Ambiguity Protocol หรือมี `TECH-STACK.md` ยืนยันไว้แล้ว (ดูข้อ 9)
+9. **Tech Stack Integration** (ถ้ามี `TECH-STACK.md`) — ระบุว่า component ไหนใน Component Breakdown จะสลับจาก capability-level เป็นเทคโนโลยีจริงตามที่ยืนยันไว้ **เป็นรายcomponent** (mixed state ได้ — component ที่ยังไม่ยืนยันคง conceptual ตามปกติ ไม่ต้องรอให้ครบทุกอันก่อนอัปเดต)
+
+### Tech Stack Integration — วิธีใช้ TECH-STACK.md เมื่อมี
+
+ถ้าพบ `docs/02-design/02-technical/TECH-STACK.md` ในโปรเจกต์:
+
+- อ่านตาราง "Component ↔ เทคโนโลยีที่เลือก" เทียบกับรายชื่อ component ใน Component Breakdown ของ `HIGH-LEVEL-ARCHITECTURE.md`
+- component ที่**มีแถวยืนยันแล้ว** ใน `TECH-STACK.md` — เพิ่มเทคโนโลยีจริงในคอลัมน์ "หน้าที่" หรือชื่อ component เอง (เช่น "Database" → "Database (เทคโนโลยีที่ยืนยัน: ...)"), และ node label ใน diagram Target State อาจเพิ่ม suffix เทคโนโลยีจริงในวงเล็บได้
+- component ที่**ยังไม่มีแถวยืนยัน** — คง capability-level เดิมไว้ตามปกติ ไม่เดาเทคโนโลยีเอง
+- **ไม่ต้องแก้ `TECH-STACK.md`** — เอกสารนั้นเป็นต้นทางที่ skill `tech-stack-builder` ดูแลเอง skill นี้แค่**อ่าน**เพื่ออ้างอิง
 
 ### Ambiguity Protocol (บังคับ ไม่มีข้อยกเว้น)
 

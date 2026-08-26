@@ -43,6 +43,8 @@ sequenceDiagram
 
 **กติกา**: ทุก decision point ในไดอะแกรมต้องมาจาก business rule ที่ระบุไว้จริงในหัวข้อ 3 (ไม่คิดขึ้นใหม่เอง) — ถ้า business rule ยังไม่ชัดเจน ต้องเป็นจุดที่ผ่าน Ambiguity Protocol มาแล้วใน Build Plan
 
+**ถ้า `docs/02-design/02-technical/TECH-STACK.md` ยืนยัน vendor/service จริงของ component ที่ flow นี้เรียกใช้แล้ว** — ตั้งชื่อ participant เป็นชื่อ vendor จริงแทน placeholder ข้างบน (เช่น `participant OCR as [ชื่อ vendor จริง]`) และเพิ่ม error/retry branch ที่ตรงกับพฤติกรรมจริงของ vendor นั้น (ถ้ามีระบุมาใน Build Plan) — ถ้ายังไม่ยืนยัน คง placeholder capability-level ไว้ตามเดิม
+
 ### 3. State / Status Diagram (ถ้า Build Plan รวมหัวข้อนี้สำหรับ flow นี้)
 
 ใช้เมื่อ entity ที่เกี่ยวข้องมี lifecycle/สถานะหลายขั้น (เช่นสถานะเคส, สถานะงานพ่น) — Mermaid `stateDiagram-v2`:
@@ -89,7 +91,7 @@ stateDiagram-v2
 
 - **Sequence Flow ต้องมีเสมอ ต่อ 1 flow** — เป็นหัวข้อเดียวที่ไม่สามารถตัดออกจาก Build Plan ได้
 - **ขยายรายละเอียด ไม่ใช่ซ้ำของเดิม** — ถ้า `HIGH-LEVEL-ARCHITECTURE.md` มี message เดียวสำหรับ step นี้อยู่แล้ว หัวข้อ 2 ต้องแตกบรรทัดนั้นให้ละเอียดขึ้น ไม่ใช่ copy diagram เดิมมาวาง
-- **Conceptual ก่อน physical เสมอเว้นแต่ระบุมา** — ห้ามเลือกยี่ห้อ/เทคโนโลยีเจาะจงเอง (ภาษา, message queue, retry library) ใช้คำอธิบายเชิงบทบาท/หน้าที่แทน
+- **Conceptual ก่อน physical เสมอเว้นแต่ระบุมา หรือมี `TECH-STACK.md` ยืนยันไว้แล้ว** — ห้ามเลือกยี่ห้อ/เทคโนโลยีเจาะจงเอง (ภาษา, message queue, retry library) ใช้คำอธิบายเชิงบทบาท/หน้าที่แทน ยกเว้น component ที่ `TECH-STACK.md` ยืนยัน vendor/service จริงแล้ว ให้อ้างชื่อจริงตามนั้นได้ (ดูหัวข้อ 2)
 - **Traceability มาก่อนความสมบูรณ์แบบของ diagram** — ทุก flow ต้องโยงกลับไป Feature ID ได้ และควรโยงไปยัง entity/operation/component ที่มีอยู่แล้วถ้ามี
 - **ห้ามขัดแย้งกับ business rule ที่ ROADMAP.md/DATA-MODEL.md/API-SPEC.md ระบุไว้แล้ว** — อ่านให้ครบก่อนออกแบบ diagram ใหม่
 - **Mermaid เท่านั้น** — ห้ามอ้างอิงไฟล์ภาพนอก .md หรือใช้ diagram tool ที่ต้อง render แยก เพื่อให้เปิดดูได้ในทุก editor/Obsidian/GitHub

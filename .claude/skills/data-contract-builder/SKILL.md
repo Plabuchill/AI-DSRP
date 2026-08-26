@@ -29,7 +29,7 @@ Skill นี้เป็นสมาชิกลำดับที่ 4 ขอ�
 รับได้หลายทาง ไม่จำเป็นต้องมีครบ:
 
 - **Requirement ด้านข้อมูล/API ตรงๆ** — เช่น "ต้องเก็บประวัติเคสย้อนหลัง", "ต้องมี API ให้ mobile app เรียกดู spot map", ข้อจำกัดด้านข้อมูล (PDPA, ต้องเก็บ audit trail, ต้อง versioning ประวัติแก้ไข)
-- **อ้างอิงเอกสารที่มีอยู่แล้ว** — `ROADMAP.md`, `FEATURE-LIST.md` (Feature ID ที่ต้องมี data/API รองรับ), `HIGH-LEVEL-ARCHITECTURE.md` (ถ้ามี, ดูว่า component ไหนต้องพึ่ง data อะไร), `prototypes/vN/BUILD-PLAN.md` และ mock data structure ใน `prototypes/vN/script.js`/`*.js` แต่ละหน้า (มัก reveal โครงข้อมูลจริงที่ UI ต้องการ เช่น field ที่ตารางในหน้านั้นแสดง)
+- **อ้างอิงเอกสารที่มีอยู่แล้ว** — `ROADMAP.md`, `FEATURE-LIST.md` (Feature ID ที่ต้องมี data/API รองรับ), `HIGH-LEVEL-ARCHITECTURE.md` (ถ้ามี, ดูว่า component ไหนต้องพึ่ง data อะไร), `prototypes/vN/BUILD-PLAN.md` และ mock data structure ใน `prototypes/vN/script.js`/`*.js` แต่ละหน้า (มัก reveal โครงข้อมูลจริงที่ UI ต้องการ เช่น field ที่ตารางในหน้านั้นแสดง), `docs/02-design/02-technical/TECH-STACK.md` (ถ้ามี — Database engine/API protocol ที่ยืนยันแล้ว ดู "Tech Stack Integration" ท้าย Step 3)
 - **คำถามเปิด** — เช่น "ระบบนี้ควรเก็บข้อมูลยังไง" โดยไม่มี input อื่น ให้ถามกลับว่าจะโฟกัส module/feature ไหนก่อน อย่าเดา scope เอง (เหมือน 3 skill ก่อนหน้า)
 
 ถ้าจุดใดตีความได้หลายแบบ ให้เก็บไว้ถามรวมกันใน Step 3 (Ambiguity Protocol) ไม่ต้องถามทันทีทีละจุด
@@ -71,9 +71,19 @@ Build Plan ควรมีอย่างน้อย:
 1. **Scope** — ทั้งระบบ / เฉพาะ module ไหน (map จาก Feature ID)
 2. **Database Schema/Spec ที่จะทำ** — รายชื่อ entity/table หลักที่คาดว่าจะมี, ระดับความละเอียด (แค่ entity+attribute หลัก หรือรวม constraint/business rule ด้วย)
 3. **API Spec ที่จะทำ** — รายชื่อ resource/operation หลักที่คาดว่าจะมี, ระดับความละเอียด (แค่ operation list หรือรวม request/response payload ตัวอย่างด้วย)
-4. **สิ่งที่ conceptual จงใจไม่ระบุรอบนี้** — เช่น ยังไม่ระบุ database engine, ยังไม่ระบุ REST vs GraphQL, ยังไม่ระบุ auth mechanism เจาะจง (เว้นแต่ผู้ใช้ยืนยันมา)
+4. **สิ่งที่ conceptual จงใจไม่ระบุรอบนี้** — เช่น ยังไม่ระบุ database engine, ยังไม่ระบุ REST vs GraphQL, ยังไม่ระบุ auth mechanism เจาะจง (เว้นแต่ผู้ใช้ยืนยันมา หรือมี `TECH-STACK.md` ยืนยันไว้แล้ว — ดูข้อ 7)
 5. **Reference ที่ใช้** — Feature ID ไหนจาก FEATURE-LIST.md, component ไหนจาก HIGH-LEVEL-ARCHITECTURE.md (ถ้ามี), mock data structure จากไฟล์ prototype ไหน
 6. **Version decision** — แก้ในที่ หรือ archive แล้วเขียนใหม่ (จาก Step 2) ต่อไฟล์
+7. **Tech Stack Integration** (ถ้ามี `TECH-STACK.md`) — ระบุว่า entity/operation ไหนจะเพิ่มรายละเอียดจริงตามที่ยืนยันไว้ (เป็นรายจุด mixed state ได้)
+
+### Tech Stack Integration — วิธีใช้ TECH-STACK.md เมื่อมี
+
+ถ้าพบ `docs/02-design/02-technical/TECH-STACK.md`:
+
+- **DATA-MODEL.md**: ถ้า Database engine ถูกยืนยันแล้ว ให้เพิ่ม**คอลัมน์ Native Type คู่กับ Conceptual Type เดิม**ใน Entity Dictionary ของ entity ที่อยู่ใน scope (ไม่ลบ/แทนที่ conceptual type — เพิ่มคอลัมน์ใหม่เท่านั้น) attribute ที่ยังไม่แน่ใจ native type ให้เว้นว่างพร้อม flag ว่าต้องยืนยันเพิ่ม ไม่เดา
+- **API-SPEC.md**: ถ้า protocol (REST/GraphQL/RPC) และ auth mechanism ถูกยืนยันแล้ว ให้เพิ่ม**คอลัมน์ Endpoint Path / HTTP Verb / Auth Header จริงต่อ operation** ใน Operation List (เพิ่มคอลัมน์ ไม่ใช่เปลี่ยนคำอธิบาย operation แบบ conceptual เดิม)
+- entity/operation ที่ **TECH-STACK.md ยังไม่ยืนยัน** — คงคอลัมน์ conceptual เดิมไว้เฉยๆ ไม่ต้องเพิ่มคอลัมน์เปล่า
+- **ไม่ต้องแก้ `TECH-STACK.md`** — skill นี้แค่**อ่าน**เพื่ออ้างอิงเท่านั้น
 
 ### Ambiguity Protocol (บังคับ ไม่มีข้อยกเว้น)
 

@@ -35,7 +35,7 @@ Skill นี้เป็นสมาชิกลำดับที่ 5 ขอ�
 รับได้หลายทาง ไม่จำเป็นต้องมีครบ:
 
 - **Requirement เชิง process/logic ตรงๆ** — เช่น "อยากรู้ว่า OCR review ควร retry กี่ครั้งก่อน fallback ให้คนกรอกมือ", "logic การตัดสินใจว่า cluster ไหนน่าเชื่อถือควรเป็นยังไง", ข้อจำกัดเชิง flow (ต้องมี human-in-the-loop ก่อน auto-route เสมอ)
-- **อ้างอิงเอกสารที่มีอยู่แล้ว** — `ROADMAP.md`/`FEATURE-LIST.md` (Feature ID ที่ต้องออกแบบ flow รองรับ), `docs/02-design/01-prototypes/USER-JOURNEY-*.md` (ขั้นตอนระดับผู้ใช้ที่ detailed design ต้องขยายรายละเอียดภายใน), `HIGH-LEVEL-ARCHITECTURE.md` (component ไหนต้องมี logic นี้), `DATA-MODEL.md`/`API-SPEC.md` (entity/operation ที่ flow นี้อ่าน/เขียน), `prototypes/vN/BUILD-PLAN.md` และไฟล์ mock data (มัก reveal ลำดับขั้นตอน/validation ที่ prototype ทำไว้จริงแล้ว)
+- **อ้างอิงเอกสารที่มีอยู่แล้ว** — `ROADMAP.md`/`FEATURE-LIST.md` (Feature ID ที่ต้องออกแบบ flow รองรับ), `docs/02-design/01-prototypes/USER-JOURNEY-*.md` (ขั้นตอนระดับผู้ใช้ที่ detailed design ต้องขยายรายละเอียดภายใน), `HIGH-LEVEL-ARCHITECTURE.md` (component ไหนต้องมี logic นี้), `DATA-MODEL.md`/`API-SPEC.md` (entity/operation ที่ flow นี้อ่าน/เขียน), `prototypes/vN/BUILD-PLAN.md` และไฟล์ mock data (มัก reveal ลำดับขั้นตอน/validation ที่ prototype ทำไว้จริงแล้ว), `docs/02-design/02-technical/TECH-STACK.md` (ถ้ามี — vendor/service จริงที่ยืนยันแล้วต่อ flow เช่น OCR vendor ดู "Tech Stack Integration" ท้าย Step 3)
 - **คำถามเปิด** — เช่น "ช่วยออกแบบ flow การทำงานให้หน่อย" โดยไม่มี input อื่น ให้ถามกลับว่าจะโฟกัส feature/flow ไหนก่อน อย่าเดา scope เอง (เหมือน 4 skill ก่อนหน้า)
 
 ถ้าจุดใดตีความได้หลายแบบ ให้เก็บไว้ถามรวมกันใน Step 3 (Ambiguity Protocol) ไม่ต้องถามทันทีทีละจุด
@@ -84,7 +84,17 @@ Build Plan ควรมีอย่างน้อย:
 4. **ระดับความละเอียดของ Sequence Flow** — coarse (เฉพาะ decision point หลัก) หรือ step-by-step ละเอียดทุก validation/error branch (ดู Ambiguity Protocol)
 5. **Reference ที่ใช้** — Feature ID ไหนจาก FEATURE-LIST.md, User Journey step ไหนที่จะขยายรายละเอียด, component ไหนจาก HIGH-LEVEL-ARCHITECTURE.md, entity/operation ไหนจาก DATA-MODEL.md/API-SPEC.md
 6. **Version decision** — แก้ในที่ หรือ archive แล้วเขียนใหม่ (จาก Step 2)
-7. **ยืนยัน**: เอกสารรอบนี้เป็น **conceptual** — ไม่ผูกมัดกับ technical stack เจาะจง เว้นแต่ผู้ใช้ระบุมาชัดเจน
+7. **ยืนยัน**: เอกสารรอบนี้เป็น **conceptual** — ไม่ผูกมัดกับ technical stack เจาะจง เว้นแต่ผู้ใช้ระบุมาชัดเจน หรือมี `TECH-STACK.md` ยืนยันไว้แล้ว (ดูข้อ 8)
+8. **Tech Stack Integration** (ถ้ามี `TECH-STACK.md`) — ระบุว่า flow ไหนจะอ้าง vendor/service จริงตามที่ยืนยันไว้ (เป็นรายflow mixed state ได้)
+
+### Tech Stack Integration — วิธีใช้ TECH-STACK.md เมื่อมี
+
+ถ้าพบ `docs/02-design/02-technical/TECH-STACK.md` และ flow ที่กำลังออกแบบเกี่ยวข้องกับ component ที่มีแถวยืนยันแล้ว (เช่น flow ที่เรียก OCR/Document AI, Case Clustering, AI Vision QC):
+
+- ใน Sequence Flow diagram ให้**อ้างชื่อ service/vendor จริง**เป็นชื่อ participant (เช่น `participant OCR as [ชื่อ vendor จริง]` แทน `participant OCR as บริการ OCR`)
+- ใน Error & Exception Handling table ให้ระบุ**พฤติกรรม error/retry ที่ vendor นั้นมีจริง** (เช่น rate limit, error code, retry policy ที่แนะนำ) ตามที่ระบุมาใน `TECH-STACK.md`/Build Plan เท่านั้น — **ห้ามเดา/สมมติพฤติกรรมของ vendor เอง** ถ้า Build Plan ไม่ได้ระบุรายละเอียดนี้มา ให้คงเป็น error/retry เชิงแนวคิด (generic) แทน และ flag ว่ายังขาดรายละเอียด vendor จริง
+- flow ที่เกี่ยวกับ component ที่**ยังไม่มีแถวยืนยัน** — คง participant/error handling แบบ conceptual เดิมไว้ (mixed state ปกติ)
+- **ไม่ต้องแก้ `TECH-STACK.md`** — skill นี้แค่**อ่าน**เพื่ออ้างอิงเท่านั้น
 
 ### Ambiguity Protocol (บังคับ ไม่มีข้อยกเว้น)
 

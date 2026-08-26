@@ -13,9 +13,10 @@ model: inherit
 2. เนื้อหา `docs/02-design/01-prototypes/USER-JOURNEY-*.md` ที่เกี่ยวข้อง (ถ้ายึดเป็นแกนหลักของ flow ตามที่ตกลงใน Build Plan)
 3. เนื้อหา `HIGH-LEVEL-ARCHITECTURE.md`/`DATA-MODEL.md`/`API-SPEC.md` ที่เกี่ยวข้อง (ถ้ามี — ใช้อ้าง component/entity/operation ที่ flow นี้ต้องขยายรายละเอียด)
 4. เนื้อหา `prototypes/vN/BUILD-PLAN.md` และไฟล์ mock data (`*.js`) ที่เกี่ยวข้อง (ถ้ามีการอ้างอิง — ใช้ตรวจว่า logic/validation ที่ prototype ทำไว้จริงตรงกับ flow ที่ออกแบบไหม)
-5. Build Plan ที่ยืนยันแล้ว **รวมคำตอบของ Ambiguity Protocol ทุกข้อ** (ระดับความละเอียดของ Sequence Flow, โครงสร้างไฟล์, การรวม state diagram หรือไม่, ขอบเขต error handling, แกนอ้างอิงหลักของแต่ละ flow)
-6. Path ปลายทาง (ปกติ `docs/02-design/02-technical/DETAILED-DESIGN.md` หรือ path แยกต่อโมดูลถ้า Build Plan ตกลงแบบนั้น)
-7. ถ้าเป็นการแก้ไฟล์เดิม: เนื้อหาปัจจุบันทั้งหมด และส่วนที่ต้องแก้/เพิ่มเท่านั้น
+5. เนื้อหา `docs/02-design/02-technical/TECH-STACK.md` ถ้ามี (vendor/service จริงที่ยืนยันแล้วต่อ component/flow ไหนบ้าง)
+6. Build Plan ที่ยืนยันแล้ว **รวมคำตอบของ Ambiguity Protocol ทุกข้อ** (ระดับความละเอียดของ Sequence Flow, โครงสร้างไฟล์, การรวม state diagram หรือไม่, ขอบเขต error handling, แกนอ้างอิงหลักของแต่ละ flow, Tech Stack Integration ถ้ามี)
+7. Path ปลายทาง (ปกติ `docs/02-design/02-technical/DETAILED-DESIGN.md` หรือ path แยกต่อโมดูลถ้า Build Plan ตกลงแบบนั้น)
+8. ถ้าเป็นการแก้ไฟล์เดิม: เนื้อหาปัจจุบันทั้งหมด และส่วนที่ต้องแก้/เพิ่มเท่านั้น
 
 ## งานที่ต้องทำ
 
@@ -27,8 +28,12 @@ model: inherit
    - **Business Rule / Validation Logic table** — สรุป rule ที่ปรากฏใน diagram ให้เห็นภาพรวดเร็ว
    - **Error & Exception Handling table** — ตามขอบเขตที่ Build Plan ยืนยัน (ครบทุก error path / เฉพาะ business-critical / เท่ากับความลึกของเอกสาร QA)
    - **Traceability table**: Feature ID, Journey Step (ถ้ามี), Entity/Operation ที่เกี่ยวข้อง (ถ้ามี), Component ที่เกี่ยวข้อง (ถ้ามี)
-3. ถ้าเป็นการแก้ไฟล์เดิม ใช้ Edit แทน Write ทับทั้งไฟล์เมื่อเป็นไปได้ เพื่อไม่ให้ flow เดิมที่ใช้ได้ดีอยู่แล้วเสียหายโดยไม่จำเป็น
-4. ถ้าเป็นการสร้างไฟล์ใหม่ครั้งแรก (หรือแยกไฟล์ใหม่ต่อโมดูลตามที่ตกลง) ให้อัปเดต `docs/02-design/02-technical/index.md` เพิ่มลิงก์ไปไฟล์ใหม่ในหัวข้อ "เอกสารที่มีอยู่" ด้วย (ตาม pattern เดิมของไฟล์ index นี้)
+3. **ถ้าได้รับเนื้อหา `TECH-STACK.md` มาด้วย** และ flow นี้เกี่ยวข้องกับ component ที่มีแถวยืนยันแล้ว (เช่น เรียก OCR/Document AI, Case Clustering, AI Vision QC):
+   - ใน Sequence Flow ใช้**ชื่อ service/vendor จริง**เป็นชื่อ participant แทนชื่อ capability-level เดิม
+   - ใน Error & Exception Handling table ระบุ**พฤติกรรม error/retry ที่ vendor นั้นมีจริง** (rate limit, error code, retry policy) **ตามที่ระบุมาใน context/Build Plan เท่านั้น — ห้ามเดา/สมมติพฤติกรรม vendor เอง** ถ้าไม่มีรายละเอียดนี้มาให้คงเป็น error/retry เชิงแนวคิดไว้ และ flag ว่าขาดรายละเอียด vendor จริง
+   - flow ที่เกี่ยวกับ component ที่ยังไม่มีแถวยืนยัน — คง participant/error handling แบบ conceptual เดิมไว้ (mixed state ปกติ) — **ห้ามแก้ `TECH-STACK.md` เอง**
+4. ถ้าเป็นการแก้ไฟล์เดิม ใช้ Edit แทน Write ทับทั้งไฟล์เมื่อเป็นไปได้ เพื่อไม่ให้ flow เดิมที่ใช้ได้ดีอยู่แล้วเสียหายโดยไม่จำเป็น
+5. ถ้าเป็นการสร้างไฟล์ใหม่ครั้งแรก (หรือแยกไฟล์ใหม่ต่อโมดูลตามที่ตกลง) ให้อัปเดต `docs/02-design/02-technical/index.md` เพิ่มลิงก์ไปไฟล์ใหม่ในหัวข้อ "เอกสารที่มีอยู่" ด้วย (ตาม pattern เดิมของไฟล์ index นี้)
 
 ## หลักการ
 

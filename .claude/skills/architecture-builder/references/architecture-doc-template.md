@@ -51,6 +51,8 @@ flowchart TB
 | AI Services | ... | FEAT-...-NN |
 | External | ... | FEAT-...-NN |
 
+> ถ้ามี `docs/02-design/02-technical/TECH-STACK.md` และ component ไหนมีแถวยืนยันเทคโนโลยีแล้ว ให้เพิ่มเทคโนโลยีจริงต่อท้ายชื่อ/หน้าที่ของ component นั้นในคอลัมน์ "องค์ประกอบ" (เช่น "Database (เทคโนโลยีที่ยืนยัน: ...)") — component ที่ยังไม่ยืนยัน คง capability-level เดิมไว้ (mixed state ปกติ)
+
 ## 3. Data Flow หลัก (map ตาม User Journey)
 
 Diagram แบบ Mermaid `sequenceDiagram` ที่ **แปลงมาจากขั้นตอนจริงใน User Journey doc** ที่ยืนยันไว้ใน Build Plan (`docs/02-design/01-prototypes/USER-JOURNEY-*.md`) ไม่ใช่คิด use case ขึ้นใหม่เอง — แต่ละ step ของ journey ควรปรากฏเป็น 1 message/interaction ในไดอะแกรม เพื่อให้ผู้อ่านตาม journey ทีละ step แล้วเห็นว่าระบบ/ข้อมูลไหลยังไงในแต่ละ step นั้น
@@ -78,11 +80,11 @@ sequenceDiagram
 
 ## 4. Component Breakdown (ถ้า Build Plan รวม Container/Component level)
 
-ตารางหรือรายการอธิบายแต่ละ component/service ว่าทำหน้าที่อะไร, เชื่อมกับอะไร, และ**ไม่ผูกมัดกับ tech stack เจาะจง**เว้นแต่ Build Plan ระบุมา (ใช้คำอธิบายเชิง capability เช่น "บริการจัดเก็บไฟล์ต้นฉบับ" ไม่ใช่ "AWS S3" ถ้าไม่มีการยืนยันเทคโนโลยีจริง)
+ตารางหรือรายการอธิบายแต่ละ component/service ว่าทำหน้าที่อะไร, เชื่อมกับอะไร, และ**ไม่ผูกมัดกับ tech stack เจาะจง**เว้นแต่ Build Plan ระบุมา หรือ `TECH-STACK.md` ยืนยันไว้แล้วต่อ component นั้น (ใช้คำอธิบายเชิง capability เช่น "บริการจัดเก็บไฟล์ต้นฉบับ" ไม่ใช่ "AWS S3" ถ้าไม่มีการยืนยันเทคโนโลยีจริง)
 
 | Component | หน้าที่ | เชื่อมกับ | Feature ID |
 |---|---|---|---|
-| ... | ... | ... | FEAT-... |
+| ... (+ เทคโนโลยีจริงในวงเล็บถ้ายืนยันใน TECH-STACK.md แล้ว) | ... | ... | FEAT-... |
 
 ## 5. ข้อจำกัดทางเทคนิคที่ต้องพิจารณา
 

@@ -40,13 +40,15 @@ erDiagram
 
 รองรับ Feature: `FEAT-INTAKE-02`, `FEAT-DASH-*`
 
-| Attribute | Conceptual Type | จำเป็นต้องมี | คำอธิบาย |
-|---|---|---|---|
-| case_id | string (PK) | ใช่ | รหัสอ้างอิงเคสหลัก ไม่ซ้ำกันในระบบ |
-| patient_name | string | ใช่ | ชื่อ-สกุลผู้ป่วย |
-| onset_date | date | ใช่ | วันที่เริ่มป่วยตามที่รายงาน |
-| diagnosis_status | enum(รอตรวจสอบ, ยืนยันแล้ว) | ใช่ | สถานะ human-in-the-loop ก่อน auto-route |
-| community_id | reference → COMMUNITY | ใช่ | ชุมชนที่เคสนี้เกิดขึ้น |
+| Attribute | Conceptual Type | Native Type (ถ้ายืนยัน DB ใน TECH-STACK.md แล้ว) | จำเป็นต้องมี | คำอธิบาย |
+|---|---|---|---|---|
+| case_id | string (PK) | — | ใช่ | รหัสอ้างอิงเคสหลัก ไม่ซ้ำกันในระบบ |
+| patient_name | string | — | ใช่ | ชื่อ-สกุลผู้ป่วย |
+| onset_date | date | — | ใช่ | วันที่เริ่มป่วยตามที่รายงาน |
+| diagnosis_status | enum(รอตรวจสอบ, ยืนยันแล้ว) | — | ใช่ | สถานะ human-in-the-loop ก่อน auto-route |
+| community_id | reference → COMMUNITY | — | ใช่ | ชุมชนที่เคสนี้เกิดขึ้น |
+
+> คอลัมน์ Native Type ใส่เฉพาะเมื่อ `docs/02-design/02-technical/TECH-STACK.md` ยืนยัน Database engine แล้ว (เช่น `string` → `VARCHAR(255)`) — ถ้ายังไม่ยืนยัน ปล่อย `—` ไว้ ไม่เดา ไม่ลบคอลัมน์ Conceptual Type เดิมไม่ว่ากรณีใด
 
 ทำแบบนี้ต่อทุก entity ที่อยู่ใน scope ของ Build Plan — ถ้า entity ไหนมี business rule พิเศษ (เช่น "แก้ไขได้เฉพาะแถวที่ยังไม่ยืนยัน" ตามที่มีอยู่แล้วใน `prototypes/v1/case-intake.js`) ให้ใส่เป็นหมายเหตุท้ายตารางของ entity นั้น
 
@@ -70,11 +72,13 @@ erDiagram
 
 ### Module: Case Intake (`FEAT-INTAKE-*`)
 
-| Operation | Actor | วัตถุประสงค์ | Input (conceptual) | Output (conceptual) |
-|---|---|---|---|---|
-| ดึงรายการเคสที่รอตรวจสอบ | เจ้าหน้าที่ | แสดงตาราง OCR Review | filter: สถานะ, ช่วงวันที่ | list ของ CASE ที่สถานะ = รอตรวจสอบ |
-| แก้ไขข้อมูลเคสก่อนยืนยัน | เจ้าหน้าที่ | แก้ค่าที่ OCR ดึงผิด | case_id, field ที่แก้ + ค่าใหม่ | CASE ที่อัปเดตแล้ว |
-| ยืนยันเคส + ส่งแจ้งเตือน | เจ้าหน้าที่ | เปลี่ยนสถานะ + trigger แจ้งเตือนทีมสอบสวนโรค | case_id | CASE สถานะ = ยืนยันแล้ว + NOTIFICATION_LOG ใหม่ |
+| Operation | Actor | วัตถุประสงค์ | Input (conceptual) | Output (conceptual) | Endpoint/Verb/Auth (ถ้ายืนยันแล้ว) |
+|---|---|---|---|---|---|
+| ดึงรายการเคสที่รอตรวจสอบ | เจ้าหน้าที่ | แสดงตาราง OCR Review | filter: สถานะ, ช่วงวันที่ | list ของ CASE ที่สถานะ = รอตรวจสอบ | — |
+| แก้ไขข้อมูลเคสก่อนยืนยัน | เจ้าหน้าที่ | แก้ค่าที่ OCR ดึงผิด | case_id, field ที่แก้ + ค่าใหม่ | CASE ที่อัปเดตแล้ว | — |
+| ยืนยันเคส + ส่งแจ้งเตือน | เจ้าหน้าที่ | เปลี่ยนสถานะ + trigger แจ้งเตือนทีมสอบสวนโรค | case_id | CASE สถานะ = ยืนยันแล้ว + NOTIFICATION_LOG ใหม่ | — |
+
+> คอลัมน์ Endpoint/Verb/Auth ใส่เฉพาะเมื่อ `docs/02-design/02-technical/TECH-STACK.md` ยืนยัน protocol (REST/GraphQL/RPC) และ auth mechanism แล้ว (เช่น `GET /api/v1/cases?status=pending` + `Bearer token`) — operation ที่ยังไม่ยืนยัน ปล่อย `—` ไว้ ไม่เดา ไม่แก้คำอธิบาย conceptual เดิม
 
 ## 3. Payload ตัวอย่าง (ถ้า Build Plan รวมระดับ field-level)
 
