@@ -1,5 +1,7 @@
 # 03 - Task
 
+เอกสาร Task Breakdown จริง: [[TASK-LIST.md|TASK-LIST.md]]
+
 เก็บ **รายการงานย่อย (Task Breakdown)** ที่แตกออกมาจากแผนงานใน [[../02-plan/index|02-plan]] ให้อยู่ในระดับที่ลงมือทำได้จริง เช่น
 
 - To-do list ของแต่ละฟีเจอร์

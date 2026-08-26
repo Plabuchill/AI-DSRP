@@ -5,7 +5,7 @@
 ## Phase 0 — Prototype (เสร็จแล้ว)
 
 - [x] Design system (`DESIGN.md`) — Earth Tone + Minimalist + Muji
-- [x] Outbreak Dashboard — KPI, แผนที่ความเสี่ยงตามภูมิภาค, กราฟแนวโน้ม, การแจ้งเตือนล่าสุด, ตัวกรอง
+- [x] Outbreak Dashboard — KPI, แผนที่ความเสี่ยงตามภูมิภาค, กราฟแนวโน้ม, การแจ้งเตือนล่าสุด, ตัวกรอง (ครอบคลุม FEAT-DASH-01 ถึง 15 ตาม `FEATURE-LIST.md`/`TEST-PLAN.md` ที่อัปเดตแล้ว)
 - [x] Case Intake — mock OCR review table, human-in-the-loop confirm + แก้ไขข้อมูลก่อนยืนยัน, notification log, spot map + วงรัศมี 100 เมตร
 - [x] Case Analysis — case cluster map, ร่างรายงานสอบสวนโรค, chatbot ประสานงาน อสม. (mock)
 - [x] Control Plan — ร่างใบขออนุมัติเบิกน้ำมัน/น้ำยาเคมี, ร่างแผนปฏิบัติงานควบคุมโรค (mock)
@@ -26,12 +26,16 @@
 - **Geocoding API จริง** — แปลงที่อยู่เป็นพิกัดจริง แทน mock coordinate พร้อม fallback ปักหมุดด้วยมือเมื่อความแม่นยำต่ำ (UI ส่วนนี้ทำไว้ใน prototype แล้ว รอเชื่อม API)
 - **LINE OA API จริง** — ส่งแจ้งเตือนไปยังทีมสอบสวนโรคจริงตาม field ตำบล/หมู่บ้าน แทน mock notification log
 - **แก้ไขแถวที่ยืนยันแล้ว** — เพิ่ม flow unlock/ขอสิทธิ์แก้ไขข้อมูลที่ยืนยันไปแล้ว (ปัจจุบันแก้ได้เฉพาะแถว "รอตรวจสอบ")
+- [ ] ยืนยัน OCR/Document AI vendor และ Geocoding vendor ผ่านการสัมภาษณ์ `tech-stack-builder` รอบ 2 (FEAT-INTAKE-05, FEAT-INTAKE-07) — `TECH-STACK.md` ระบุสถานะ "ยังไม่สัมภาษณ์"
+- [ ] สร้าง `DETAILED-DESIGN.md` สำหรับ flow OCR Review (human-in-the-loop) ก่อนเริ่ม implement จริง (FEAT-INTAKE-02, FEAT-INTAKE-05)
 
 ## Phase 2 — ทีมสอบสวนโรค: วิเคราะห์เคสและร่างรายงาน
 
 - **วิเคราะห์การเชื่อมโยงเคส (case clustering)** — clustering ตามเวลา/พื้นที่/ความสัมพันธ์ผู้สัมผัส เพื่อช่วยดูว่าเคสไหนน่าจะเป็น cluster เดียวกัน — เป็นงาน statistical/spatial-temporal clustering จริง (ไม่ใช่แค่ LLM สรุปข้อความ) ต้องมีข้อมูลไทม์ไลน์/พิกัด/ผู้สัมผัสที่แม่นยำพอ และให้ AI เสนอเป็น "cluster ที่เป็นไปได้" เท่านั้น ให้นักระบาดวิทยายืนยันก่อนทุกครั้ง (human-in-the-loop เหมือน Case Intake) — cluster ผิดอาจทำให้ทุ่มทรัพยากรผิดพื้นที่
 - **ร่างรายงานสอบสวนโรค** — AI ดึงข้อมูลดิบ (จำนวนผู้สัมผัส, ไทม์ไลน์, ผลสอบสวน) มาร่างเป็นรายงานฉบับส่งผู้บริหาร ให้นักวิชาการแก้ไข/เติมรายละเอียดต่อ (เสี่ยงต่ำ เพราะมีคนตรวจทานก่อนใช้จริงอยู่แล้ว)
 - **Chatbot ช่วยประสานงาน อสม. เบื้องต้น** — นัดหมาย/แจ้งพื้นที่ก่อนโทรจริง — ต้องจำกัดสิทธิ์ให้ใช้ได้แค่นัดหมาย/แจ้งพื้นที่เบื้องต้นเท่านั้น ห้ามส่งข้อมูลเคสละเอียดผ่าน chatbot (ความเสี่ยง PDPA) และต้องมี fallback ให้โทรจริงได้เสมอสำหรับเคสเร่งด่วน
+- [ ] ยืนยัน Case Clustering library/service ผ่าน `tech-stack-builder` รอบ 2 (FEAT-ANALYSIS-04) — อ้างจาก `TECH-STACK.md`
+- [ ] สร้าง `DETAILED-DESIGN.md` สำหรับ flow Case Clustering decision (human-in-the-loop) (FEAT-ANALYSIS-01, FEAT-ANALYSIS-04)
 
 ## Phase 3 — ทีมควบคุมโรค (ทีมพ่น)
 
@@ -39,6 +43,7 @@
 - **AI ร่างแผนปฏิบัติงานควบคุมโรค** ให้มีประสิทธิภาพ
 - **Real-time tracking ทีมพ่น** เทียบกับ spot map ที่วางแผนไว้ (Looker Studio/Power BI) — ⚠️ ข้อจำกัดทางเทคนิค: LINE ไม่มี API สำหรับติดตามตำแหน่งต่อเนื่องอัตโนมัติ ("location sharing" ของ LINE เป็นการแชร์ครั้งเดียว) ต้องทำผ่านแอป LIFF/แอปมือถือแยกที่ขอสิทธิ์ตำแหน่งต่อเนื่อง และต้องพิจารณาความสมัครใจ/กฎหมายแรงงานเรื่องการติดตามตำแหน่งพนักงานภาคสนามด้วย
 - **AI vision ตรวจสอบรูปถ่ายภาคสนาม** ว่าตรงกับพื้นที่/เวลาที่ต้องพ่นจริงไหม (QC แทนคนไล่ดูทีละรูป) — ⚠️ รูปที่ส่งผ่าน LINE มักถูกล้าง EXIF/geotag ออกไปแล้ว ต้องเก็บพิกัด/เวลาแยกตอนถ่ายภาพผ่านแอป (LIFF ขอสิทธิ์ตำแหน่ง) ไม่ใช่ดึงจาก metadata ของไฟล์ที่ส่งมา
+- [ ] ยืนยัน AI Vision QC vendor และ Location tracking (LIFF app) tech ผ่าน `tech-stack-builder` รอบ 2 (FEAT-CONTROL-04, FEAT-CONTROL-05) — อ้างจาก `TECH-STACK.md`
 
 ## Phase 4 — ทีม อสม.
 
@@ -51,6 +56,8 @@
 
 > เป็นจุดที่ AI มีค่ามากที่สุด แต่**ขึ้นอยู่กับคุณภาพและความครบถ้วนของข้อมูลจาก Phase 1-4 ทั้งหมด** — ควรทำเป็นเฟสสุดท้ายต่อยอดจากของ Phase 1-4 มากกว่าจะทำแยกก่อน ถ้าระบบต้นทางยังเป็น manual/ครึ่งๆกลางๆ รายงานสรุปจะไม่ครบ
 
+- [ ] ยืนยัน Reporting/BI tool ผ่าน `tech-stack-builder` รอบ 2 (FEAT-REPORT-03) — อ้างจาก `TECH-STACK.md`
+
 ## Phase 6 — Alert & Response Management แบบเต็ม
 
 - [x] หน้า Alert & Response Management (`alerts.html`) — workflow มอบหมายงาน/อัปเดตสถานะ/ปิดเคส (ต้องบันทึกสรุปก่อนปิด) พร้อมตัวกรองสถานะ/ความรุนแรง — **prototype UI เสร็จแล้ว (mock data)**
@@ -61,6 +68,9 @@
 - **Backend/API จริง** แทนที่ mock data ที่ฝังอยู่ใน JS ของแต่ละหน้า
 - **ระบบ login และสิทธิ์ผู้ใช้** (role-based access) — แยกสิทธิ์ระหว่างเจ้าหน้าที่โรงพยาบาล/เทศบาล/ทีมสอบสวนโรค/ทีมพ่น/อสม./ผู้บริหาร
 - **Data persistence/database** เก็บประวัติเคสและไฟล์ต้นฉบับระยะยาว
+- [ ] Sync `HIGH-LEVEL-ARCHITECTURE.md` หัวข้อ 6 (Component Breakdown) ให้ระบุเทคโนโลยีจริงตาม `TECH-STACK.md` (แถว Web App/Frontend และ API Server/Backend) (FEAT-PLATFORM-01) — อ้างจาก `TECH-STACK.md` หัวข้อ 5
+- [ ] ยืนยัน Database engine, Auth/Identity provider, Hosting/Infrastructure เจาะจง, Monitoring/Logging ผ่าน `tech-stack-builder` รอบ 2 (FEAT-PLATFORM-02, FEAT-PLATFORM-03) — อ้างจาก `TECH-STACK.md`
+- [ ] ปิด open question เรื่องแผนส่งต่อให้ผู้รับเหมาภายนอกดูแลระบบในอนาคต (กระทบว่า Node.js+Express ที่ยืนยันไว้ยังเหมาะสมหรือควรเปลี่ยนไปทาง Laravel/.NET Core ที่ตลาดผู้รับเหมาไทยคุ้นเคยกว่า) (FEAT-PLATFORM-01) — อ้างจาก `TECH-STACK.md` หัวข้อ 4.1 Decision Rationale
 
 ## Phase 8 — Hardening ก่อนใช้งานจริง
 
