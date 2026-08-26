@@ -10,7 +10,7 @@
 
 - **Root ของโปรเจกต์**: [`DESIGN.md`](./DESIGN.md) (Design System), [`ROADMAP.md`](./ROADMAP.md) (แผนงานตามเฟส)
 - **`prototypes/vN/`**: prototype แต่ละเวอร์ชัน (`index.html`, feature pages, `BUILD-PLAN.md`)
-- **`docs/02-design/02-technical/`**: เอกสาร technical design — `HIGH-LEVEL-ARCHITECTURE.md`, `DATA-MODEL.md`, `API-SPEC.md`, `DETAILED-DESIGN.md` (ถ้ามี), ADR แยกไฟล์ (ถ้ามี)
+- **`docs/02-design/02-technical/`**: เอกสาร technical design — `HIGH-LEVEL-ARCHITECTURE.md`, `DATA-MODEL.md`, `API-SPEC.md`, `DETAILED-DESIGN.md` (ถ้ามี), `TECH-STACK.md` (ถ้ามี — เอกสารเดียวที่ยืนยันเทคโนโลยีจริง ดูข้อ 4), ADR แยกไฟล์ (ถ้ามี)
 - **`docs/03-testing/01-test-plan/vN/`**: เอกสาร QA แต่ละเวอร์ชัน (`TEST-PLAN.md`, `ACCEPTANCE-CRITERIA.md`, `TEST-CASES.xlsx`, `BUILD-PLAN.md`)
 - **`docs/02-design/01-prototypes/`**: User Journey docs (`USER-JOURNEY-*.md`)
 
@@ -44,6 +44,8 @@
 - ข้อยกเว้น: ชื่อบริการภายนอกที่ `ROADMAP.md` ระบุไว้ชัดเจนแล้วจากบริบทจริงของงาน (เช่น LINE OA, Google Sheet/Drive) ให้คงชื่อนั้นไว้ตามที่มีอยู่ ไม่ต้อง generalize ทิ้ง
 - Diagram ทั้งหมดใช้ **Mermaid ฝังในไฟล์ .md เท่านั้น** (flowchart, sequenceDiagram, erDiagram, stateDiagram-v2) ห้ามใช้ diagram tool ภายนอกที่ต้อง export ภาพ เพื่อให้เปิดดูได้ในทุก editor/Obsidian/GitHub
 
+**กลไกยืนยันเทคโนโลยีจริง**: `TECH-STACK.md` (สร้างผ่าน skill `tech-stack-builder`) คือเอกสารเดียวที่**ตั้งใจระบุเทคโนโลยีจริง**ต่อ component/service — เป็น "การยืนยัน" ที่ข้อยกเว้นด้านบนพูดถึง หลังยืนยันใน `TECH-STACK.md` แล้ว เอกสาร conceptual ทั้ง 4 ฉบับข้างต้น**อ้างอิงเทคโนโลยีจริงนั้นได้ทันที** แต่ต้องเรียก skill ของเอกสารนั้นซ้ำเพื่อ sync เอง — ไม่มีกลไกอัตโนมัติที่ sync ให้
+
 ## 5. Ambiguity Protocol — ใช้ทุกครั้งที่ทำงานเอกสาร ไม่มีข้อยกเว้น
 
 ทุกจุดที่ requirement/backlog/feature ตีความได้มากกว่า 1 แบบ **ต้องถามผู้ใช้พร้อมเสนอ ≥3 แนวทาง พร้อมข้อดี-ข้อเสียของแต่ละแนวทาง** ก่อนตัดสินใจเอง — ห้ามถามลอยๆ ว่า "เอาแบบไหนดี" และห้ามเดาแล้วเดินหน้าต่อ
@@ -61,5 +63,6 @@
 | `architecture-builder` | High-Level Architecture: system diagram, data flow ตาม user journey, ข้อจำกัดทางเทคนิค, Decision Log | `architecture-writer` |
 | `data-contract-builder` | Database Schema/Spec (ER Diagram) + API Spec (conceptual operation list) | `data-contract-writer` |
 | `detailed-design-builder` | Detailed Design ต่อ feature/flow: Sequence Flow diagram (บังคับ) + state diagram/business rule/error handling ตามที่เหมาะสม | `detailed-design-writer` |
+| `tech-stack-builder` | Tech Stack: สัมภาษณ์ผู้ใช้แบบเข้มข้น (ทีม/งบ/hosting/compliance/scale) แล้วยืนยันเทคโนโลยีจริงต่อ component (เอกสารเดียวในตระกูลนี้ที่**ไม่** conceptual — ดูข้อ 4) | `tech-stack-writer` |
 
 หลักการร่วมของทุก skill ในตระกูลนี้: งานคุยกับผู้ใช้ (เก็บ input, เสนอแผน, ถามเรื่อง version/archive) รันใน main loop เสมอ ห้าม delegate ให้ subagent ทำแทน ส่วนงานเขียนไฟล์จริงหลังแผนยืนยันแล้วเท่านั้นที่ delegate ให้ subagent ที่ระบุในตาราง
