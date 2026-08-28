@@ -1,0 +1,1095 @@
+# Detailed Design — AI-DSRP (ทั้งระบบ 8 โมดูล)
+
+เอกสารนี้เป็น**conceptual detailed design** — ขยายรายละเอียด*ภายใน* 1 journey step (โมดูล Dashboard) หรือ 1 operation (อีก 7 โมดูล) ที่มีอยู่แล้วใน [[./HIGH-LEVEL-ARCHITECTURE|HIGH-LEVEL-ARCHITECTURE.md]]/[[../01-prototypes/USER-JOURNEY-outbreak-dashboard|USER-JOURNEY-outbreak-dashboard.md]] ให้เห็น decision point/validation/error handling ที่ไดอะแกรมหยาบเดิมไม่ได้ลงถึง — ไม่ใช่การคัดลอก diagram เดิมมาวางซ้ำ ตามโครงจาก skill `detailed-design-builder` (`references/detailed-design-template.md`)
+
+ขอบเขต: ครอบคลุมทั้ง 8 โมดูล — Feature ID อ้างจาก [[../../01-requirements/01-spec/FEATURE-LIST|FEATURE-LIST.md]], entity จาก [[./DATA-MODEL|DATA-MODEL.md]], operation จาก [[./API-SPEC|API-SPEC.md]]
+
+## 0. หลักการอ่านเอกสารนี้ (ยืนยันแล้วใน Build Plan)
+
+- **ระดับความละเอียด Sequence Flow**: ทุก flow เป็น **coarse** (decision point หลัก + ผลสำเร็จ/ไม่สำเร็จ 2 ทาง) ยกเว้น **4 flow เสี่ยงสูง** ที่ทำแบบ **step-by-step ละเอียด** (มี validation/error/retry branch เต็ม): OCR Review & Confirm Flow, Case Clustering Confirm & Report Flow, Control Plan Approval Flow, Alert Assign & Close Flow
+- **ไม่มี State/Status Diagram แยก** ในรอบนี้ — ตรวจสอบแล้วไม่มี entity ใดมีสถานะ ≥4 ขั้นจริง (ALERT/APPROVAL_REQUEST/TEAM มี 3 สถานะ, CASE/CASE_CLUSTER มี 2 สถานะ) — ใช้ `Note` ใน sequence diagram บอกการเปลี่ยนสถานะแทนทุกจุด
+- **Error & Exception Handling** ครอบเฉพาะ error ที่กระทบ business-critical/ข้อมูลสุขภาพ: **เคสซ้ำ, cluster ผิดพื้นที่, แจ้งเตือนผิดทีม, อนุมัติซ้ำซ้อน, ปิด alert โดยไม่มี note** — flow ที่ไม่มี error ประเภทนี้เกี่ยวข้องจะระบุไว้ชัดเจนว่า "ไม่มี" แทนการยัดตารางที่ไม่จำเป็น ไม่ครอบ error ทั่วไป (network fail, timeout ฯลฯ)
+- **Tech Stack**: [[./TECH-STACK|TECH-STACK.md]] ยืนยันเฉพาะ Frontend (Vanilla JS + Node.js/EJS partials) และ Backend/API runtime (Node.js + Express/Fastify) — component อื่นที่ flow เหล่านี้เรียกใช้ (OCR/Document AI, Geocoding, Case Clustering, AI Vision QC) **ยังไม่ยืนยัน vendor จริง** จึง participant ในทุกไดอะแกรมยังเป็นชื่อ capability-level ตาม `HIGH-LEVEL-ARCHITECTURE.md` หัวข้อ 6 (เช่น "บริการ OCR/Document AI") ไม่ใช่ชื่อ vendor เจาะจง
+- **แกนอ้างอิงหลัก**: Dashboard ยึด [[../01-prototypes/USER-JOURNEY-outbreak-dashboard|USER-JOURNEY-outbreak-dashboard.md]] เป็นแกน — อีก 7 โมดูลยึด operation ใน `API-SPEC.md` เป็นแกน
+- Diagram ทั้งหมดใช้ `sequenceDiagram` เท่านั้น (Mermaid) — ไม่มี state diagram ในรอบนี้
+
+---
+
+# โมดูล: Case Intake (`FEAT-INTAKE-*`)
+
+## Flow 1 — OCR Review & Confirm Flow (step-by-step ละเอียด) — `FEAT-INTAKE-01`/`02`/`03`/`05`
+
+### 1. Flow Overview
+
+| หัวข้อ | รายละเอียด |
+|---|---|
+| Trigger | เจ้าหน้าที่ รพ./เทศบาล อัปโหลดไฟล์รายงานเคส (PDF/JPEG) |
+| Actor หลัก | เจ้าหน้าที่ รพ./เทศบาล (อัปโหลด/ตรวจสอบ/ยืนยัน), ระบบ (OCR extraction, auto-route ทีม) |
+| Precondition | ไฟล์รายงานเคสอยู่ในรูปแบบ PDF/JPEG ที่ระบบรองรับ |
+| Postcondition | `CASE.status = ยืนยันแล้ว`, มี `CASE_NOTIFICATION_LOG` ใหม่, `responsible_team` ถูกกำหนดแล้ว |
+| Reference | Operation 1, 2, 3, 5, 6 (`API-SPEC.md` หัวข้อ 2) · Entity `CASE`/`CASE_OCR_SNAPSHOT`/`CASE_ATTACHMENT`/`CASE_NOTIFICATION_LOG`/`TEAM`/`SUBDISTRICT_ROUTING_RULE` (`DATA-MODEL.md`) · Component "บริการ OCR/Document AI", "Web App (Frontend)", "API Server" (`HIGH-LEVEL-ARCHITECTURE.md` หัวข้อ 6) |
+
+### 2. Sequence Flow
+
+```mermaid
+sequenceDiagram
+  participant จนท as เจ้าหน้าที่ รพ./เทศบาล
+  participant UI as Web App (Case Intake)
+  participant API as API Server
+  participant OCR as บริการ OCR/Document AI
+  participant Data as CASE / CASE_OCR_SNAPSHOT / CASE_ATTACHMENT / CASE_NOTIFICATION_LOG
+
+  จนท->>UI: อัปโหลดไฟล์รายงานเคส (PDF/JPEG)
+  UI->>API: ส่งไฟล์ + file_name/file_type
+  API->>API: ตรวจสอบประเภท/ขนาดไฟล์
+  alt ไฟล์ถูกต้อง (PDF/JPEG ตามที่รองรับ)
+    API->>OCR: ส่งไฟล์ให้ดึงข้อมูล
+    OCR-->>API: ชื่อ/HN/ที่อยู่/ตำบล/วันป่วย/ผลตรวจ
+    API->>API: หาทีมรับผิดชอบเริ่มต้นจาก SUBDISTRICT_ROUTING_RULE (ตามตำบลที่ OCR ดึงได้)
+    API->>Data: สร้าง CASE (status=รอตรวจสอบ) + CASE_OCR_SNAPSHOT + CASE_ATTACHMENT
+    Data-->>API: บันทึกสำเร็จ
+    API-->>UI: แสดงแถวในตาราง OCR Review (รอตรวจสอบ)
+  else ไฟล์ไม่ถูกต้อง/ประเภทไม่รองรับ
+    API-->>UI: แจ้งข้อผิดพลาด ปฏิเสธการอัปโหลด
+  end
+
+  Note over จนท,UI: เจ้าหน้าที่ตรวจสอบข้อมูลที่ OCR ดึงได้ทีละแถว (human-in-the-loop)
+
+  opt เจ้าหน้าที่พบข้อมูลผิด ต้องแก้ไขก่อนยืนยัน
+    จนท->>UI: กด "แก้ไข" (เฉพาะแถว status=รอตรวจสอบ)
+    UI->>API: เปิดโหมดแก้ไข (case_id)
+    API->>API: ตรวจสอบ status ต้อง = รอตรวจสอบ
+    alt status = รอตรวจสอบ
+      UI-->>จนท: แสดง field แก้ไขได้ (ชื่อ-สกุล/HN/ที่อยู่/ตำบล/วันป่วย/ผลตรวจ — ไม่รวม district/province)
+      จนท->>UI: แก้ไขค่า แล้วกด "บันทึก"
+      UI->>API: ส่งค่าที่แก้ไข
+      alt ตำบลที่แก้ไขตรงกับ SUBDISTRICT_ROUTING_RULE ที่ระบบรู้จัก
+        API->>Data: อัปเดต CASE + reassign responsible_team ตามตำบลใหม่
+      else ตำบลไม่ตรงกับ rule ใดเลย
+        API->>Data: อัปเดต CASE โดยคงทีมรับผิดชอบเดิมไว้
+      end
+      Data-->>API: บันทึกสำเร็จ
+      API-->>UI: แสดงค่าที่แก้ไขแล้ว (ยังเป็น รอตรวจสอบ)
+    else status = ยืนยันแล้ว
+      API-->>UI: ปฏิเสธ ไม่อนุญาตให้แก้ไข (ต้องรอ flow unlock ในอนาคต — FEAT-INTAKE-09 ยังไม่รองรับในรอบนี้)
+    end
+  end
+
+  จนท->>UI: กด "ยืนยัน"
+  UI->>API: ยืนยันเคส (case_id)
+  API->>API: ตรวจสอบ status ต้อง = รอตรวจสอบ
+  alt status = รอตรวจสอบ
+    API->>Data: CASE.status -> ยืนยันแล้ว
+    API->>Data: สร้าง CASE_NOTIFICATION_LOG ใหม่ (team = responsible_team ปัจจุบัน, notified_at = now)
+    Data-->>API: บันทึกสำเร็จ
+    Note over API,Data: สถานะเปลี่ยน: รอตรวจสอบ -> ยืนยันแล้ว (ทางเดียว ไม่มี reopen ในรอบนี้)
+    API-->>UI: แสดงสถานะ "ยืนยันแล้ว" + รายการแจ้งเตือนใหม่ในประวัติ
+  else status = ยืนยันแล้วอยู่แล้ว
+    API-->>UI: ปฏิเสธ (ป้องกันยืนยันซ้ำ/สร้าง notification log ซ้ำ)
+  end
+```
+
+### 3. Business Rule / Validation Logic
+
+| Rule | เงื่อนไข | ผลถ้าไม่ผ่าน | Feature ID |
+|---|---|---|---|
+| แก้ไขข้อมูลได้เฉพาะเคสที่ยังไม่ยืนยัน | `CASE.status = รอตรวจสอบ` | ปฏิเสธการแก้ไข | FEAT-INTAKE-02 |
+| `district`/`province` ไม่อยู่ในฟิลด์ที่แก้ไขได้ | เสมอ | ไม่มีช่องให้แก้ในรอบนี้ | FEAT-INTAKE-02 |
+| Auto-route ทีมรับผิดชอบตอนแก้ไขตำบล | ตำบลที่แก้ตรงกับ `SUBDISTRICT_ROUTING_RULE` | reassign `responsible_team`; ถ้าไม่ตรง คงทีมเดิม | FEAT-INTAKE-02, FEAT-INTAKE-03 |
+| ยืนยันเคสได้ครั้งเดียว | `CASE.status = รอตรวจสอบ` ก่อนยืนยัน | ปฏิเสธ ป้องกันยืนยันซ้ำ | FEAT-INTAKE-02 |
+| ยืนยันเคสสร้าง notification log ใหม่เสมอ | ทุกครั้งที่ยืนยันสำเร็จ | ส่งไปยัง `responsible_team` ปัจจุบัน | FEAT-INTAKE-03 |
+
+### 4. Error & Exception Handling
+
+| กรณี | จุดที่เกิด (อ้างจาก step ใน diagram) | การจัดการ | ผลกระทบต่อผู้ใช้/ข้อมูล |
+|---|---|---|---|
+| เคสซ้ำ | ตอนอัปโหลดไฟล์/สร้าง `CASE` ใหม่ | **ไม่มี dedup rule ที่ยืนยันในแผนรอบนี้** — ระบบไม่ตรวจสอบไฟล์/HN ซ้ำอัตโนมัติ (เช่น อัปโหลดไฟล์เดิมซ้ำสองครั้ง) — ถือเป็น **gap** ที่ต้องยืนยันเพิ่มก่อน implement จริง | อาจเกิดเคสซ้ำในระบบ ต้องตรวจด้วยมือ |
+| แจ้งเตือนผิดทีม | ตอนยืนยันเคส (สร้าง `CASE_NOTIFICATION_LOG`) | ระบบส่งแจ้งเตือนไปยัง `responsible_team` ตามที่ auto-route ไว้ล่าสุดเสมอ — ถ้าตำบลที่ป้อนผิดและไม่ตรง `SUBDISTRICT_ROUTING_RULE` ระบบจะคงทีมเดิมไว้แบบเงียบ (silent no-op) โดยไม่มีการเตือนผู้ใช้ชัดเจนว่าทีมไม่ถูก reassign — ถือเป็น **risk ที่ flag ไว้**: UI ควรแสดงข้อความยืนยันชัดเจนตอนแก้ไขว่าทีมเปลี่ยน/ไม่เปลี่ยน | เคสอาจถูกแจ้งเตือนไปยังทีมที่ไม่ตรงพื้นที่จริง |
+
+### 5. Traceability
+
+| อ้างอิง | ID/ชื่อ |
+|---|---|
+| Feature | FEAT-INTAKE-01, FEAT-INTAKE-02, FEAT-INTAKE-03, FEAT-INTAKE-05 (backlog), FEAT-INTAKE-08 (backlog), FEAT-INTAKE-09 (backlog) |
+| Entity | `CASE`, `CASE_OCR_SNAPSHOT`, `CASE_ATTACHMENT`, `CASE_NOTIFICATION_LOG`, `TEAM`, `SUBDISTRICT_ROUTING_RULE` |
+| Operation | API-SPEC.md operation 1, 2, 3, 5, 6 |
+| Component | Web App (Case Intake), API Server, บริการ OCR/Document AI, LINE OA (backlog) |
+
+---
+
+## Flow 2 — Manual Geo Adjustment (coarse) — `FEAT-INTAKE-04`
+
+### 1. Flow Overview
+
+| หัวข้อ | รายละเอียด |
+|---|---|
+| Trigger | เจ้าหน้าที่เห็นเคสที่ `geo_accuracy = low` และต้องการปรับพิกัดด้วยมือ (fallback) |
+| Actor หลัก | เจ้าหน้าที่ รพ./เทศบาล |
+| Precondition | เคสมี `geo_accuracy = low` |
+| Postcondition | `CASE.geo_adjusted` ถูกสลับค่า (toggle) |
+| Reference | Operation 4 (`API-SPEC.md`) · Entity `CASE` (`geo_accuracy`, `geo_adjusted`) · Component Web App (Case Intake), API Server, บริการ Geocoding (backlog `FEAT-INTAKE-07`) |
+
+### 2. Sequence Flow
+
+```mermaid
+sequenceDiagram
+  participant จนท as เจ้าหน้าที่
+  participant UI as Web App (Case Intake)
+  participant API as API Server
+
+  จนท->>UI: กด "ปรับพิกัดด้วยมือ" (case_id)
+  UI->>API: ปรับพิกัดด้วยมือ (case_id)
+  alt geo_accuracy = low
+    API->>API: สลับค่า geo_adjusted (toggle)
+    API-->>UI: แสดงสถานะ "ปรับพิกัดด้วยมือแล้ว" (หรือ "เลิกทำ")
+  else geo_accuracy = high
+    API-->>UI: ปุ่มนี้ไม่ปรากฏ/ไม่มีผล (ปรับได้เฉพาะพิกัดแม่นยำต่ำ)
+  end
+```
+
+### 3. Business Rule / Validation Logic
+
+| Rule | เงื่อนไข | ผลถ้าไม่ผ่าน | Feature ID |
+|---|---|---|---|
+| ปรับพิกัดมีผลเฉพาะพิกัดแม่นยำต่ำ | `geo_accuracy = low` | ปุ่มไม่ทำงาน/ไม่ปรากฏเมื่อ `geo_accuracy = high` | FEAT-INTAKE-04 |
+
+### 4. Error & Exception Handling
+
+ไม่มี error ระดับ business-critical เฉพาะสำหรับ flow นี้ตามขอบเขตที่ยืนยันใน Build Plan (ครอบเฉพาะ 5 ประเภทที่ระบุในหัวข้อ 0)
+
+### 5. Traceability
+
+| อ้างอิง | ID/ชื่อ |
+|---|---|
+| Feature | FEAT-INTAKE-04, FEAT-INTAKE-07 (backlog) |
+| Entity | `CASE` |
+| Operation | API-SPEC.md operation 4 |
+| Component | Web App (Case Intake), API Server, บริการ Geocoding (backlog) |
+
+---
+
+## Flow 3 — Notification & Spot Map Query (coarse) — `FEAT-INTAKE-03`/`04`
+
+### 1. Flow Overview
+
+| หัวข้อ | รายละเอียด |
+|---|---|
+| Trigger | ทีมสอบสวนโรค/เจ้าหน้าที่ต้องการตรวจสอบประวัติการแจ้งเตือน หรือดู Spot Map ของเคสที่ยืนยันแล้ว |
+| Actor หลัก | ทีมสอบสวนโรค, เจ้าหน้าที่ |
+| Precondition | มีเคสที่ยืนยันแล้วอย่างน้อย 1 รายการ (สำหรับ Spot Map) |
+| Postcondition | ผู้ใช้เห็นประวัติแจ้งเตือน/แผนที่จุดเกิดเหตุล่าสุด |
+| Reference | Operation 6, 7 (`API-SPEC.md`) · Entity `CASE_NOTIFICATION_LOG`, `CASE` · Component Web App (Case Intake), API Server |
+
+### 2. Sequence Flow
+
+```mermaid
+sequenceDiagram
+  participant ทีม as ทีมสอบสวนโรค / เจ้าหน้าที่
+  participant UI as Web App (Case Intake)
+  participant API as API Server
+
+  ทีม->>UI: เปิดดูประวัติการแจ้งเตือน / Spot Map
+  UI->>API: ดึงประวัติการแจ้งเตือน (filter: case_id/team) + ดึงข้อมูลสำหรับ Spot Map (filter: team)
+  alt มีเคสที่ยืนยันแล้ว/มีประวัติแจ้งเตือนตรงเงื่อนไข
+    API-->>UI: แสดงประวัติแจ้งเตือน + หมุด/วงรัศมี 100 เมตรของเคสที่ยืนยันแล้ว
+  else ไม่พบข้อมูลตรงเงื่อนไข
+    API-->>UI: แสดง empty state
+  end
+```
+
+### 3. Business Rule / Validation Logic
+
+| Rule | เงื่อนไข | ผลถ้าไม่ผ่าน | Feature ID |
+|---|---|---|---|
+| Spot Map แสดงเฉพาะเคสยืนยันแล้ว | `CASE.status = ยืนยันแล้ว` | เคส `รอตรวจสอบ` ไม่ปรากฏบนแผนที่ | FEAT-INTAKE-04 |
+
+### 4. Error & Exception Handling
+
+ไม่มี error ระดับ business-critical เฉพาะสำหรับ flow นี้ตามขอบเขตที่ยืนยันใน Build Plan
+
+### 5. Traceability
+
+| อ้างอิง | ID/ชื่อ |
+|---|---|
+| Feature | FEAT-INTAKE-03, FEAT-INTAKE-04, FEAT-INTAKE-08 (backlog) |
+| Entity | `CASE_NOTIFICATION_LOG`, `CASE` |
+| Operation | API-SPEC.md operation 6, 7 |
+| Component | Web App (Case Intake), API Server |
+
+---
+
+# โมดูล: Dashboard (`FEAT-DASH-*`)
+
+## Flow 4 — Dashboard View & Filter Recompute (coarse) — `FEAT-DASH-01` ถึง `15`
+
+ยึด [[../01-prototypes/USER-JOURNEY-outbreak-dashboard|USER-JOURNEY-outbreak-dashboard.md]] Step 1-7b เป็นแกน — ขยายรายละเอียดตรงที่ `HIGH-LEVEL-ARCHITECTURE.md` หัวข้อ 3B ยังทำไว้แค่หยาบ (แต่ละ `Dash-->>จนท` เป็น 1 บรรทัด) ให้เห็น recompute logic ตอน filter เปลี่ยน และจุดที่ยังมี gap เรื่องเกณฑ์คำนวณระดับความเสี่ยง
+
+### 1. Flow Overview
+
+| หัวข้อ | รายละเอียด |
+|---|---|
+| Trigger | เจ้าหน้าที่เฝ้าระวังโรคเปิดหน้า Dashboard ตอนเริ่มกะงาน หรือได้รับแจ้งว่ามีสัญญาณผิดปกติ |
+| Actor หลัก | เจ้าหน้าที่เฝ้าระวังโรค / ผู้บริหาร |
+| Precondition | มีข้อมูล `CASE`/`ALERT` อยู่ในระบบ |
+| Postcondition | เจ้าหน้าที่เห็นภาพรวมสถานการณ์ตามเงื่อนไขกรองปัจจุบัน และตัดสินใจ escalate หรือไม่ escalate |
+| Reference | Journey Step 1-7b (`USER-JOURNEY-outbreak-dashboard.md`) · Operation 1-5 (`API-SPEC.md` หัวข้อ 2B) · Entity `CASE`, `ALERT`, `SERVICE_ZONE`, `COMMUNITY`, `DISEASE` · Component Web App (Dashboard), API Server |
+
+### 2. Sequence Flow
+
+```mermaid
+sequenceDiagram
+  participant จนท as เจ้าหน้าที่เฝ้าระวังโรค
+  participant Dash as Outbreak Dashboard UI
+  participant API as API Server
+  participant Data as CASE / ALERT / SERVICE_ZONE / COMMUNITY
+
+  จนท->>Dash: เปิดหน้า Dashboard (ค่าเริ่มต้น: ทุกโรค/ทุกเขต/14 วันล่าสุด)
+  Dash->>API: ดึงข้อมูล Stat tiles + อัตราป่วยต่อแสนประชากร + แผนที่ความเสี่ยง + กราฟแนวโน้ม + Recent Alerts + ตารางวิเคราะห์เชิงลึก (operation 1-5)
+  API->>Data: อ่าน/รวมข้อมูลตามช่วงกรองปัจจุบัน
+  Data-->>API: ผลลัพธ์ดิบ
+  API->>API: คำนวณ stat tiles, อัตราป่วยต่อแสนประชากร (เคสสะสม/ประชากรเขตจาก SERVICE_ZONE), ระดับความเสี่ยงต่อเขต, แนวโน้ม, breakdown ตารางต่างๆ
+  API-->>Dash: ผลลัพธ์ทุก panel
+  Dash-->>จนท: แสดง Stat tiles, ตารางเพศ, แผนที่ความเสี่ยงตามเขตบริการ, กราฟแนวโน้ม 2 กราฟ, Recent Alerts
+
+  opt เจ้าหน้าที่ยังตัดสินใจไม่ได้ เลื่อนดู panel เพิ่ม
+    Dash-->>จนท: แสดงตารางกลุ่มอายุ/สถิติอายุ/DF-DHF/อาชีพ/ชุมชนเคสสูงสุด/เขตบริการเรียงอัตราป่วย/ป่วยจาก
+  end
+
+  loop ทุกครั้งที่เจ้าหน้าที่เปลี่ยน Filter (โรค/เขตบริการ/ช่วงวันที่)
+    จนท->>Dash: ตั้งค่า Filter ใหม่
+    Dash->>API: ส่งเงื่อนไข AND ใหม่ (operation 1-5 ซ้ำ)
+    API->>Data: อ่าน/รวมข้อมูลตามเงื่อนไขใหม่
+    Data-->>API: ผลลัพธ์ใหม่
+    API-->>Dash: ผลลัพธ์ทุก panel (recompute ใหม่ทั้งหมด พร้อมกัน)
+    Dash-->>จนท: ทุก panel อัปเดตพร้อมกันทันที
+  end
+
+  alt เห็นสัญญาณชัดเจน (เขตวิกฤต + แนวโน้มเพิ่มขึ้นต่อเนื่อง)
+    จนท->>จนท: ตัดสินใจ escalate ผ่านช่องทางนอกระบบ (โทร/LINE)
+    Note over จนท,Dash: เมนู Cases/Alerts ยังไม่เชื่อมจากหน้านี้โดยตรง (backlog FEAT-INTAKE-08, FEAT-ALERT-03)
+  else ไม่พบสัญญาณผิดปกติ
+    จนท->>Dash: กด "ล้างตัวกรอง"
+    Dash->>API: คืนเงื่อนไขเป็นค่าเริ่มต้น
+    API-->>Dash: ผลลัพธ์ค่าเริ่มต้น
+    Dash-->>จนท: ทุก panel กลับสู่มุมมองภาพรวม
+  end
+```
+
+### 3. Business Rule / Validation Logic
+
+| Rule | เงื่อนไข | ผลถ้าไม่ผ่าน | Feature ID |
+|---|---|---|---|
+| Filter ทำงานแบบ AND ร่วมกันทั้งหมด | โรค + เขตบริการ + ช่วงวันที่ | ทุก panel (FEAT-DASH-02, 03, 04, 05, 07-15) recompute พร้อมกันทันที | FEAT-DASH-06 |
+| อัตราป่วยต่อแสนประชากรคำนวณจากเคสสะสม/ประชากรเขต | ใช้ `SERVICE_ZONE.population` | — | FEAT-DASH-07 |
+| ระดับความเสี่ยงต่อเขต (ปกติ/เฝ้าระวัง/วิกฤต) | คำนวณจากจำนวนเคส/อัตราป่วยเทียบเกณฑ์ | **เกณฑ์ตัวเลขที่แน่นอนยังไม่ระบุในเอกสาร conceptual ชุดนี้ — ถือเป็น gap ที่ flag ไว้** ต้องยืนยันเพิ่มก่อน implement จริง | FEAT-DASH-03 |
+| ตารางวิเคราะห์เชิงลึกด้านประชากร (เพศ/อายุ/อาชีพ/DF-DHF) | ต้องมี field demographic ใน `CASE` | `CASE` ในรอบนี้ยังไม่มี field เพศ/อายุ/อาชีพ/disease_id ที่ยืนยันแล้ว — **gap ที่มีอยู่แล้วใน DATA-MODEL.md** (ไม่ใช่จุดที่ Build Plan รอบนี้อนุมัติให้แก้ `CASE`) | FEAT-DASH-08 ถึง 11 |
+
+### 4. Error & Exception Handling
+
+ไม่มี error ระดับ business-critical เฉพาะสำหรับ flow นี้ตามขอบเขตที่ยืนยันใน Build Plan (Dashboard เป็น read-only, ไม่มีการเขียนข้อมูล) — ความเสี่ยงเดียวที่เกี่ยวข้องคือ escalate ช้าเพราะยังไม่เชื่อม Cases/Alerts จากหน้านี้ (เป็น functional gap ที่ ROADMAP.md Phase 6 ระบุไว้แล้ว ไม่ใช่ error case)
+
+### 5. Traceability
+
+| อ้างอิง | ID/ชื่อ |
+|---|---|
+| Feature | FEAT-DASH-01 ถึง FEAT-DASH-15 |
+| Journey Step | USER-JOURNEY-outbreak-dashboard.md Step 1-7b |
+| Entity | `CASE`, `ALERT`, `SERVICE_ZONE`, `COMMUNITY`, `DISEASE` |
+| Operation | API-SPEC.md operation 1-5 (หัวข้อ 2B) |
+| Component | Web App (Dashboard), API Server |
+
+---
+
+# โมดูล: Case Analysis (`FEAT-ANALYSIS-*`)
+
+## Flow 5 — Case Clustering Confirm & Report Flow (step-by-step ละเอียด) — `FEAT-ANALYSIS-01`/`02`/`04`
+
+### 1. Flow Overview
+
+| หัวข้อ | รายละเอียด |
+|---|---|
+| Trigger | ทีมสอบสวนโรค (นักระบาดวิทยา) เปิดหน้า Case Analysis เพื่อตรวจสอบ cluster ที่ AI เสนอ |
+| Actor หลัก | ทีมสอบสวนโรค (นักระบาดวิทยา) |
+| Precondition | มี `CASE_CLUSTER` อย่างน้อย 1 กลุ่มที่ AI เสนอไว้แล้ว (`status = pending`) |
+| Postcondition | Cluster ที่เห็นด้วยถูกยืนยัน (`confirmed`) และอาจมี `INVESTIGATION_REPORT` ที่ถูกส่งแล้ว |
+| Reference | Operation 1-4 (`API-SPEC.md` หัวข้อ 2C) · Entity `CASE_CLUSTER`, `INVESTIGATION_REPORT`, `CASE` · Component Web App (Case Analysis), API Server, บริการ Case Clustering (backlog `FEAT-ANALYSIS-04`) |
+
+### 2. Sequence Flow
+
+```mermaid
+sequenceDiagram
+  participant นรพ as ทีมสอบสวนโรค (นักระบาดวิทยา)
+  participant UI as Web App (Case Analysis)
+  participant API as API Server
+  participant Data as CASE_CLUSTER / INVESTIGATION_REPORT / CASE
+
+  นรพ->>UI: เปิดหน้า Case Cluster Map
+  UI->>API: ดึงข้อมูล Case Cluster Map (operation 1)
+  API->>Data: อ่าน CASE_CLUSTER พร้อม CASE ที่เกี่ยวข้อง
+  Data-->>API: รายการ cluster (pending/confirmed)
+  API-->>UI: แสดงแผนที่ + รายการ cluster พร้อม confidence_pct/close_contacts_estimate
+
+  นรพ->>UI: ตรวจสอบรายละเอียด cluster ที่ status = pending
+  alt เห็นด้วยกับกลุ่มที่ AI เสนอ
+    นรพ->>UI: กด "ยืนยัน cluster นี้"
+    UI->>API: ยืนยัน cluster (cluster_id)
+    API->>API: ตรวจสอบ status ต้อง = pending
+    alt status = pending
+      API->>Data: CASE_CLUSTER.status -> confirmed, confirmed_at = now
+      Note over API,Data: สถานะเปลี่ยน: pending -> confirmed (ทางเดียว ไม่มี reopen)
+      Data-->>API: บันทึกสำเร็จ
+      API-->>UI: แสดง "ยืนยันแล้ว" + เปิดตัวเลือกกลุ่มนี้ในช่องสร้างรายงาน
+    else status = confirmed อยู่แล้ว
+      API-->>UI: ปฏิเสธ (ป้องกันยืนยันซ้ำ)
+    end
+  else ไม่เห็นด้วย/ยังไม่แน่ใจว่า cluster ผิดพื้นที่หรือไม่
+    Note over นรพ,UI: ไม่กดยืนยัน — cluster ค้างสถานะ pending (รอบนี้ยังไม่มี operation "ปฏิเสธ/แก้ไของค์ประกอบ cluster" — ดู gap หัวข้อ 4)
+  end
+
+  opt นักระบาดวิทยาต้องการร่างรายงานจากกลุ่มที่ยืนยันแล้ว
+    นรพ->>UI: เลือก cluster (เฉพาะที่ status = confirmed) แล้วกด "สร้างร่างรายงาน"
+    UI->>API: สร้างร่างรายงาน (cluster_id)
+    API->>API: ตรวจสอบ cluster.status ต้อง = confirmed
+    alt confirmed
+      API->>Data: สร้าง INVESTIGATION_REPORT ใหม่ (status=draft, content=ร่างจากข้อมูล cluster+เคส)
+      Data-->>API: บันทึกสำเร็จ
+      API-->>UI: แสดงเนื้อหาร่างในกล่องข้อความ (แก้ไขต่อได้)
+    else ยังไม่ confirmed
+      API-->>UI: ปฏิเสธ (ตัวเลือกกลุ่มนี้ไม่ปรากฏในช่องเลือกอยู่แล้ว)
+    end
+
+    นรพ->>UI: แก้ไขเนื้อหารายงานตามความเหมาะสม แล้วกด "ส่งรายงาน"
+    UI->>API: ส่งรายงาน (report_id, content)
+    alt content ไม่ว่าง
+      API->>Data: INVESTIGATION_REPORT.status -> sent, sent_at = now
+      API-->>UI: แสดงสถานะ "ส่งแล้ว"
+    else content ว่าง
+      API-->>UI: ปฏิเสธ (ปุ่มส่งไม่ทำงานถ้าเนื้อหาว่าง)
+    end
+  end
+```
+
+### 3. Business Rule / Validation Logic
+
+| Rule | เงื่อนไข | ผลถ้าไม่ผ่าน | Feature ID |
+|---|---|---|---|
+| ยืนยัน cluster เป็น one-way | `status = pending` เท่านั้น | ปฏิเสธถ้า confirmed อยู่แล้ว ไม่มี reopen | FEAT-ANALYSIS-01 |
+| สร้างรายงานได้เฉพาะ cluster ที่ยืนยันแล้ว | `CASE_CLUSTER.status = confirmed` | ตัวเลือกไม่ปรากฏในช่องเลือก | FEAT-ANALYSIS-02 |
+| ส่งรายงานได้ต่อเมื่อเนื้อหาไม่ว่าง | `content` ไม่ว่าง | ปุ่มส่งไม่ทำงาน | FEAT-ANALYSIS-02 |
+| 1 cluster มีรายงานได้อย่างมาก 1 ฉบับ | `CASE_CLUSTER` ↔ `INVESTIGATION_REPORT` = 1:1 optional | — | DATA-MODEL.md |
+
+### 4. Error & Exception Handling
+
+| กรณี | จุดที่เกิด (อ้างจาก step ใน diagram) | การจัดการ | ผลกระทบต่อผู้ใช้/ข้อมูล |
+|---|---|---|---|
+| Cluster ผิดพื้นที่ (AI เสนอผิด) | ตอนนักระบาดวิทยาตรวจสอบ cluster ก่อนยืนยัน | Human-in-the-loop คือกลไกป้องกันหลัก (Decision Log ข้อ 3, `HIGH-LEVEL-ARCHITECTURE.md`) — นักระบาดวิทยาไม่กดยืนยันถ้าเห็นว่าผิด แต่ **รอบนี้ยังไม่มี operation "ปฏิเสธ/แก้ไของค์ประกอบ cluster"** ที่ยืนยันใน Build Plan — cluster ที่ผิดจะค้างสถานะ `pending` ตลอดไปโดยไม่มีทางแก้ไข/ยุบกลุ่มในระบบ — ถือเป็น **gap** ที่ flag ไว้ | เคสที่ AI จัดกลุ่มผิดจะไม่ถูกนำไปทำรายงาน (ปลอดภัยเพราะสร้างรายงานได้เฉพาะ confirmed) แต่ก็ไม่มีทางแก้ไของค์ประกอบกลุ่มให้ถูกต้องได้ในระบบเช่นกัน |
+| ยืนยัน cluster ซ้ำ (double-confirm) | ตอนยืนยัน cluster | API ตรวจสอบ `status = pending` ก่อนเปลี่ยนทุกครั้ง | ปฏิเสธคำขอซ้ำ ไม่มีผลข้างเคียง |
+
+### 5. Traceability
+
+| อ้างอิง | ID/ชื่อ |
+|---|---|
+| Feature | FEAT-ANALYSIS-01, FEAT-ANALYSIS-02, FEAT-ANALYSIS-04 (backlog), FEAT-ANALYSIS-05 (backlog) |
+| Entity | `CASE_CLUSTER`, `INVESTIGATION_REPORT`, `CASE` |
+| Operation | API-SPEC.md operation 1-4 (หัวข้อ 2C) |
+| Component | Web App (Case Analysis), API Server, บริการ Case Clustering (backlog) |
+
+---
+
+## Flow 6 — AI Cluster Suggestion Generation (coarse, system-to-system) — `FEAT-ANALYSIS-04`
+
+### 1. Flow Overview
+
+| หัวข้อ | รายละเอียด |
+|---|---|
+| Trigger | ระบบวิเคราะห์เชื่อมโยงเคสที่ยืนยันแล้วและยังไม่ถูกจัดกลุ่ม (เป็น system-to-system ไม่ใช่ human trigger โดยตรง) |
+| Actor หลัก | ระบบ (API Server + บริการ Case Clustering) |
+| Precondition | มีเคสที่ยืนยันแล้วและ `cluster_id = null` |
+| Postcondition | อาจมี `CASE_CLUSTER` ใหม่ (`status = pending`) รอนักระบาดวิทยายืนยันต่อใน Flow 5 |
+| Reference | ฐานรองรับ Operation 1 (`API-SPEC.md` หัวข้อ 2C) · Entity `CASE`, `CASE_CLUSTER` · Component บริการ Case Clustering (backlog) |
+
+### 2. Sequence Flow
+
+```mermaid
+sequenceDiagram
+  participant API as API Server
+  participant Cluster as บริการ Case Clustering (statistical/spatial-temporal)
+  participant Data as CASE / CASE_CLUSTER
+
+  API->>Data: ดึงเคสที่ยืนยันแล้วและยังไม่ถูกจัดกลุ่ม (cluster_id = null)
+  Data-->>API: รายการเคสที่ยังไม่จัดกลุ่ม
+  API->>Cluster: วิเคราะห์เชื่อมโยงตามเวลา/พื้นที่/ผู้สัมผัส
+  alt พบกลุ่มที่เป็นไปได้ (ตามเกณฑ์ของบริการ)
+    Cluster-->>API: กลุ่มที่เสนอ + confidence_pct + close_contacts_estimate
+    API->>Data: สร้าง CASE_CLUSTER ใหม่ (status=pending) + ผูก CASE.cluster_id
+    Note over API,Data: เป็นเพียงข้อเสนอ (pending) เท่านั้น — ต้องรอนักระบาดวิทยายืนยันเสมอ (human-in-the-loop, ไม่มี auto-confirm)
+  else ไม่พบกลุ่มที่ชัดเจนพอ
+    Cluster-->>API: ไม่มีข้อเสนอในรอบนี้
+    API->>API: เคสยังไม่ถูกจัดกลุ่ม รอวิเคราะห์รอบถัดไป
+  end
+```
+
+### 3. Business Rule / Validation Logic
+
+| Rule | เงื่อนไข | ผลถ้าไม่ผ่าน | Feature ID |
+|---|---|---|---|
+| AI เสนอเท่านั้น ไม่ auto-confirm | เสมอ | ต้องผ่าน Flow 5 (human-in-the-loop) ก่อนนำไปใช้จริง | FEAT-ANALYSIS-04 |
+
+### 4. Error & Exception Handling
+
+| กรณี | จุดที่เกิด (อ้างจาก step ใน diagram) | การจัดการ | ผลกระทบต่อผู้ใช้/ข้อมูล |
+|---|---|---|---|
+| Cluster ผิดพื้นที่ | ตอนบริการ Case Clustering วิเคราะห์ (เช่น ข้อมูลพิกัดไม่แม่นยำ `geo_accuracy = low` ที่ยังไม่ปรับ) | Mitigate ด้วย human-in-the-loop confirm ใน Flow 5 เสมอ — ไม่ auto-commit เข้าเคสจริง | Cluster ที่เสนอผิดจะไม่ถูกยืนยันถ้านักระบาดวิทยาตรวจพบ (ขึ้นกับความละเอียดของการตรวจ) |
+
+### 5. Traceability
+
+| อ้างอิง | ID/ชื่อ |
+|---|---|
+| Feature | FEAT-ANALYSIS-04 (backlog) |
+| Entity | `CASE`, `CASE_CLUSTER` |
+| Operation | API-SPEC.md operation 1 (ฐานรองรับ) |
+| Component | API Server, บริการ Case Clustering (backlog) |
+
+---
+
+## Flow 7 — ASM Coordination Chat (coarse, scripted demo) — `FEAT-ANALYSIS-03`/`06`
+
+### 1. Flow Overview
+
+| หัวข้อ | รายละเอียด |
+|---|---|
+| Trigger | ทีมสอบสวนโรคเปิดหน้าต่างสนทนากับ อสม. |
+| Actor หลัก | ทีมสอบสวนโรค / อสม. |
+| Precondition | — |
+| Postcondition | แสดงบทสนทนาตัวอย่างครบตามสคริปต์ (ไม่ persist ข้อมูลจริง) |
+| Reference | Operation 5 (`API-SPEC.md` หัวข้อ 2C) · Component Web App (Case Analysis) |
+
+**หมายเหตุสำคัญ**: เป็น **scripted demo แบบ fixed script เท่านั้น ไม่ persist บทสนทนาจริง** ในรอบนี้ (ตรงกับ `DATA-MODEL.md` ที่ระบุว่า `FEAT-ANALYSIS-03` ยังไม่มี entity ของตัวเอง) — ต้องรอ `FEAT-ANALYSIS-06` (chatbot จริง จำกัดสิทธิ์ตาม PDPA) จึงจะมี entity/operation รองรับจริง
+
+### 2. Sequence Flow
+
+```mermaid
+sequenceDiagram
+  participant ทีม as ทีมสอบสวนโรค / อสม.
+  participant UI as Web App (Case Analysis — chatbot demo)
+
+  Note over ทีม,UI: สคริปต์ตายตัว (fixed script) — ยังไม่ persist บทสนทนาจริง จนกว่า FEAT-ANALYSIS-06
+
+  ทีม->>UI: เปิดหน้าต่างสนทนา (แสดงคู่บทสนทนาแรกเป็นค่าเริ่มต้น)
+  loop จนกว่าจะถึงคู่บทสนทนาสุดท้ายในสคริปต์
+    ทีม->>UI: กด "แสดงข้อความถัดไป"
+    alt ยังไม่ถึงคู่บทสนทนาสุดท้าย
+      UI-->>ทีม: เปิดเผยคู่บทสนทนาถัดไป (ข้อความบอท + คำตอบ อสม.)
+    else ถึงคู่บทสนทนาสุดท้ายแล้ว
+      UI-->>ทีม: ซ่อนปุ่ม แสดงข้อความจบบทสนทนา
+    end
+  end
+```
+
+### 3. Business Rule / Validation Logic
+
+| Rule | เงื่อนไข | ผลถ้าไม่ผ่าน | Feature ID |
+|---|---|---|---|
+| จำกัดสิทธิ์แค่นัดหมาย/แจ้งพื้นที่ (PDPA) | เมื่อเป็น chatbot จริงในอนาคต (`FEAT-ANALYSIS-06`) | ห้ามส่งข้อมูลเคสละเอียดผ่าน chatbot | FEAT-ANALYSIS-06 (backlog) |
+
+### 4. Error & Exception Handling
+
+ไม่มี error ระดับ business-critical สำหรับ flow นี้ (ไม่มีการเขียนข้อมูล/persist ในรอบนี้)
+
+### 5. Traceability
+
+| อ้างอิง | ID/ชื่อ |
+|---|---|
+| Feature | FEAT-ANALYSIS-03, FEAT-ANALYSIS-06 (backlog) |
+| Operation | API-SPEC.md operation 5 |
+| Component | Web App (Case Analysis), LINE OA (ช่องทางในอนาคตตาม backlog) |
+
+---
+
+# โมดูล: Control Plan (`FEAT-CONTROL-*`)
+
+## Flow 8 — Control Plan Approval Flow (step-by-step ละเอียด) — `FEAT-CONTROL-01`/`02`
+
+### 1. Flow Overview
+
+| หัวข้อ | รายละเอียด |
+|---|---|
+| Trigger | ทีมควบคุมโรคต้องการขออนุมัติเบิกน้ำมัน/น้ำยาเคมีสำหรับรอบปฏิบัติงานปัจจุบัน |
+| Actor หลัก | ทีมควบคุมโรค (สร้าง/ส่งคำขอ), ผู้บริหาร/หัวหน้างาน (อนุมัติ) |
+| Precondition | มีเคส/ตำแหน่งที่ `CONTROL_LOCATION.active = true` อย่างน้อย 1 รายการ |
+| Postcondition | `APPROVAL_REQUEST.status = approved` (ถ้าดำเนินการครบ flow) |
+| Reference | Operation 5-8 (`API-SPEC.md` หัวข้อ 2D) · Entity `APPROVAL_REQUEST`, `APPROVAL_REQUEST_CASE`, `CASE` · Component Web App (Control Plan), API Server |
+
+### 2. Sequence Flow
+
+```mermaid
+sequenceDiagram
+  participant ทีม as ทีมควบคุมโรค
+  participant ผบห as ผู้บริหาร/หัวหน้างาน
+  participant UI as Web App (Control Plan)
+  participant API as API Server
+  participant Data as APPROVAL_REQUEST / APPROVAL_REQUEST_CASE / CASE
+
+  ทีม->>UI: กด "สร้างร่างคำขออนุมัติ" (รอบใหม่)
+  UI->>API: สร้างร่างคำขออนุมัติ (รายการ case_id ที่ active ขณะนั้น)
+  API->>Data: สร้าง APPROVAL_REQUEST ใหม่ (status=draft, created_at=now) + APPROVAL_REQUEST_CASE (snapshot เคส active รอบนี้)
+  Data-->>API: บันทึกสำเร็จ
+  API-->>UI: แสดงร่างเอกสาร (ตามฟอร์มจริงของหน่วยงาน) ให้แก้ไขต่อได้
+
+  ทีม->>UI: ตรวจ/แก้ไขเนื้อหาร่างตามจริง แล้วกด "ส่งคำขอ"
+  UI->>API: ส่งคำขออนุมัติ (request_id)
+  API->>API: ตรวจสอบว่ามีเคสรวมอยู่ในคำขอไม่ว่าง
+  alt มีเคสรวมอยู่ (ไม่ว่าง)
+    API->>Data: APPROVAL_REQUEST.status -> sent, sent_at = now
+    Note over API,Data: สถานะเปลี่ยน: draft -> sent (ไม่มี fast-path ตรงไป approved)
+    API-->>UI: แสดงสถานะ "รออนุมัติ"
+  else ไม่มีเคสรวมอยู่เลย
+    API-->>UI: ปฏิเสธ (ปุ่มส่งไม่ทำงานถ้าไม่มีรายการ)
+  end
+
+  ผบห->>UI: เปิดดูคำขอที่สถานะ "รออนุมัติ"
+  ผบห->>UI: กด "อนุมัติ"
+  UI->>API: อนุมัติคำขอ (request_id)
+  API->>API: ตรวจสอบ request.status ต้อง = sent
+  alt status = sent
+    API->>Data: APPROVAL_REQUEST.status -> approved, approved_at = now
+    Note over API,Data: สถานะเปลี่ยน: sent -> approved (ทางเดียว ไม่มี reopen กลับ draft)
+    API-->>UI: แสดงสถานะ "อนุมัติแล้ว" + เปิดปุ่ม "พิมพ์เป็น PDF"
+  else status = draft หรือ approved อยู่แล้ว
+    API-->>UI: ปฏิเสธ (ป้องกันอนุมัติซ้ำซ้อน หรืออนุมัติคำขอที่ยังไม่ถูกส่ง)
+  end
+```
+
+### 3. Business Rule / Validation Logic
+
+| Rule | เงื่อนไข | ผลถ้าไม่ผ่าน | Feature ID |
+|---|---|---|---|
+| draft -> sent ต้องมีเนื้อหาไม่ว่าง | มีเคสรวมอยู่ในคำขออย่างน้อย 1 รายการ | ปุ่มส่งไม่ทำงาน | FEAT-CONTROL-02 |
+| sent -> approved เท่านั้น | ไม่มี fast-path จาก draft | ปฏิเสธ ต้องผ่านสถานะ sent ก่อน | FEAT-CONTROL-02 |
+| ไม่มี reopen กลับ draft | เสมอ | คำขอที่ approved แล้วคงสถานะตลอดไป | FEAT-CONTROL-02 |
+| 1 คำขอ = 1 รอบ (batch snapshot) | เก็บเป็น log ประวัติทุกรอบ | เคสเดียวกันปรากฏได้หลายคำขอ/หลายรอบ | DATA-MODEL.md |
+
+### 4. Error & Exception Handling
+
+| กรณี | จุดที่เกิด (อ้างจาก step ใน diagram) | การจัดการ | ผลกระทบต่อผู้ใช้/ข้อมูล |
+|---|---|---|---|
+| อนุมัติซ้ำซ้อน | ตอนผู้บริหารกด "อนุมัติ" | API ตรวจสอบ `request.status = sent` ก่อนเปลี่ยนเป็น `approved` ทุกครั้ง — ปฏิเสธถ้าเป็น `draft` (ยังไม่ส่ง) หรือ `approved` อยู่แล้ว (อนุมัติซ้ำ) | ป้องกันการเบิกจ่ายซ้ำซ้อนจากคำขอเดียวกัน |
+| ส่งคำขอที่ไม่มีเคสรวมอยู่ | ตอนกด "ส่งคำขอ" | API ตรวจสอบเนื้อหาไม่ว่างก่อนเปลี่ยนเป็น `sent` | ปฏิเสธการส่ง ป้องกันคำขอเปล่า |
+
+### 5. Traceability
+
+| อ้างอิง | ID/ชื่อ |
+|---|---|
+| Feature | FEAT-CONTROL-01, FEAT-CONTROL-02, FEAT-CONTROL-03 (backlog) |
+| Entity | `APPROVAL_REQUEST`, `APPROVAL_REQUEST_CASE`, `CASE` |
+| Operation | API-SPEC.md operation 5-8 (หัวข้อ 2D) |
+| Component | Web App (Control Plan), API Server |
+
+---
+
+## Flow 9 — Spray Workplan Assignment (coarse) — `FEAT-CONTROL-01`
+
+### 1. Flow Overview
+
+| หัวข้อ | รายละเอียด |
+|---|---|
+| Trigger | ทีมควบคุมโรคกำหนด/แก้ไขแผนปฏิบัติงานพ่น (มอบหมายทีม+Day 0/1/7+เวลา) และทำเครื่องหมายว่าพ่นแล้ว |
+| Actor หลัก | ทีมควบคุมโรค |
+| Precondition | มี `CONTROL_LOCATION.active = true` |
+| Postcondition | `SPRAY_ASSIGNMENT` ถูกสร้าง/อัปเดต และอาจถูกซ่อนจากตารางเมื่อพ่นครบ Day 0/1/7 |
+| Reference | Operation 3, 4 (`API-SPEC.md` หัวข้อ 2D) · Entity `CONTROL_LOCATION`, `SPRAY_ASSIGNMENT` |
+
+### 2. Sequence Flow
+
+```mermaid
+sequenceDiagram
+  participant ทีม as ทีมควบคุมโรค
+  participant UI as Web App (Control Plan)
+  participant API as API Server
+  participant Data as CONTROL_LOCATION / SPRAY_ASSIGNMENT
+
+  ทีม->>UI: เลือกทีมพ่น + Day (0/1/7) + เวลา สำหรับตำแหน่งที่ active
+  UI->>API: กำหนด/แก้ไขแผนปฏิบัติงานพ่น (location_id, assigned_team_id, day_offset, scheduled_time)
+  alt location.active = true
+    API->>Data: อัปเดต/สร้าง SPRAY_ASSIGNMENT
+    API-->>UI: แสดงแถวแผนปฏิบัติงานที่อัปเดตแล้ว
+  else location.active = false
+    API-->>UI: ปฏิเสธ (ต้องเปิด active ที่ตำแหน่งนี้ก่อน)
+  end
+
+  ทีม->>UI: ทำเครื่องหมาย "พ่นแล้ว" ต่อวัน (Day 0/1/7)
+  UI->>API: อัปเดตสถานะพ่นแล้ว (assignment_id, วันที่ทำเครื่องหมาย)
+  API->>Data: SPRAY_ASSIGNMENT.day{N}_done -> true
+  alt ครบทั้ง Day 0/1/7 แล้ว
+    API-->>UI: ซ่อนแถวนี้จากตารางแผนปฏิบัติงาน (ยังไม่ลบข้อมูล)
+  else ยังไม่ครบทุกวัน
+    API-->>UI: แสดงแถวต่อไปตามปกติ
+  end
+```
+
+### 3. Business Rule / Validation Logic
+
+| Rule | เงื่อนไข | ผลถ้าไม่ผ่าน | Feature ID |
+|---|---|---|---|
+| สร้างแผนปฏิบัติงานได้เฉพาะตำแหน่ง active | `CONTROL_LOCATION.active = true` | ปฏิเสธ | FEAT-CONTROL-01 |
+| แถวที่พ่นครบ Day 0/1/7 ถูกซ่อนจากตาราง (ไม่ลบ) | `day0_done`/`day1_done`/`day7_done` = true ทั้งหมด | แถวยังอยู่ใน entity แต่ไม่แสดงในตาราง | FEAT-CONTROL-01 |
+
+### 4. Error & Exception Handling
+
+ไม่มี error ระดับ business-critical เฉพาะสำหรับ flow นี้ตามขอบเขตที่ยืนยันใน Build Plan
+
+### 5. Traceability
+
+| อ้างอิง | ID/ชื่อ |
+|---|---|
+| Feature | FEAT-CONTROL-01, FEAT-CONTROL-04 (backlog), FEAT-CONTROL-05 (backlog) |
+| Entity | `CONTROL_LOCATION`, `SPRAY_ASSIGNMENT` |
+| Operation | API-SPEC.md operation 3, 4 |
+| Component | Web App (Control Plan), API Server |
+
+---
+
+## Flow 10 — Location Management (coarse) — `FEAT-CONTROL-01`/`02`
+
+### 1. Flow Overview
+
+| หัวข้อ | รายละเอียด |
+|---|---|
+| Trigger | ทีมควบคุมโรคแก้ไขที่อยู่/ชื่อสถานที่/รัศมี หรือเปิด-ปิด active ของตำแหน่งควบคุมโรค |
+| Actor หลัก | ทีมควบคุมโรค |
+| Precondition | เคสมีตำแหน่งควบคุมโรค (`CONTROL_LOCATION`) อย่างน้อย 1 แห่ง |
+| Postcondition | `CONTROL_LOCATION` ที่แก้ไขแล้ว โดยยังคง active อย่างน้อย 1 แห่งต่อเคสเสมอ |
+| Reference | Operation 2 (`API-SPEC.md` หัวข้อ 2D) · Entity `CONTROL_LOCATION` |
+
+### 2. Sequence Flow
+
+```mermaid
+sequenceDiagram
+  participant ทีม as ทีมควบคุมโรค
+  participant UI as Web App (Control Plan)
+  participant API as API Server
+  participant Data as CONTROL_LOCATION
+
+  ทีม->>UI: แก้ไขที่อยู่/ชื่อสถานที่/รัศมี หรือ เปิด-ปิด active ของตำแหน่ง
+  UI->>API: แก้ไขตำแหน่ง/รัศมีควบคุมโรค (location_id, ...)
+  alt เคสยังมีตำแหน่ง active อย่างน้อย 1 แห่งหลังการแก้ไข
+    API->>Data: อัปเดต CONTROL_LOCATION
+    API-->>UI: แสดงค่าที่แก้ไขแล้ว (ที่อยู่/รัศมี/จำนวนหลังคาเรือนประมาณการใหม่)
+  else การแก้ไขจะทำให้เคสนี้ไม่มีตำแหน่ง active เหลือเลย
+    API-->>UI: ปฏิเสธ (ต้องมีตำแหน่ง active อย่างน้อย 1 แห่งต่อเคสเสมอ)
+  end
+```
+
+### 3. Business Rule / Validation Logic
+
+| Rule | เงื่อนไข | ผลถ้าไม่ผ่าน | Feature ID |
+|---|---|---|---|
+| ต้องมีตำแหน่ง active อย่างน้อย 1 แห่งต่อเคสเสมอ | ตรวจก่อนบันทึกทุกครั้ง | ปฏิเสธการปิด active ตำแหน่งสุดท้าย | FEAT-CONTROL-01 |
+
+### 4. Error & Exception Handling
+
+ไม่มี error ระดับ business-critical เฉพาะสำหรับ flow นี้นอกเหนือจาก business rule ข้างต้น (ครอบคลุมแล้วในหัวข้อ 3)
+
+### 5. Traceability
+
+| อ้างอิง | ID/ชื่อ |
+|---|---|
+| Feature | FEAT-CONTROL-01, FEAT-CONTROL-02 |
+| Entity | `CONTROL_LOCATION` |
+| Operation | API-SPEC.md operation 2 |
+| Component | Web App (Control Plan), API Server |
+
+---
+
+# โมดูล: Field Tracking (`FEAT-TRACK-*`)
+
+## Flow 11 — Team Status Update (coarse) — `FEAT-TRACK-01`
+
+### 1. Flow Overview
+
+| หัวข้อ | รายละเอียด |
+|---|---|
+| Trigger | ทีมพ่นอัปเดตสถานะปฏิบัติงานภาคสนาม |
+| Actor หลัก | ทีมพ่น |
+| Precondition | `TEAM.team_type = control` |
+| Postcondition | `TEAM.status` เปลี่ยนไปสถานะถัดไป, `last_update_at` อัปเดต |
+| Reference | Operation 1, 2 (`API-SPEC.md` หัวข้อ 2E) · Entity `TEAM` |
+
+### 2. Sequence Flow
+
+```mermaid
+sequenceDiagram
+  participant ทีมพ่น as ทีมพ่น
+  participant UI as Web App (Field Tracking)
+  participant API as API Server
+  participant Data as TEAM (team_type=control)
+
+  ทีมพ่น->>UI: กดอัปเดตสถานะปฏิบัติงาน
+  UI->>API: อัปเดตสถานะทีมพ่น (team_id)
+  alt สถานะปัจจุบัน = ยังไม่ถึง หรือ กำลังพ่น
+    API->>Data: TEAM.status -> สถานะถัดไป (ยังไม่ถึง -> กำลังพ่น -> พ่นแล้ว), last_update_at = now
+    Note over API,Data: เก็บเฉพาะสถานะปัจจุบัน ไม่เก็บประวัติการเคลื่อนที่ (assumption: เปลี่ยนตามลำดับทีละขั้น ไม่ข้าม/ย้อนกลับ — ดู assumption ท้ายผลลัพธ์)
+    API-->>UI: แสดงสถานะใหม่บนแผนที่ติดตาม
+  else สถานะปัจจุบัน = พ่นแล้ว (ขั้นสุดท้าย)
+    API-->>UI: ไม่มีสถานะถัดไปให้เปลี่ยน (ปุ่มอัปเดตไม่ทำงานต่อ)
+  end
+```
+
+### 3. Business Rule / Validation Logic
+
+| Rule | เงื่อนไข | ผลถ้าไม่ผ่าน | Feature ID |
+|---|---|---|---|
+| สถานะเปลี่ยนตามลำดับทีละขั้น (ยังไม่ถึง→กำลังพ่น→พ่นแล้ว) | ทุกครั้งที่อัปเดต | ไม่มีสถานะถัดไปเมื่อถึง "พ่นแล้ว" | FEAT-TRACK-01 |
+| เก็บเฉพาะสถานะปัจจุบัน ไม่เก็บประวัติการเคลื่อนที่ | เสมอ | — | FEAT-TRACK-01 (DATA-MODEL.md) |
+
+### 4. Error & Exception Handling
+
+ไม่มี error ระดับ business-critical เฉพาะสำหรับ flow นี้ตามขอบเขตที่ยืนยันใน Build Plan
+
+### 5. Traceability
+
+| อ้างอิง | ID/ชื่อ |
+|---|---|
+| Feature | FEAT-TRACK-01, FEAT-CONTROL-04 (backlog) |
+| Entity | `TEAM` |
+| Operation | API-SPEC.md operation 1, 2 (หัวข้อ 2E) |
+| Component | Web App (Field Tracking), API Server, บริการติดตามตำแหน่งทีมพ่น (backlog) |
+
+---
+
+## Flow 12 — AI Vision QC + Manual Check (coarse) — `FEAT-TRACK-02`
+
+### 1. Flow Overview
+
+| หัวข้อ | รายละเอียด |
+|---|---|
+| Trigger | ทีมควบคุมโรคเปิดดูรูปภาคสนามพร้อมผลตรวจ AI Vision QC |
+| Actor หลัก | ทีมควบคุมโรค |
+| Precondition | มี `FIELD_PHOTO` ที่ผ่านการประเมินจากบริการ AI Vision QC แล้ว |
+| Postcondition | รูปที่ AI ตรวจไม่ผ่านอาจถูกตรวจสอบด้วยมือ (`manual_checked = true`) |
+| Reference | Operation 3, 4 (`API-SPEC.md` หัวข้อ 2E) · Entity `FIELD_PHOTO` · Component บริการ AI Vision QC (backlog `FEAT-CONTROL-05`) |
+
+### 2. Sequence Flow
+
+```mermaid
+sequenceDiagram
+  participant ทีม as ทีมควบคุมโรค
+  participant UI as Web App (Field Tracking)
+  participant API as API Server
+  participant Data as FIELD_PHOTO
+
+  Note over API,Data: ผล location_match/time_match มาจากบริการ AI Vision QC ที่ประมวลผลไว้ล่วงหน้าแล้ว (backlog FEAT-CONTROL-05 สำหรับ vendor จริง)
+
+  ทีม->>UI: เปิดดูรูปภาคสนามพร้อมผลตรวจ
+  UI->>API: ดึงรูปภาคสนามพร้อมผลตรวจ AI Vision QC (filter: team_id)
+  API->>Data: อ่าน FIELD_PHOTO
+  Data-->>API: รายการรูปพร้อมผลตรวจ
+  API-->>UI: แสดงรูปพร้อม badge ผลตรวจ
+
+  alt location_match = false หรือ time_match = false
+    UI-->>ทีม: แสดงปุ่ม "ตรวจสอบด้วยมือ"
+    ทีม->>UI: กด "ตรวจสอบด้วยมือ" (photo_id)
+    UI->>API: ตรวจสอบรูปด้วยมือ (photo_id)
+    API->>Data: FIELD_PHOTO.manual_checked -> true
+    API-->>UI: แสดงสถานะ "ตรวจสอบด้วยมือแล้ว"
+  else location_match = true และ time_match = true
+    UI-->>ทีม: ไม่ต้องตรวจเพิ่มเติม (ปุ่มไม่ปรากฏ)
+  end
+```
+
+### 3. Business Rule / Validation Logic
+
+| Rule | เงื่อนไข | ผลถ้าไม่ผ่าน | Feature ID |
+|---|---|---|---|
+| ตรวจสอบด้วยมือได้เฉพาะรูปที่ AI ตรวจไม่ผ่านอย่างน้อย 1 ด้าน | `location_match = false` หรือ `time_match = false` | ปุ่ม "ตรวจสอบด้วยมือ" ไม่ปรากฏ | FEAT-TRACK-02 |
+
+### 4. Error & Exception Handling
+
+ไม่มี error ระดับ business-critical เฉพาะสำหรับ flow นี้ตามขอบเขตที่ยืนยันใน Build Plan
+
+### 5. Traceability
+
+| อ้างอิง | ID/ชื่อ |
+|---|---|
+| Feature | FEAT-TRACK-02, FEAT-CONTROL-05 (backlog) |
+| Entity | `FIELD_PHOTO` |
+| Operation | API-SPEC.md operation 3, 4 |
+| Component | Web App (Field Tracking), API Server, บริการ AI Vision QC (backlog) |
+
+---
+
+# โมดูล: ASM Coordination (`FEAT-ASM-*`)
+
+## Flow 13 — Photo Intake Query/Filter (coarse) — `FEAT-ASM-01`
+
+### 1. Flow Overview
+
+| หัวข้อ | รายละเอียด |
+|---|---|
+| Trigger | ทีมควบคุมโรคเปิดหน้าเพื่อดูรูปยืนยันพ่นที่ อสม. ส่งเข้ามา |
+| Actor หลัก | ทีมควบคุมโรค |
+| Precondition | มี `ASM_PHOTO_INTAKE` ในระบบ |
+| Postcondition | เห็นรายการรูปพร้อมสถานะสรุปโดย AI (พ่นแล้ว/ยังไม่พ่น) |
+| Reference | Operation 1 (`API-SPEC.md` หัวข้อ 2F) · Entity `ASM_PHOTO_INTAKE` |
+
+### 2. Sequence Flow
+
+```mermaid
+sequenceDiagram
+  participant ทีม as ทีมควบคุมโรค
+  participant UI as Web App (ASM Coordination)
+  participant API as API Server
+  participant Data as ASM_PHOTO_INTAKE
+
+  ทีม->>UI: ตั้งค่า filter (พื้นที่/ช่วงวันที่)
+  UI->>API: ดึงรูปยืนยันพ่นจาก อสม. (filter: พื้นที่, ช่วงวันที่)
+  API->>Data: อ่าน ASM_PHOTO_INTAKE ตามเงื่อนไข
+  Data-->>API: ผลลัพธ์
+  alt พบรูปตรงเงื่อนไข
+    API-->>UI: แสดงรายการรูปพร้อมสถานะสรุปโดย AI (พ่นแล้ว/ยังไม่พ่น)
+  else ไม่พบข้อมูลตรงเงื่อนไข
+    API-->>UI: แสดง empty state
+  end
+```
+
+### 3. Business Rule / Validation Logic
+
+| Rule | เงื่อนไข | ผลถ้าไม่ผ่าน | Feature ID |
+|---|---|---|---|
+| สถานะพ่นแล้ว/ยังไม่พ่น เป็น read-only ผลจาก AI | รอบนี้ยังไม่มี manual override ที่ยืนยัน | ผู้ใช้แก้ไขสถานะไม่ได้ในรอบนี้ | FEAT-ASM-01 |
+
+### 4. Error & Exception Handling
+
+ไม่มี error ระดับ business-critical เฉพาะสำหรับ flow นี้ตามขอบเขตที่ยืนยันใน Build Plan
+
+### 5. Traceability
+
+| อ้างอิง | ID/ชื่อ |
+|---|---|
+| Feature | FEAT-ASM-01, FEAT-ASM-03 (backlog) |
+| Entity | `ASM_PHOTO_INTAKE` |
+| Operation | API-SPEC.md operation 1 |
+| Component | Web App (ASM Coordination), API Server, LINE OA (backlog) |
+
+---
+
+## Flow 14 — Advance Notice Queue (coarse) — `FEAT-ASM-02`
+
+### 1. Flow Overview
+
+| หัวข้อ | รายละเอียด |
+|---|---|
+| Trigger | ทีมควบคุมโรคเปิดดูคิวแจ้งเตือนล่วงหน้าก่อนวันพ่น (รอบ 1 ก่อน Day 0, รอบ 2 ก่อน Day 0+7) |
+| Actor หลัก | ทีมควบคุมโรค |
+| Precondition | มี `ADVANCE_NOTICE_QUEUE` ในระบบ |
+| Postcondition | เห็นตัวอย่างข้อความ/สถานะการส่งของแต่ละรอบแจ้งเตือน |
+| Reference | Operation 2, 3 (`API-SPEC.md` หัวข้อ 2F) · Entity `ADVANCE_NOTICE_QUEUE` |
+
+### 2. Sequence Flow
+
+```mermaid
+sequenceDiagram
+  participant ทีม as ทีมควบคุมโรค
+  participant UI as Web App (ASM Coordination)
+  participant API as API Server
+  participant Data as ADVANCE_NOTICE_QUEUE
+
+  ทีม->>UI: เปิดดูคิวแจ้งเตือนล่วงหน้า
+  UI->>API: ดึงคิวแจ้งเตือนล่วงหน้า
+  API->>Data: อ่าน ADVANCE_NOTICE_QUEUE
+  Data-->>API: รายการคิว (รอบ 1 ก่อน Day 0, รอบ 2 ก่อน Day 0+7)
+  API-->>UI: แสดงตารางคิว พร้อมสถานะ reminder1/reminder2 (sent/pending)
+
+  ทีม->>UI: เลือกดูตัวอย่างข้อความ (queue_id)
+  UI->>API: ดูตัวอย่างข้อความแจ้งเตือน (queue_id)
+  alt reminder อยู่ในสถานะ pending
+    API-->>UI: แสดงข้อความตัวอย่างก่อนส่งจริง (ยังไม่ส่งจริง — backlog FEAT-ASM-04)
+  else reminder อยู่ในสถานะ sent แล้ว
+    API-->>UI: แสดงสถานะ "ส่งแล้ว" แทนตัวอย่าง
+  end
+```
+
+### 3. Business Rule / Validation Logic
+
+| Rule | เงื่อนไข | ผลถ้าไม่ผ่าน | Feature ID |
+|---|---|---|---|
+| 2 รอบแจ้งเตือนต่อพื้นที่ (ก่อน Day 0 / ก่อน Day 0+7) | เก็บแบบ embedded ต่อแถว | — | FEAT-ASM-02 |
+
+### 4. Error & Exception Handling
+
+ไม่มี error ระดับ business-critical เฉพาะสำหรับ flow นี้ตามขอบเขตที่ยืนยันใน Build Plan — ข้อจำกัดเรื่อง quota ของ LINE Messaging API (`HIGH-LEVEL-ARCHITECTURE.md` หัวข้อ 4) เป็นข้อจำกัดทางเทคนิคทั่วไป ไม่ใช่ 1 ใน 5 ประเภท error ที่ยืนยันในขอบเขตรอบนี้
+
+### 5. Traceability
+
+| อ้างอิง | ID/ชื่อ |
+|---|---|
+| Feature | FEAT-ASM-02, FEAT-ASM-04 (backlog) |
+| Entity | `ADVANCE_NOTICE_QUEUE` |
+| Operation | API-SPEC.md operation 2, 3 |
+| Component | Web App (ASM Coordination), API Server, LINE OA (backlog) |
+
+---
+
+# โมดูล: Reports (`FEAT-REPORT-*`)
+
+## Flow 15 — Generate & Send Summary Report (coarse) — `FEAT-REPORT-01`/`02`
+
+### 1. Flow Overview
+
+| หัวข้อ | รายละเอียด |
+|---|---|
+| Trigger | ผู้บริหาร/เจ้าหน้าที่ต้องการสรุปสถานการณ์ประจำวัน/สัปดาห์ |
+| Actor หลัก | ผู้บริหาร / เจ้าหน้าที่ |
+| Precondition | — |
+| Postcondition | `REPORT_SEND_LOG` ใหม่ถูกสร้าง (เมื่อส่งสำเร็จ) |
+| Reference | Operation 1-3 (`API-SPEC.md` หัวข้อ 2G) · Entity `REPORT_SEND_LOG`, `CASE`, `SPRAY_ASSIGNMENT`, `FIELD_PHOTO`, `INVESTIGATION_REPORT` |
+
+### 2. Sequence Flow
+
+```mermaid
+sequenceDiagram
+  participant ผบห as ผู้บริหาร/เจ้าหน้าที่
+  participant UI as Web App (Reports)
+  participant API as API Server
+  participant Data as CASE / SPRAY_ASSIGNMENT / FIELD_PHOTO / INVESTIGATION_REPORT
+
+  ผบห->>UI: เลือกช่วงเวลา (daily/weekly)
+  UI->>API: ดึง KPI สรุปตามช่วงเวลา (period_type)
+  API->>Data: คำนวณ KPI สดจากข้อมูลปัจจุบัน (จำนวนเคส, % พ่นแล้ว, % QC ผ่าน, HI/CI, รายงานที่ส่งแล้ว)
+  Data-->>API: ค่าดิบ
+  API-->>UI: แสดง KPI card + สร้างเนื้อหาสรุป (template)
+
+  ผบห->>UI: แก้ไขเนื้อหาสรุปตามจริง แล้วกด "ส่ง"
+  UI->>API: ส่งรายงาน (เนื้อหาสรุป, channel)
+  alt เนื้อหาไม่ว่าง
+    API->>Data: สร้าง REPORT_SEND_LOG ใหม่ (status=sent, sent_at=now, channel=LINE/PDF)
+    API-->>UI: แสดงสถานะ "ส่งแล้ว"
+  else เนื้อหาว่าง
+    API-->>UI: ปฏิเสธ (ปุ่มส่งไม่ทำงานถ้าเนื้อหาว่าง)
+  end
+```
+
+### 3. Business Rule / Validation Logic
+
+| Rule | เงื่อนไข | ผลถ้าไม่ผ่าน | Feature ID |
+|---|---|---|---|
+| ส่งรายงานได้ต่อเมื่อเนื้อหาไม่ว่าง | `content` ไม่ว่าง | ปุ่มส่งไม่ทำงาน | FEAT-REPORT-02 |
+| KPI เป็นค่าคำนวณสด ไม่ persist แยก | เสมอ | — (`REPORT_SEND_LOG` เก็บเฉพาะ snapshot ตอนส่ง) | FEAT-REPORT-01 |
+
+### 4. Error & Exception Handling
+
+ไม่มี error ระดับ business-critical เฉพาะสำหรับ flow นี้ตามขอบเขตที่ยืนยันใน Build Plan — ความเสี่ยงที่ข้อมูลสรุปไม่ครบถ้วนเพราะพึ่งพาคุณภาพข้อมูล Phase 1-4 เป็นข้อจำกัดที่ ROADMAP.md ระบุไว้แล้ว ไม่ใช่ error case ที่ต้อง handle ในระบบ
+
+### 5. Traceability
+
+| อ้างอิง | ID/ชื่อ |
+|---|---|
+| Feature | FEAT-REPORT-01, FEAT-REPORT-02, FEAT-REPORT-03 (backlog) |
+| Entity | `REPORT_SEND_LOG`, `CASE`, `SPRAY_ASSIGNMENT`, `FIELD_PHOTO`, `INVESTIGATION_REPORT` |
+| Operation | API-SPEC.md operation 1-3 (หัวข้อ 2G) |
+| Component | Web App (Reports), API Server |
+
+---
+
+# โมดูล: Alerts (`FEAT-ALERT-*`)
+
+## Flow 16 — Alert Assign & Close Flow (step-by-step ละเอียด) — `FEAT-ALERT-01`/`02`
+
+### 1. Flow Overview
+
+| หัวข้อ | รายละเอียด |
+|---|---|
+| Trigger | เจ้าหน้าที่เฝ้าระวังโรคเห็นแจ้งเตือนสถานะ "ใหม่" (`new`) ต้องมอบหมายทีมไปดำเนินการ |
+| Actor หลัก | เจ้าหน้าที่เฝ้าระวังโรค (มอบหมาย), ทีมที่ได้รับมอบหมาย (ปิดเคส) |
+| Precondition | `ALERT.status = new` |
+| Postcondition | `ALERT.status = closed` พร้อม `close_note` (ถ้าดำเนินการครบ flow) |
+| Reference | Operation 1-3 (`API-SPEC.md` หัวข้อ 2H) · Entity `ALERT`, `TEAM`, `DISEASE`, `SERVICE_ZONE` |
+
+### 2. Sequence Flow
+
+```mermaid
+sequenceDiagram
+  participant จนท as เจ้าหน้าที่เฝ้าระวังโรค
+  participant ทีม as ทีมที่ได้รับมอบหมาย
+  participant UI as Web App (Alerts)
+  participant API as API Server
+  participant Data as ALERT
+
+  จนท->>UI: เลือกทีมจาก dropdown (ทีมสอบสวนโรคหรือทีมพ่น)
+  alt ยังไม่เลือกทีม
+    UI-->>จนท: ปุ่ม "มอบหมาย" ยัง disabled
+  else เลือกทีมแล้ว
+    UI-->>จนท: ปุ่ม "มอบหมาย" เปิดใช้งาน
+    จนท->>UI: กด "มอบหมาย"
+    UI->>API: มอบหมายทีมรับผิดชอบ (alert_id, assigned_team_id)
+    API->>API: ตรวจสอบ assigned_team_id ไม่ว่าง
+    API->>Data: ALERT.status -> in_progress, assigned_team_id = ทีมที่เลือก, assigned_at = now
+    Note over API,Data: สถานะเปลี่ยน: new -> in_progress (ต้องเลือกทีมก่อนเสมอ)
+    Data-->>API: บันทึกสำเร็จ
+    API-->>UI: แสดงทีมที่มอบหมาย + เวลา + ปุ่ม "ปิดเคส"
+  end
+
+  ทีม->>ทีม: ดำเนินการภาคสนามตามที่ได้รับมอบหมาย (นอกระบบ)
+
+  จนท->>UI: กด "ปิดเคส"
+  UI-->>จนท: เปิดกล่องข้อความบันทึกสรุปผล (close_note)
+  loop จนกว่าจะพิมพ์ข้อความ
+    จนท->>UI: พิมพ์ข้อความสรุปผล
+    alt close_note ยังว่าง
+      UI-->>จนท: ปุ่ม "ยืนยันปิดเคส" ยัง disabled
+    else close_note ไม่ว่างแล้ว
+      UI-->>จนท: ปุ่ม "ยืนยันปิดเคส" เปิดใช้งาน
+    end
+  end
+
+  alt จนท กด "ยืนยันปิดเคส" (close_note ไม่ว่าง)
+    จนท->>UI: กด "ยืนยันปิดเคส"
+    UI->>API: ปิดเคสแจ้งเตือน (alert_id, close_note)
+    API->>API: ตรวจสอบ close_note ไม่ว่าง
+    API->>Data: ALERT.status -> closed, close_note = ข้อความ, closed_at = now
+    Note over API,Data: สถานะเปลี่ยน: in_progress -> closed (ทางเดียว ไม่มี reopen/unassign)
+    Data-->>API: บันทึกสำเร็จ
+    API-->>UI: แสดงสถานะ "ปิดเคสแล้ว" พร้อมบันทึกสรุปผล
+  else จนท กด "ยกเลิก"
+    จนท->>UI: กด "ยกเลิก"
+    UI-->>จนท: ปิดกล่องข้อความ กลับสู่มุมมองปกติ (ALERT ยังเป็น in_progress)
+  end
+```
+
+### 3. Business Rule / Validation Logic
+
+| Rule | เงื่อนไข | ผลถ้าไม่ผ่าน | Feature ID |
+|---|---|---|---|
+| มอบหมายทีมต้องเลือกทีมก่อนเปลี่ยนเป็น in_progress | `assigned_team_id` ไม่ว่าง | ปุ่ม "มอบหมาย" disabled | FEAT-ALERT-02 |
+| ปิดเคสต้องมี close_note ไม่ว่างก่อนเปลี่ยนเป็น closed | `close_note` ไม่ว่าง | ปุ่ม "ยืนยันปิดเคส" disabled | FEAT-ALERT-02 |
+| ไม่มี reopen/unassign ในรอบนี้ | เสมอ | เคสที่ `closed` คงสถานะตลอดไป | FEAT-ALERT-02 |
+
+### 4. Error & Exception Handling
+
+| กรณี | จุดที่เกิด (อ้างจาก step ใน diagram) | การจัดการ | ผลกระทบต่อผู้ใช้/ข้อมูล |
+|---|---|---|---|
+| ปิด alert โดยไม่มี note | ตอนกด "ยืนยันปิดเคส" | UI disable ปุ่มตั้งแต่ `close_note` ยังว่าง (client-side) + API ต้อง reject ซ้ำอีกชั้นถ้าเรียกตรงโดยไม่ผ่าน UI (server-side validation) | ป้องกัน `ALERT.status = closed` ที่ไม่มีบันทึกสรุปผล ซึ่งจะทำให้ตรวจสอบย้อนหลังไม่ได้ |
+| แจ้งเตือนผิดทีม (มอบหมายไม่มีทีม/ทีมว่าง) | ตอนกด "มอบหมาย" | UI disable ปุ่ม "มอบหมาย" จนกว่าจะเลือกทีมจาก dropdown | ป้องกัน `ALERT.status = in_progress` ที่ไม่มีทีมรับผิดชอบชัดเจน |
+
+### 5. Traceability
+
+| อ้างอิง | ID/ชื่อ |
+|---|---|
+| Feature | FEAT-ALERT-01, FEAT-ALERT-02, FEAT-ALERT-03 (backlog) |
+| Entity | `ALERT`, `TEAM`, `DISEASE`, `SERVICE_ZONE` |
+| Operation | API-SPEC.md operation 1-3 (หัวข้อ 2H) |
+| Component | Web App (Alerts), API Server |
+
+---
+
+## สรุป Gap/Assumption ที่พบระหว่างเขียนเอกสารนี้
+
+- **[Gap] เกณฑ์คำนวณระดับความเสี่ยงต่อเขต (ปกติ/เฝ้าระวัง/วิกฤต)** ยังไม่ระบุตัวเลขที่แน่นอนใน `DATA-MODEL.md`/`API-SPEC.md` — Flow 4 (Dashboard) จึงระบุแค่ "คำนวณจากจำนวนเคส/อัตราป่วยเทียบเกณฑ์" แบบ conceptual เท่านั้น
+- **[Gap] Case Intake ไม่มี dedup rule สำหรับเคสซ้ำ** (อัปโหลดไฟล์/HN ซ้ำ) — Flow 1 flag ไว้เป็น error case ที่ยังไม่มีการจัดการ
+- **[Gap] Case Analysis ไม่มี operation "ปฏิเสธ/แก้ไของค์ประกอบ cluster ที่ผิด"** — Flow 5 flag ไว้ว่า cluster ที่นักระบาดวิทยาเห็นว่าผิดพื้นที่จะค้างสถานะ `pending` ตลอดไปโดยไม่มีทางแก้ไขในระบบ
+- **[Gap] Case Intake — การกำหนด `responsible_team` เริ่มต้นตอนสร้างเคสใหม่เมื่อ OCR ดึงตำบลที่ไม่ตรง `SUBDISTRICT_ROUTING_RULE` ใดเลย** ไม่มีการระบุ behavior ชัดเจนใน `API-SPEC.md`/`DATA-MODEL.md` (มีแต่ตอนแก้ไข) — เอกสารนี้สันนิษฐานว่าใช้ lookup เดียวกันตอนสร้างเคส (Flow 1 step แรก) แต่ยังไม่ยืนยันว่าเกิดอะไรขึ้นถ้าไม่ตรง (ปล่อยว่าง/ต้องเลือกด้วยมือ) — ต้องยืนยันเพิ่มก่อน implement จริง
+- **[Assumption] Field Tracking — ลำดับการเปลี่ยนสถานะทีมพ่น (`not_arrived` → `spraying` → `done`)** สันนิษฐานว่าเป็นลำดับทางเดียวทีละขั้น ไม่ข้าม/ย้อนกลับ ตามรูปแบบ one-way transition ที่ใช้ทั่วทั้งระบบ (`CASE`, `CASE_CLUSTER`, `ALERT`, `APPROVAL_REQUEST`) — ไม่ได้ระบุไว้ชัดเจนเป็นคำต่อคำใน `DATA-MODEL.md`
+
+---
+
+หมายเหตุ: เอกสารนี้ไม่มี State/Status Diagram แยกตามที่ยืนยันใน Build Plan รอบนี้ — ถ้าในอนาคตมี entity ที่ขยายเป็น ≥4 สถานะ ควรทบทวนและเพิ่มหัวข้อ State/Status Diagram ต่อ flow ที่เกี่ยวข้อง
