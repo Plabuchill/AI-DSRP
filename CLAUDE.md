@@ -12,7 +12,8 @@
 - **`prototypes/vN/`**: prototype แต่ละเวอร์ชัน (`index.html`, feature pages, `BUILD-PLAN.md`)
 - **`docs/02-design/02-technical/`**: เอกสาร technical design — `HIGH-LEVEL-ARCHITECTURE.md`, `DATA-MODEL.md`, `API-SPEC.md`, `DETAILED-DESIGN.md` (ถ้ามี), `TECH-STACK.md` (ถ้ามี — เอกสารเดียวที่ยืนยันเทคโนโลยีจริง ดูข้อ 4), `NFR-REVIEW.md` (ถ้ามี — ผลทวนสอบ Non-Functional Requirement เทียบกับเอกสารข้างต้น), ADR แยกไฟล์ (ถ้ามี)
 - **`docs/03-testing/01-test-plan/vN/`**: เอกสาร QA แต่ละเวอร์ชัน (`TEST-PLAN.md`, `ACCEPTANCE-CRITERIA.md`, `TEST-CASES.xlsx`, `BUILD-PLAN.md`)
-- **`docs/02-design/01-prototypes/`**: User Journey docs (`USER-JOURNEY-*.md`)
+- **`docs/02-design/01-prototypes/`**: User Journey docs (`USER-JOURNEY-*.md`, ทีละไฟล์ต่อ module/persona)
+- **`docs/01-requirements/01-spec/`**: `REQUIREMENTS.md` (ถ้ามี — ต้นทางความต้องการ), `FEATURE-LIST.md` (Feature ID ทั้งระบบ)
 - **`docs/01-requirements/03-task/`**: `TASK-LIST.md` (ถ้ามี — task breakdown ต่อ phase, living document)
 
 **ห้ามก็อปปี้เนื้อหาไฟล์ canonical มาซ้ำไว้ใน `docs/` โดยตรง** — ให้ `index.md` ลิงก์ไปที่ไฟล์จริงเท่านั้น (ใช้ wikilink `[[../../../ROADMAP.md|ROADMAP.md]]` ตาม convention เดิม) เพื่อไม่ให้มีเนื้อหา 2 ชุดที่อาจไม่ตรงกัน
@@ -32,7 +33,7 @@
 | ประเภท | Pattern | ตัวอย่าง |
 |---|---|---|
 | **Versioned** (สร้าง version ใหม่ได้เรื่อยๆ) | โฟลเดอร์ `vN/` แยกตามรอบงาน, ของเก่าไม่ถูกแทนที่ | `prototypes/v1/`, `docs/03-testing/01-test-plan/v1/` |
-| **Living document** (ไฟล์เดี่ยว ไม่มี `vN`) | แก้ไฟล์เดิมในที่ตามค่าเริ่มต้น หรือย้ายของเก่าไป `docs/00-archived/` (ตั้งชื่อ `{ชื่อไฟล์}-{YYYY-MM-DD}.md`) แล้วเขียนใหม่ทั้งฉบับเมื่อทิศทางหลักเปลี่ยน — **ต้องถามผู้ใช้ทุกครั้งที่มีไฟล์เดิมอยู่แล้วว่าจะเลือกทางไหน ไม่ตัดสินใจเอง** | `docs/02-design/02-technical/HIGH-LEVEL-ARCHITECTURE.md`, `DATA-MODEL.md`, `API-SPEC.md`, `DETAILED-DESIGN.md`, `TECH-STACK.md`, `NFR-REVIEW.md`, `docs/01-requirements/03-task/TASK-LIST.md` |
+| **Living document** (ไฟล์เดี่ยว ไม่มี `vN`) | แก้ไฟล์เดิมในที่ตามค่าเริ่มต้น หรือย้ายของเก่าไป `docs/00-archived/` (ตั้งชื่อ `{ชื่อไฟล์}-{YYYY-MM-DD}.md`) แล้วเขียนใหม่ทั้งฉบับเมื่อทิศทางหลักเปลี่ยน — **ต้องถามผู้ใช้ทุกครั้งที่มีไฟล์เดิมอยู่แล้วว่าจะเลือกทางไหน ไม่ตัดสินใจเอง** | `docs/02-design/02-technical/HIGH-LEVEL-ARCHITECTURE.md`, `DATA-MODEL.md`, `API-SPEC.md`, `DETAILED-DESIGN.md`, `TECH-STACK.md`, `NFR-REVIEW.md`, `docs/01-requirements/01-spec/REQUIREMENTS.md`, `FEATURE-LIST.md`, `docs/01-requirements/03-task/TASK-LIST.md`, `docs/02-design/01-prototypes/USER-JOURNEY-*.md` (ต่อไฟล์ ไม่ใช่ทั้งโฟลเดอร์) |
 
 > **ข้อยกเว้นของ `ROADMAP.md`**: เป็น living document ที่ root เหมือนกัน แต่เป็นไฟล์ root canonical เดี่ยว (ดูข้อ 1) — **แก้ในที่เป็นค่าเริ่มต้นเสมอ ห้ามย้ายเข้า `docs/`** ถ้าต้อง archive ระหว่างปรับโครงใหญ่ ให้**คัดลอกสำเนา**ไป `docs/00-archived/ROADMAP-{YYYY-MM-DD}.md` แล้วเขียนทับไฟล์ต้นฉบับที่ root ใหม่ (ไม่ใช่ย้ายต้นฉบับออก)
 
@@ -69,9 +70,15 @@
 | `tech-stack-builder` | Tech Stack: สัมภาษณ์ผู้ใช้แบบเข้มข้น (ทีม/งบ/hosting/compliance/scale) แล้วยืนยันเทคโนโลยีจริงต่อ component (เอกสารเดียวในตระกูลนี้ที่**ไม่** conceptual — ดูข้อ 4) | `tech-stack-writer` |
 | `release-plan-builder` | Plan/Phase/Release (แก้ `ROADMAP.md` ที่ root ในที่เสมอ) + Task Breakdown (`docs/01-requirements/03-task/TASK-LIST.md`) — อยู่สาย requirements/planning ไม่ใช่ technical design จึงไม่ต้อง conceptual-first แต่ห้ามเดา assignee/deadline/estimation | `release-plan-writer` |
 | `nfr-review-builder` | ทวนสอบ Non-Functional Requirement (`NFR-REVIEW.md`) — เทียบเอกสาร design ที่มีกับ NFR ต้นทางที่ยืนยันไว้แล้วใน `TECH-STACK.md`/`ROADMAP.md` Phase 8/`DESIGN.md` เท่านั้น ไม่สัมภาษณ์ NFR ใหม่ หมวดที่ไม่มีต้นทางต้อง flag เป็น Gap ห้ามตั้งเป้าหมายเอง | `nfr-reviewer` |
+| `requirement-builder` | ต้นทางความต้องการ (`REQUIREMENTS.md`) — pain point/user story/business rule/scope ก่อนแตกเป็น backlog/feature-list | `requirement-writer` |
+| `feature-list-builder` | Feature List (`FEATURE-LIST.md`) — กลไก**เดียว**ที่กำหนด Feature ID ใหม่ในโปรเจกต์ เอกสารอื่นทั้งหมดอ้างอิง ID จากที่นี่เท่านั้น | `feature-list-writer` |
+| `user-journey-builder` | User Journey (`docs/02-design/01-prototypes/USER-JOURNEY-{module}.md`) — ทำทีละ 1 module/persona ต่อรอบเท่านั้น | `user-journey-writer` |
 
 หลักการร่วมของทุก skill ในตระกูลนี้: งานคุยกับผู้ใช้ (เก็บ input, เสนอแผน, ถามเรื่อง version/archive) รันใน main loop เสมอ ห้าม delegate ให้ subagent ทำแทน ส่วนงานเขียนไฟล์จริงหลังแผนยืนยันแล้วเท่านั้นที่ delegate ให้ subagent ที่ระบุในตาราง
 
-### Orchestrator ของสาย Technical Design
+### Orchestrator
 
-`design-pipeline-orchestrator` เรียง 4 skill สาย technical design ให้รันต่อเนื่องในคำสั่งเดียว: `architecture-builder` → `data-contract-builder` → `detailed-design-builder` → `nfr-review-builder` — เช็กเอกสารที่มีอยู่ก่อนแล้วถามผู้ใช้ว่าจะข้ามขั้นตอนที่เสร็จแล้วไหม แต่**ไม่ข้ามการยืนยัน Build Plan/Ambiguity Protocol ของแต่ละ skill** ไม่มี subagent ของตัวเอง (delegate ให้ subagent ของแต่ละ skill ที่เรียกไปตามปกติ)
+- `design-pipeline-orchestrator` เรียง 4 skill สาย technical design ให้รันต่อเนื่องในคำสั่งเดียว: `architecture-builder` → `data-contract-builder` → `detailed-design-builder` → `nfr-review-builder`
+- `requirements-pipeline-orchestrator` เรียง 5 skill สาย requirements/planning ให้รันต่อเนื่องในคำสั่งเดียว: `requirement-builder` → `release-plan-builder` → `feature-list-builder` → `user-journey-builder` (ทำทีละ module) → `qa-doc-builder`
+
+ทั้งสอง orchestrator เช็กเอกสารที่มีอยู่ก่อนแล้วถามผู้ใช้ว่าจะข้ามขั้นตอนที่เสร็จแล้วไหม แต่**ไม่ข้ามการยืนยัน Build Plan/Ambiguity Protocol ของแต่ละ skill** ไม่มี subagent ของตัวเอง (delegate ให้ subagent ของแต่ละ skill ที่เรียกไปตามปกติ)
