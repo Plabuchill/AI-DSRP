@@ -28,6 +28,7 @@
 - **แก้ไขแถวที่ยืนยันแล้ว** — เพิ่ม flow unlock/ขอสิทธิ์แก้ไขข้อมูลที่ยืนยันไปแล้ว (ปัจจุบันแก้ได้เฉพาะแถว "รอตรวจสอบ")
 - [ ] ยืนยัน OCR/Document AI vendor และ Geocoding vendor ผ่านการสัมภาษณ์ `tech-stack-builder` รอบ 2 (FEAT-INTAKE-05, FEAT-INTAKE-07) — `TECH-STACK.md` ระบุสถานะ "ยังไม่สัมภาษณ์"
 - [ ] สร้าง `DETAILED-DESIGN.md` สำหรับ flow OCR Review (human-in-the-loop) ก่อนเริ่ม implement จริง (FEAT-INTAKE-02, FEAT-INTAKE-05)
+- [ ] เพิ่ม Error/Validation case แบบละเอียดใน `API-SPEC.md` (FEAT-INTAKE-*) — `API-SPEC.md` หัวข้อ 4 ระบุ "ไม่รวมในรอบนี้ตามที่ยืนยันไว้ในขอบเขตของ Build Plan"
 
 ## Phase 2 — ทีมสอบสวนโรค: วิเคราะห์เคสและร่างรายงาน
 
@@ -71,6 +72,9 @@
 - [ ] Sync `HIGH-LEVEL-ARCHITECTURE.md` หัวข้อ 6 (Component Breakdown) ให้ระบุเทคโนโลยีจริงตาม `TECH-STACK.md` (แถว Web App/Frontend และ API Server/Backend) (FEAT-PLATFORM-01) — อ้างจาก `TECH-STACK.md` หัวข้อ 5
 - [ ] ยืนยัน Database engine, Auth/Identity provider, Hosting/Infrastructure เจาะจง, Monitoring/Logging ผ่าน `tech-stack-builder` รอบ 2 (FEAT-PLATFORM-02, FEAT-PLATFORM-03) — อ้างจาก `TECH-STACK.md`
 - [ ] ปิด open question เรื่องแผนส่งต่อให้ผู้รับเหมาภายนอกดูแลระบบในอนาคต (กระทบว่า Node.js+Express ที่ยืนยันไว้ยังเหมาะสมหรือควรเปลี่ยนไปทาง Laravel/.NET Core ที่ตลาดผู้รับเหมาไทยคุ้นเคยกว่า) (FEAT-PLATFORM-01) — อ้างจาก `TECH-STACK.md` หัวข้อ 4.1 Decision Rationale
+- [ ] สัมภาษณ์ `tech-stack-builder` เพิ่มเติม: Compliance/ความปลอดภัยเจาะจง (encryption at rest, retention period) (FEAT-PLATFORM-02, FEAT-PLATFORM-03) — `TECH-STACK.md` หมวด 4 ของ Interview Summary ระบุ "ยังไม่สัมภาษณ์รายละเอียดเจาะจง"
+- [ ] สัมภาษณ์ `tech-stack-builder` เพิ่มเติม: Timeline/deadline ของโครงการ (cross-cutting/project-level ไม่มี Feature ID เฉพาะ) — `TECH-STACK.md` หมวด 8 ของ Interview Summary ระบุ "ยังไม่สัมภาษณ์"
+- [ ] สัมภาษณ์ `tech-stack-builder` เพิ่มเติม: วิสัยทัศน์ระยะยาว (multi-tenancy) แล้วปรับขอบเขต Multi-tenancy ใน `DATA-MODEL.md` ตามผลที่ได้ (FEAT-PLATFORM-02, FEAT-PLATFORM-03) — `TECH-STACK.md` หมวด 9 ("ยังไม่สัมภาษณ์รายละเอียด multi-tenancy") + `DATA-MODEL.md` หัวข้อ 3 Cross-cutting concerns ("Multi-tenancy: ไม่อยู่ใน scope ของ Build Plan รอบนี้")
 
 ## Phase 8 — Hardening ก่อนใช้งานจริง
 
