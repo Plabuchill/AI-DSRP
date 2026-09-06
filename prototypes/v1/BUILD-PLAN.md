@@ -738,3 +738,33 @@ Day 0/1/7 ไม่ตรวจสอบว่าซ้อนกับ workplan 
 
 ### Design Reference
 อ้างอิง `DESIGN.md` ฉบับ Earth Tone/Muji เดิม — ไม่เพิ่มสไตล์ใหม่นอกเหนือจาก dropdown/ปุ่มที่ใช้ class เดิมที่มีอยู่แล้ว
+
+## เพิ่มเติม 2026-09-06 (รอบ 24) — บันทึกและยืนยัน รง.506 เชื่อมต่อ Firestore จริง (FEAT-ANALYSIS-07)
+
+### Requirement ต้นทาง
+`FEAT-ANALYSIS-07` (`FEATURE-LIST.md`) ← `PAIN-INVESTIGATION-01` (`REQUIREMENTS.md`) ยังไม่เคยมี UI มาก่อน (สถานะ 🔲) — ผู้ใช้ขอให้สร้าง UI ใหม่ในหน้า `case-analysis.html` และเชื่อมต่อ Firestore project "ai-dsrp" จริง (ไม่ใช่ mock) หลังจาก seed ข้อมูลจริงลง collection `506Requests` ไปแล้ว (`scripts/seed/seed-data.js`) — สอบถามความไม่ชัดเจนแล้ว ผู้ใช้ยืนยัน: (1) ยอมรับว่าส่วนนี้จะใช้งานออฟไลน์ไม่ได้ (ต่างจากหลักการเดิมของ prototype นี้), (2) ใช้ Firestore Security Rules แบบเปิดกว้างชั่วคราว (test mode, ผู้ใช้ตั้งเองที่ Firebase Console — ไม่อยู่ใน scope โค้ด), (3) แก้ `v1` เดิมในที่ ไม่สร้าง v2
+
+### Scope
+เพิ่ม section ใหม่ท้ายหน้า `prototypes/v1/case-analysis.html` (panel ที่ 4 ต่อจาก Case Cluster Map / ร่างรายงานสอบสวนโรค / Chatbot ประสานงาน อสม.) + ไฟล์ใหม่ `prototypes/v1/case-analysis-506.js` (ES module แยกจาก `case-analysis.js` เดิมที่ยังเป็น mock ล้วน) ไม่แตะ panel/ไฟล์ mock เดิมของหน้านี้หรือหน้าอื่น
+
+### การเปลี่ยนแปลง
+1. **Firebase Web SDK ผ่าน CDN** (`firebase-app.js`/`firebase-firestore.js` v10.13.2, ES module, ไม่มี build step ตาม `TECH-STACK.md`) ใช้ `firebaseConfig` ของ project "ai-dsrp" ที่ผู้ใช้ให้มา
+2. **ตารางแสดงรายการ รง.506** อ่านแบบ real-time ด้วย `onSnapshot()` จาก collection `506Requests` — คอลัมน์: หัวเรื่อง (title), ผู้แจ้ง (requesterName), โรค (diseaseName), ช่วงเวลา (startDate–endDate), สถานะ (badge: รอพิจารณา=warning/ยืนยัน=success/ไม่ยืนยัน=danger) — เรียงแถว "รอพิจารณา" ไว้บนสุดเสมอ (client-side sort หลัง snapshot)
+3. **ปุ่มยืนยัน/ไม่ยืนยัน** แสดงเฉพาะแถว `status = "รอพิจารณา"` — กดแล้วเรียก `updateDoc()` เขียนกลับ Firestore ตรงๆ จาก browser (`status` + `approverId` + `approverName`)
+4. **หมายเหตุอินเทอร์เน็ต** — แสดงข้อความในหัว panel และ `README.md` ว่าส่วนนี้ต้องมีอินเทอร์เน็ต ต่างจากส่วนอื่นของหน้านี้/หน้าอื่นที่เป็น mock ล้วน
+
+### Backlog/Feature ที่ไม่รวมในรอบนี้
+- ไม่ตั้ง Firestore Security Rules ในโค้ด (ผู้ใช้ตั้งเองที่ Firebase Console แยกต่างหาก — ไม่ใช่ไฟล์ในโปรเจกต์นี้)
+- ไม่เพิ่ม UI สร้าง/แก้ไข รง.506 ใหม่ (แค่ดู + ยืนยัน/ไม่ยืนยัน รายการที่ seed ไว้แล้ว)
+- ไม่เปลี่ยน `FEAT-ANALYSIS-07` เป็น ✅ ใน `FEATURE-LIST.md` เอง (ไม่อยู่ใน scope ของ prototype-builder — ต้องเรียก `feature-list-builder` แยกถ้าต้องการอัปเดตสถานะ)
+
+### Assumption ที่ตั้งไว้
+- **ผู้อนุมัติ hardcode**: ยังไม่มีระบบ login จริง (`FEAT-PLATFORM-02` ยังเป็น backlog) จึง hardcode ผู้กดยืนยัน/ไม่ยืนยันเป็น `CUCU1`/สุชาวดี ชัยวรรณะ (manager ที่ seed ไว้แล้ว) — มี comment อธิบายไว้ในโค้ด ต้องเปลี่ยนเป็นค่าจาก session จริงเมื่อมี Auth
+- **placement ของ section**: วางเป็น panel ที่ 4 ท้ายสุดของหน้า (ต่อจาก chatbot) แทนที่จะแทรกกลางหน้า เพื่อไม่รบกวน layout/flow ของ 3 panel มค็อกเดิม
+- **Firebase SDK version**: ตรึงเวอร์ชัน `10.13.2` (release ที่เสถียรของ modular v9+ API) ผ่าน CDN ตรงๆ ไม่ผ่าน npm/bundler
+
+### Version
+แก้ไข `prototypes/v1` เดิมในที่ (ไม่สร้าง v2) — ยืนยันจากผู้ใช้แล้ว
+
+### Design Reference
+อ้างอิง `DESIGN.md` ฉบับ Earth Tone/Muji เดิม — reuse `.panel`/`.panel-header`/`.data-table`/`.badge`/`.btn`/`.btn-sm`/`.row-actions` ที่มีอยู่แล้วทั้งหมด ไม่เพิ่ม CSS class ใหม่

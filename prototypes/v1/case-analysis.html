@@ -162,6 +162,35 @@
       </div>
     </div>
 
+    <!-- 4) รง.506 — บันทึกและยืนยันรายงานผู้ป่วยเฝ้าระวังโรค (FEAT-ANALYSIS-07) -->
+    <div class="panel">
+      <div class="panel-header">
+        <h2>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 2h8l4 4v16H7a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2Z"></path><path d="M15 2v4h4"></path><path d="M9 13h6M9 17h6"></path></svg>
+          บันทึกและยืนยัน รง.506
+        </h2>
+        <span class="body-secondary">รายงานผู้ป่วยเฝ้าระวังโรคที่เจ้าหน้าที่สอบสวนโรคบันทึกไว้ — รอพิจารณายืนยัน/ไม่ยืนยัน (ข้อมูลจริงจาก Firestore — <strong>ต้องมีอินเทอร์เน็ต</strong> ต่างจากส่วนอื่นของหน้านี้ที่เป็นข้อมูลจำลอง)</span>
+      </div>
+
+      <div id="report506-status" class="body-secondary" style="margin-bottom:12px;">กำลังโหลดข้อมูลจาก Firestore...</div>
+
+      <div style="overflow-x:auto;">
+        <table class="data-table" id="report506-table">
+          <thead>
+            <tr>
+              <th>หัวเรื่อง</th>
+              <th>ผู้แจ้ง</th>
+              <th>โรค</th>
+              <th>ช่วงเวลา</th>
+              <th>สถานะ</th>
+              <th>การพิจารณา</th>
+            </tr>
+          </thead>
+          <tbody id="report506-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
   </main>
 
   <footer class="footer">
@@ -172,5 +201,6 @@
 </div>
 </div>
 <script src="case-analysis.js"></script>
+<script type="module" src="case-analysis-506.js"></script>
 </body>
 </html>

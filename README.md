@@ -28,7 +28,7 @@
 - **Case Intake** — รับเคสจากโรงพยาบาล (PDF/JPEG) → จำลองผล OCR/AI extraction เป็นตาราง → ตรวจสอบและแก้ไขข้อมูลที่ผิดพลาดได้ก่อนยืนยัน (human-in-the-loop) → เมื่อยืนยันแล้วระบบ auto-route แจ้งเตือนไปยังทีมสอบสวนโรคตามพื้นที่ พร้อมปักหมุด + วงรัศมี 100 เมตรบน spot map
 - **Case Analysis**, **Control Plan**, **Field Tracking**, **ASM Coordination**, **Reports**, **Alerts** — ดูรายละเอียดใน Feature List ด้านบน
 
-ทุกหน้าใช้ mock data บริบทประเทศไทย และออกแบบให้เปิดใช้งานแบบออฟไลน์ได้ (ไม่พึ่งพา CDN หรือ map tile ภายนอก)
+ทุกหน้าใช้ mock data บริบทประเทศไทย และออกแบบให้เปิดใช้งานแบบออฟไลน์ได้ (ไม่พึ่งพา CDN หรือ map tile ภายนอก) **ยกเว้น** ส่วน "บันทึกและยืนยัน รง.506" ใน `case-analysis.html` (`FEAT-ANALYSIS-07`) ที่เชื่อมต่อ Firebase Firestore จริง (project `ai-dsrp`) — ส่วนนี้**ต้องมีอินเทอร์เน็ต** ถึงจะโหลด/บันทึกข้อมูลได้
 
 ## วิธีเปิดดู Prototype
 
