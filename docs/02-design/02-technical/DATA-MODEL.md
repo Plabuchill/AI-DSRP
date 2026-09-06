@@ -126,7 +126,6 @@ erDiagram
   CASE }o--o| CASE_CLUSTER : "อาจถูกจัดเข้ากลุ่มเคสที่ AI เสนอ (nullable — นิยามเต็มของ CASE อยู่ใน ER Diagram 1.1)"
   CASE_CLUSTER }o--|| DISEASE : "เป็นกลุ่มของโรค (นิยามเต็มของ DISEASE อยู่ใน ER Diagram 1.2)"
   CASE_CLUSTER ||--o| INVESTIGATION_REPORT : "อาจมีรายงานสอบสวนโรค (สร้างได้เมื่อ confirmed แล้วเท่านั้น)"
-  CASE ||--o| SURVEILLANCE_REPORT_506 : "อาจมี รง.506 ที่สร้างจากเคสนี้ (nullable — นิยามเต็มของ CASE อยู่ใน ER Diagram 1.1)"
   SURVEILLANCE_REPORT_506 }o--|| DISEASE : "ระบุโรคติดต่อ (นิยามเต็มของ DISEASE อยู่ใน ER Diagram 1.2)"
   SURVEILLANCE_REPORT_506 ||--o{ REPORT_506_APPROVAL_LOG : "มีบันทึกความเห็นประกอบการพิจารณาได้หลายรายการ"
 
@@ -148,19 +147,18 @@ erDiagram
   }
   SURVEILLANCE_REPORT_506 {
     string report_506_id PK
-    string case_id FK
-    string disease_id FK
+    string diseaseId FK
+    string diseaseName
     string title
     string reason
-    date event_start_date
-    date event_end_date
+    date startDate
+    date endDate
     enum status
-    string requester_id
-    string requester_name
-    string approver_id
-    string approver_name
-    date created_at
-    date decided_at
+    string requesterId
+    string requesterName
+    string approverId
+    string approverName
+    date createdAt
   }
   REPORT_506_APPROVAL_LOG {
     string log_id PK
@@ -172,7 +170,7 @@ erDiagram
   }
 ```
 
-**หมายเหตุ cardinality ที่ยืนยันแล้ว**: `CASE_CLUSTER` ↔ `INVESTIGATION_REPORT` = **1:1 (optional)** — 1 กลุ่มเคสมีรายงานได้อย่างมาก 1 ฉบับ และสร้างได้เฉพาะกลุ่มที่ `status = confirmed` เท่านั้น (business rule) — chatbot ประสานงาน อสม. (`FEAT-ANALYSIS-03`) เป็น scripted demo แบบ fixed script ในรอบนี้ ไม่มี entity ข้อมูลของตัวเอง (ยังไม่ persist บทสนทนา) จนกว่า `FEAT-ANALYSIS-06` (chatbot จริง) จะถูกทำ — `CASE` ↔ `SURVEILLANCE_REPORT_506` = **1:1 (optional/nullable)** — ไม่ใช่ทุกเคสจะมี รง.506 ที่สร้างขึ้น (`FEAT-ANALYSIS-07`) — `SURVEILLANCE_REPORT_506` ↔ `REPORT_506_APPROVAL_LOG` = **1:N (ไม่มี limit)** — 1 รง.506 มีบันทึกความเห็นประกอบการพิจารณาได้หลายรายการตามลำดับเวลา — `requester_id`/`requester_name`/`approver_id`/`approver_name` (ของ `SURVEILLANCE_REPORT_506`) และ `author_id`/`author_name` (ของ `REPORT_506_APPROVAL_LOG`) เป็น free-text/id snapshot ชั่วคราวเพราะระบบยังไม่มี USER entity — gap เดียวกับที่ flag ไว้ใน `APPROVAL_REQUEST.decided_by_name` ด้านล่าง
+**หมายเหตุ cardinality ที่ยืนยันแล้ว**: `CASE_CLUSTER` ↔ `INVESTIGATION_REPORT` = **1:1 (optional)** — 1 กลุ่มเคสมีรายงานได้อย่างมาก 1 ฉบับ และสร้างได้เฉพาะกลุ่มที่ `status = confirmed` เท่านั้น (business rule) — chatbot ประสานงาน อสม. (`FEAT-ANALYSIS-03`) เป็น scripted demo แบบ fixed script ในรอบนี้ ไม่มี entity ข้อมูลของตัวเอง (ยังไม่ persist บทสนทนา) จนกว่า `FEAT-ANALYSIS-06` (chatbot จริง) จะถูกทำ — `SURVEILLANCE_REPORT_506` ↔ `REPORT_506_APPROVAL_LOG` = **1:N (ไม่มี limit)** — 1 รง.506 มีบันทึกความเห็นประกอบการพิจารณาได้หลายรายการตามลำดับเวลา — `requesterId`/`requesterName`/`approverId`/`approverName` (ของ `SURVEILLANCE_REPORT_506`) และ `author_id`/`author_name` (ของ `REPORT_506_APPROVAL_LOG`) เป็น free-text/id snapshot ชั่วคราวเพราะระบบยังไม่มี USER entity — gap เดียวกับที่ flag ไว้ใน `APPROVAL_REQUEST.decided_by_name` ด้านล่าง — **บันทึก (2026-09-06)**: รง.506 ไม่ได้ผูกกับ `CASE` โดยตรงอีกต่อไป (field `case_id` ถูกตัดออกในรอบ sync ให้ตรงกับข้อมูลจริงที่ seed แล้ว)
 
 ### 1.4 Control Plan (`FEAT-CONTROL-*`)
 
@@ -455,7 +453,7 @@ erDiagram
 | email | string | `string` | ใช่ | อีเมลผู้ใช้ (seed ปัจจุบันใช้ค่าชั่วคราวรูปแบบ `{id}@ai-dsrp.local` สำหรับบางราย — ดู comment ใน `seed-data.js`) |
 | role | enum | `string` | ใช่ | บทบาทผู้ใช้ (ค่าที่ seed แล้ว: `manager`, `team1`, `team3` — ยังไม่มีชุดค่า role ที่เป็นทางการ/ผูก permission จริง) |
 
-**หมายเหตุ**: `requester_id`/`requester_name`/`approver_id`/`approver_name` ของ `SURVEILLANCE_REPORT_506`, `author_id`/`author_name` ของ `REPORT_506_APPROVAL_LOG`, และ `decided_by_name` ของ `APPROVAL_REQUEST` เป็น free-text/id snapshot ที่เขียนไว้ก่อนหน้ารอบนี้ (gap เดิม) — ค่าที่ seed จริงตรงกับ `user_id` ของ entity นี้แล้ว (เช่น `requesterId: "SRRT1"`) แต่ field เหล่านั้นยังไม่ถูกประกาศเป็น `reference → USER` อย่างเป็นทางการในรอบนี้เพราะไม่อยู่ในขอบเขตที่ Build Plan อนุมัติให้แก้ (นอกเหนือจากการเพิ่มคอลัมน์ Native Type) — คงไว้เป็น gap เดิมที่ flag ซ้ำ ไม่แก้ type ให้เงียบๆ
+**หมายเหตุ**: `requesterId`/`requesterName`/`approverId`/`approverName` ของ `SURVEILLANCE_REPORT_506`, `author_id`/`author_name` ของ `REPORT_506_APPROVAL_LOG`, และ `decided_by_name` ของ `APPROVAL_REQUEST` เป็น free-text/id snapshot ที่เขียนไว้ก่อนหน้ารอบนี้ (gap เดิม) — ค่าที่ seed จริงตรงกับ `user_id` ของ entity นี้แล้ว (เช่น `requesterId: "SRRT1"`) แต่ field เหล่านั้นยังไม่ถูกประกาศเป็น `reference → USER` อย่างเป็นทางการในรอบนี้เพราะไม่อยู่ในขอบเขตที่ Build Plan อนุมัติให้แก้ (นอกเหนือจากการเพิ่มคอลัมน์ Native Type/การปรับชื่อ field ให้ตรงของจริง) — คงไว้เป็น gap เดิมที่ flag ซ้ำ ไม่แก้ type ให้เงียบๆ
 
 ### Module: Dashboard (`FEAT-DASH-*`)
 
@@ -463,7 +461,7 @@ erDiagram
 
 รองรับ Feature: `FEAT-DASH-06`, `FEAT-ANALYSIS-01`, `FEAT-ALERT-01`
 
-**Collection**: `diseases` — **Gap (flag ตรงไปตรงมา)**: ในทางปฏิบัติปัจจุบันใช้ชื่อ collection `506Types` สำหรับข้อมูลโรค ตาม seed script จริง (`scripts/seed/seed-data.js`) ยังไม่ rename เป็น `diseases` — ถือเป็น gap ระหว่างชื่อ conceptual (`diseases`) กับชื่อจริงที่ seed ไปแล้ว (`506Types`) ต้อง flag ให้ผู้ใช้ตัดสินใจว่าจะ rename collection จริงเป็น `diseases` หรือแก้ชื่อในเอกสารนี้ให้ตรงกับของจริง (`506Types`) — ทุก reference field ที่ชี้มาที่ `DISEASE` ในเอกสารนี้ (เช่น `CASE_CLUSTER.disease_id`, `SURVEILLANCE_REPORT_506.disease_id`, `ALERT.disease_id`) ยังคงเขียนเป็น "collection `diseases`" ตามชื่อ conceptual เดิม จนกว่าจะมีการตัดสินใจ
+**Collection**: `506Types` (ตรงกับข้อมูลจริงที่ seed แล้วใน `scripts/seed/seed-data.js`)
 
 | Attribute | Conceptual Type | Native Type (Firestore) | จำเป็นต้องมี | คำอธิบาย |
 |---|---|---|---|---|
@@ -511,7 +509,7 @@ erDiagram
 |---|---|---|---|---|
 | cluster_id | string (PK) | `string` | ใช่ | รหัสกลุ่มเคส |
 | name | string | `string` | ใช่ | ชื่อกลุ่ม เช่น "กลุ่มไข้เลือดออก ต.หนองบัว" |
-| disease_id | reference → `DISEASE` | `string` (document ID → collection `diseases`/`506Types`, ดู gap ใน `DISEASE`) | ใช่ | โรค/ภาวะของกลุ่มนี้ |
+| disease_id | reference → `DISEASE` | `string` (document ID → collection `506Types`) | ใช่ | โรค/ภาวะของกลุ่มนี้ |
 | confidence_pct | number | `number` | ใช่ | ระดับความมั่นใจของ AI ในการจัดกลุ่ม (0-100) |
 | close_contacts_estimate | number | `number` | ใช่ | จำนวนผู้สัมผัสใกล้ชิดโดยประมาณ |
 | status | enum(pending, confirmed) | `string` | ใช่ | สถานะยืนยัน — เปลี่ยนได้ทางเดียวจาก `pending` → `confirmed` เท่านั้น (human-in-the-loop, ตรงกับ `confirmCluster()` ของ prototype) |
@@ -546,23 +544,22 @@ erDiagram
 | Attribute | Conceptual Type | Native Type (Firestore) | จำเป็นต้องมี | คำอธิบาย |
 |---|---|---|---|---|
 | report_506_id | string (PK) | `string` (auto-generated Firestore document ID) | ใช่ | รหัส รง.506 |
-| case_id | reference → `CASE` (unique, nullable) | `string` (document ID → collection `cases`, nullable) | ไม่บังคับ (null = ยังไม่ผูกกับเคสใด) | เคสที่ รง.506 นี้เป็นของ — 1:1 optional เพราะไม่ใช่ทุกเคสจะมี รง.506 |
-| disease_id | reference → `DISEASE` | `string` (document ID → collection `diseases`/`506Types`, ดู gap ใน `DISEASE`) | ใช่ | โรคติดต่อที่เลือกสำหรับรายการนี้ |
+| diseaseId | reference → `DISEASE` | `string` (document ID → collection `506Types`) | ใช่ | โรคติดต่อที่เลือกสำหรับรายการนี้ — อ้างอิง collection `506Types` ตรงๆ |
+| diseaseName | string | `string` | ใช่ | ชื่อโรค snapshot ณ ขณะสร้างรายการ (denormalized คู่กับ `diseaseId`) |
 | title | string | `string` | ใช่ | หัวเรื่องรายงาน |
 | reason | string | `string` | ใช่ | เหตุผล/รายละเอียดประกอบการรายงาน |
-| event_start_date | date | `Timestamp` | ใช่ | วันที่เริ่มต้นของช่วงเวลาการระบาด/เหตุการณ์ที่รายงาน |
-| event_end_date | date (nullable) | `Timestamp` (nullable) | ไม่บังคับ (null = เหตุการณ์ยังไม่สิ้นสุด) | วันที่สิ้นสุดของช่วงเวลาที่รายงาน |
+| startDate | date | `Timestamp` | ใช่ | วันที่เริ่มต้นของช่วงเวลาการระบาด/เหตุการณ์ที่รายงาน |
+| endDate | date (nullable) | `Timestamp` (nullable) | ไม่บังคับ (null = เหตุการณ์ยังไม่สิ้นสุด) | วันที่สิ้นสุดของช่วงเวลาที่รายงาน |
 | status | enum(รอพิจารณา, ยืนยัน, ไม่ยืนยัน) | `string` | ใช่ | สถานะ human-in-the-loop — เปลี่ยนได้ทางเดียวจาก "รอพิจารณา" → "ยืนยัน" หรือ "ไม่ยืนยัน" เท่านั้น (one-way, ไม่มี reopen กลับ "รอพิจารณา") |
-| requester_id | string | `string` (ตรงกับ `user_id` ของ `USER` ในทางปฏิบัติ — ดูหมายเหตุใน `USER`) | ใช่ | รหัสอ้างอิงผู้สร้างรายการ (free-text/snapshot ชั่วคราว — ระบบยังไม่มี USER entity ที่เป็นทางการ, ดู Gap note ของ `APPROVAL_REQUEST`) |
-| requester_name | string | `string` | ใช่ | ชื่อผู้สร้างรายการ ณ ขณะสร้าง (snapshot) |
-| approver_id | string (nullable) | `string` (nullable, ตรงกับ `user_id` ของ `USER` ในทางปฏิบัติ) | ไม่บังคับ (null จนกว่าจะตัดสินใจ) | รหัสอ้างอิงผู้ตัดสินใจ (free-text/snapshot ชั่วคราว — gap เดียวกับ `requester_id`) |
-| approver_name | string (nullable) | `string` (nullable) | ไม่บังคับ (null จนกว่าจะตัดสินใจ) | ชื่อผู้ตัดสินใจ ณ ขณะตัดสินใจ (snapshot) |
-| created_at | date | `Timestamp` | ใช่ | เวลาที่สร้างรายการ |
-| decided_at | date (nullable) | `Timestamp` (nullable) | ไม่บังคับ (null จนกว่าจะตัดสินใจ) | เวลาที่กดยืนยัน/ไม่ยืนยัน |
+| requesterId | string | `string` (ตรงกับ `user_id` ของ `USER` ในทางปฏิบัติ — ดูหมายเหตุใน `USER`) | ใช่ | รหัสอ้างอิงผู้สร้างรายการ (free-text/snapshot ชั่วคราว — ระบบยังไม่มี USER entity ที่เป็นทางการ, ดู Gap note ของ `APPROVAL_REQUEST`) |
+| requesterName | string | `string` | ใช่ | ชื่อผู้สร้างรายการ ณ ขณะสร้าง (snapshot) |
+| approverId | string (nullable) | `string` (nullable, ตรงกับ `user_id` ของ `USER` ในทางปฏิบัติ) | ไม่บังคับ (null จนกว่าจะตัดสินใจ) | รหัสอ้างอิงผู้ตัดสินใจ (free-text/snapshot ชั่วคราว — gap เดียวกับ `requesterId`) |
+| approverName | string (nullable) | `string` (nullable) | ไม่บังคับ (null จนกว่าจะตัดสินใจ) | ชื่อผู้ตัดสินใจ ณ ขณะตัดสินใจ (snapshot) |
+| createdAt | date | `Timestamp` | ใช่ | เวลาที่สร้างรายการ |
 
 **Business rule**: ไม่มี reopen กลับเป็น "รอพิจารณา" หลังตัดสินใจแล้ว (one-way transition ตามที่ยืนยันในแผน เช่นเดียวกับ `CASE_CLUSTER.status`)
 
-**Gap**: `requester_id`/`requester_name`/`approver_id`/`approver_name` เก็บเป็น free-text/id snapshot ชั่วคราวเพราะระบบยังไม่มี USER/role entity (backlog "ระบบ login และสิทธิ์ผู้ใช้" ใน `ROADMAP.md` บรรทัด 70 ยังไม่ถูกทำ — gap เดียวกับ `APPROVAL_REQUEST.decided_by_name`) — เมื่อ backlog นั้นถูกทำ ควรเปลี่ยนเป็น reference → USER แทน
+**Gap**: `requesterId`/`requesterName`/`approverId`/`approverName` เก็บเป็น free-text/id snapshot ชั่วคราวเพราะระบบยังไม่มี USER/role entity (backlog "ระบบ login และสิทธิ์ผู้ใช้" ใน `ROADMAP.md` บรรทัด 70 ยังไม่ถูกทำ — gap เดียวกับ `APPROVAL_REQUEST.decided_by_name`) — เมื่อ backlog นั้นถูกทำ ควรเปลี่ยนเป็น reference → USER แทน
 
 ### `REPORT_506_APPROVAL_LOG` — บันทึกความเห็นประกอบการพิจารณา รง.506 (log ต่อรายการ)
 
@@ -580,6 +577,8 @@ erDiagram
 | created_at | date | `Timestamp` | ใช่ | เวลาที่บันทึกความเห็นนี้ |
 
 **Cardinality**: `SURVEILLANCE_REPORT_506` ↔ `REPORT_506_APPROVAL_LOG` = **1:N** — 1 รง.506 มีบันทึกความเห็นได้หลายรายการตามลำดับเวลา ไม่มี limit
+
+**หมายเหตุ**: field ยังคง snake_case ตาม convention เดิมของเอกสาร เพราะยังไม่มีการ seed ข้อมูลจริงใน collection นี้ (ต่างจาก `SURVEILLANCE_REPORT_506` ที่ seed แล้วและปรับเป็น camelCase ให้ตรงของจริง) — พิจารณาปรับเป็น camelCase ทีหลังถ้า implement จริง
 
 ### Module: Control Plan (`FEAT-CONTROL-*`)
 
@@ -747,7 +746,7 @@ erDiagram
 | Attribute | Conceptual Type | Native Type (Firestore) | จำเป็นต้องมี | คำอธิบาย |
 |---|---|---|---|---|
 | alert_id | string (PK) | `string` | ใช่ | รหัสการแจ้งเตือน |
-| disease_id | reference → `DISEASE` | `string` (document ID → collection `diseases`/`506Types`, ดู gap ใน `DISEASE`) | ใช่ | โรคที่เกี่ยวข้อง |
+| disease_id | reference → `DISEASE` | `string` (document ID → collection `506Types`) | ใช่ | โรคที่เกี่ยวข้อง |
 | zone_id | reference → `SERVICE_ZONE` | `string` (document ID → collection `serviceZones`) | ใช่ | เขตบริการที่เกิดเหตุ — **แทนที่ `regionId` แบบ 6-ภาคทั่วประเทศใน mock เดิมด้วย `SERVICE_ZONE` ปัจจุบัน (4 เขต) ตามที่ยืนยันแล้ว** |
 | community | string (nullable) | `string` (nullable) | ไม่บังคับ | ชุมชน/พื้นที่เจาะจงเพิ่มเติมแบบ freeform — ยังไม่ผูกเป็น `reference → COMMUNITY` ในรอบนี้ |
 | severity | enum(warning, danger) | `string` | ใช่ | ระดับความรุนแรง |
