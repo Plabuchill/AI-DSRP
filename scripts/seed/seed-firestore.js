@@ -10,6 +10,7 @@
 // รัน: node scripts/seed/seed-firestore.js
 
 var admin = require("firebase-admin");
+var getFirestore = require("firebase-admin/firestore").getFirestore;
 var path = require("path");
 var data = require("./seed-data.js");
 
@@ -27,10 +28,10 @@ try {
 }
 
 admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount)
+  credential: admin.cert(serviceAccount)
 });
 
-var db = admin.firestore();
+var db = getFirestore();
 
 function seedUsers() {
   var batch = db.batch();
