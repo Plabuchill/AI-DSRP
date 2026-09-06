@@ -166,6 +166,19 @@
 
   var RADIUS_OPTIONS = [100, 150, 200];
 
+  // BUILD-PLAN.md รอบ 23: fuel/chemical type per (area+location) — matches
+  // DATA-MODEL.md enum(gasoline, diesel, lubricant, chemical, other) for
+  // APPROVAL_REQUEST_CASE.fuel_type. Rendered as one <select> per location
+  // field block (see buildAreaFieldsHtml()), aggregated into the ☑/☐
+  // checkboxes of buildApprovalText() below.
+  var FUEL_TYPE_OPTIONS = [
+    { value: "gasoline", label: "น้ำมันเบนซิน/แก๊สโซฮอล์" },
+    { value: "diesel", label: "น้ำมันดีเซล" },
+    { value: "lubricant", label: "น้ำมันหล่อลื่น" },
+    { value: "chemical", label: "น้ำยาเคมี" },
+    { value: "other", label: "อื่นๆ" }
+  ];
+
   // รอบ 13 (2026-08-21): every mock case is always part of the plan now —
   // there is no more include/exclude selection. Instead each case (area)
   // has an active-location "tab" set — "home" (ที่อยู่/บ้าน) and/or "work"
@@ -186,6 +199,20 @@
   // radius chosen per (area+location) key — lazily defaulted from
   // location.defaultRadius the first time a key is read.
   var radiusByKey = {};
+
+  // BUILD-PLAN.md รอบ 23: fuel/chemical type chosen per (area+location)
+  // key — same lazy-default caching pattern as radiusByKey above, keyed
+  // by the same getLocationKey() string, so a location's chosen type
+  // survives toggling its tab off/on and page re-renders. Matches the
+  // DATA-MODEL.md enum(gasoline, diesel, lubricant, chemical, other) for
+  // APPROVAL_REQUEST_CASE.fuel_type; default "diesel" per BUILD-PLAN.md
+  // assumption (ensures the pool always has >=1 type selected).
+  var fuelTypeByKey = {};
+
+  function getFuelTypeForKey(key) {
+    if (fuelTypeByKey[key] === undefined) fuelTypeByKey[key] = "diesel";
+    return fuelTypeByKey[key];
+  }
 
   function getAreaById(id) {
     for (var i = 0; i < AREAS.length; i++) {
@@ -238,7 +265,8 @@
           area: area,
           loc: loc,
           radius: radius,
-          households: computeHouseholds(loc, radius)
+          households: computeHouseholds(loc, radius),
+          fuelType: getFuelTypeForKey(key)
         });
       });
     });
@@ -402,6 +430,7 @@
     approvalTextarea: document.getElementById("approval-textarea"),
     btnSendApproval: document.getElementById("btn-send-approval"),
     btnMockApprove: document.getElementById("btn-mock-approve"),
+    btnMockReject: document.getElementById("btn-mock-reject"),
     btnPrintApproval: document.getElementById("btn-print-approval"),
     approvalPrintView: document.getElementById("approval-print-view"),
     approvalStatus: document.getElementById("approval-status"),
@@ -681,10 +710,13 @@
 
   /* ---------------------------------------------------------
      Approval request state machine: draft -> sent (รออนุมัติ) -> approved
+     | rejected (BUILD-PLAN.md รอบ 23 — "rejected" added as a second
+     terminal state alongside "approved", mutually exclusive with it)
      --------------------------------------------------------- */
-  var approvalState = "draft"; // "draft" | "sent" | "approved"
+  var approvalState = "draft"; // "draft" | "sent" | "approved" | "rejected"
   var approvalSentAtLabel = "";
   var approvalApprovedAtLabel = "";
+  var approvalRejectedAtLabel = ""; // BUILD-PLAN.md รอบ 23
 
   /* ---------------------------------------------------------
      Render: mini-map (inline SVG — abstract village grid, same
@@ -762,9 +794,14 @@
     var key = getLocationKey(area.id, loc.type);
     var radius = getRadiusForKey(key, loc);
     var households = computeHouseholds(loc, radius);
+    var fuelType = getFuelTypeForKey(key);
 
     var radiusOptionsHtml = RADIUS_OPTIONS.map(function (r) {
       return '<option value="' + r + '"' + (r === radius ? " selected" : "") + '>' + r + " เมตร</option>";
+    }).join("");
+
+    var fuelTypeOptionsHtml = FUEL_TYPE_OPTIONS.map(function (opt) {
+      return '<option value="' + opt.value + '"' + (opt.value === fuelType ? " selected" : "") + '>' + escapeHtml(opt.label) + '</option>';
     }).join("");
 
     var fieldsHtml = loc.type === "home"
@@ -792,6 +829,9 @@
         '<div class="area-select-controls">' +
           '<label class="area-select-radius-label">รัศมี ' +
             '<select class="input-inline input-inline-sm radius-select" data-area-id="' + area.id + '" data-loc-type="' + loc.type + '" aria-label="รัศมีที่ต้องพ่น &mdash; ' + escapeHtml(area.patientName) + '">' + radiusOptionsHtml + '</select>' +
+          '</label>' +
+          '<label class="area-select-radius-label">ชนิดน้ำมัน/น้ำยาเคมี ' +
+            '<select class="input-inline input-inline-md fuel-type-select" data-area-id="' + area.id + '" data-loc-type="' + loc.type + '" aria-label="ชนิดน้ำมัน/น้ำยาเคมี &mdash; ' + escapeHtml(area.patientName) + '">' + fuelTypeOptionsHtml + '</select>' +
           '</label>' +
           '<span class="area-select-meta"><span>' + households + ' หลังคาเรือน (ประมาณจากรัศมีที่เลือก)</span></span>' +
         '</div>' +
@@ -895,6 +935,22 @@
     var gasoholLiters = Math.max(5, pool.length * 5);
     var lubricantLiters = Math.max(2, pool.length * 2);
 
+    // BUILD-PLAN.md รอบ 23: aggregate each pool item's chosen fuelType
+    // (enum(gasoline, diesel, lubricant, chemical, other) — DATA-MODEL.md)
+    // into a ☑/☐ mark per checkbox line below, instead of the old
+    // always-☑-diesel/gasohol/lubricant + always-☐-other. The real paper
+    // form has no separate "น้ำยาเคมี" box, so "chemical" is folded into
+    // the "อื่นๆ" line together with "other" (per BUILD-PLAN.md note).
+    var hasGasoline = pool.some(function (item) { return item.fuelType === "gasoline"; });
+    var hasDiesel = pool.some(function (item) { return item.fuelType === "diesel"; });
+    var hasLubricant = pool.some(function (item) { return item.fuelType === "lubricant"; });
+    var hasOther = pool.some(function (item) { return item.fuelType === "chemical" || item.fuelType === "other"; });
+
+    var markDiesel = hasDiesel ? "☑" : "☐";
+    var markGasohol = hasGasoline ? "☑" : "☐";
+    var markLubricant = hasLubricant ? "☑" : "☐";
+    var markOther = hasOther ? "☑" : "☐";
+
     var siteListText = pool.map(function (item, i) {
       return (i + 1) + ". " + item.area.patientName + " — " + locDescriptor(item.loc) + " (" + item.households + " หลังคาเรือน, รัศมี " + item.radius + " ม.)";
     }).join("\n");
@@ -918,8 +974,8 @@
       siteListText,
       "",
       "ขออนุมัติเบิกจ่ายน้ำมันเชื้อเพลิง ดังนี้",
-      "☑ ดีเซล        จำนวน " + dieselLiters + " ลิตร        ☑ แก๊สโซฮอล์ 95   จำนวน " + gasoholLiters + " ลิตร",
-      "☑ น้ำมันหล่อลื่น   จำนวน " + lubricantLiters + " ลิตร        ☐ อื่นๆ ....................... จำนวน ......... ลิตร",
+      markDiesel + " ดีเซล        จำนวน " + dieselLiters + " ลิตร        " + markGasohol + " แก๊สโซฮอล์ 95   จำนวน " + gasoholLiters + " ลิตร",
+      markLubricant + " น้ำมันหล่อลื่น   จำนวน " + lubricantLiters + " ลิตร        " + markOther + " อื่นๆ ....................... จำนวน ......... ลิตร",
       "",
       "จึงเรียนมาเพื่อโปรดพิจารณาอนุมัติ",
       "",
@@ -963,6 +1019,7 @@
     approvalState = "draft";
     els.btnSendApproval.disabled = false;
     els.btnMockApprove.style.display = "none";
+    els.btnMockReject.style.display = "none";
     els.btnPrintApproval.style.display = "none";
     els.approvalStatus.innerHTML = "";
   }
@@ -976,6 +1033,7 @@
     els.approvalStatus.innerHTML = '<span class="badge badge-warning">รออนุมัติ &middot; ส่งเมื่อ ' + escapeHtml(approvalSentAtLabel) + "</span>";
     els.btnSendApproval.disabled = true;
     els.btnMockApprove.style.display = "";
+    els.btnMockReject.style.display = "";
     els.btnPrintApproval.style.display = "";
     syncApprovalPrintView();
   }
@@ -986,6 +1044,21 @@
     approvalState = "approved";
     approvalApprovedAtLabel = formatThaiDateTime(new Date());
     els.approvalStatus.innerHTML = '<span class="badge badge-confirmed">' + ICON_CHECK + "อนุมัติแล้ว &middot; " + escapeHtml(approvalApprovedAtLabel) + "</span>";
+    els.btnMockApprove.style.display = "none";
+    els.btnMockReject.style.display = "none";
+  }
+
+  // BUILD-PLAN.md รอบ 23: "ไม่อนุมัติ" — terminal state alongside "approved"
+  // above (mutually exclusive: reaching one hides both action buttons, same
+  // as mockApprove() does). Only reachable from "sent", matching the state
+  // machine note above the approvalState declaration.
+  function mockReject() {
+    if (approvalState !== "sent") return;
+
+    approvalState = "rejected";
+    approvalRejectedAtLabel = formatThaiDateTime(new Date());
+    els.approvalStatus.innerHTML = '<span class="badge badge-danger">ไม่อนุมัติแล้ว &middot; ' + escapeHtml(approvalRejectedAtLabel) + "</span>";
+    els.btnMockReject.style.display = "none";
     els.btnMockApprove.style.display = "none";
   }
 
@@ -1131,6 +1204,18 @@
         renderWorkplanSchedule();
         return;
       }
+
+      var fuelTypeSelect = e.target.closest("select.fuel-type-select");
+      if (fuelTypeSelect) {
+        var fKey = getLocationKey(parseInt(fuelTypeSelect.getAttribute("data-area-id"), 10), fuelTypeSelect.getAttribute("data-loc-type"));
+        fuelTypeByKey[fKey] = fuelTypeSelect.value;
+        // No full renderAreaList()/renderWorkplanSchedule() needed — fuel
+        // type doesn't affect the mini-map, household count, or workplan
+        // table, only the aggregated ☑/☐ checkboxes computed at
+        // buildApprovalText() generation time (from the pool's current
+        // fuelType, read fresh via getSelectedPool() there).
+        return;
+      }
     });
 
     els.workplanScheduleBody.addEventListener("change", function (e) {
@@ -1190,6 +1275,7 @@
     els.btnGenerateApproval.addEventListener("click", generateApproval);
     els.btnSendApproval.addEventListener("click", sendApproval);
     els.btnMockApprove.addEventListener("click", mockApprove);
+    els.btnMockReject.addEventListener("click", mockReject);
     els.btnPrintApproval.addEventListener("click", printApproval);
     els.approvalTextarea.addEventListener("input", syncApprovalPrintView);
     els.btnGenerateWorkplan.addEventListener("click", generateWorkplan);

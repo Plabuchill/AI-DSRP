@@ -11,4 +11,5 @@
 
 ## เอกสารที่มีอยู่
 
+- [`REQUIREMENTS.md`](./REQUIREMENTS.md) — ต้นทางความต้องการ (Pain Point) 5 ข้อ รวบรวมจาก [[../../../ROADMAP.md|ROADMAP.md]] และ `FEATURE-LIST.md`
 - [`FEATURE-LIST.md`](./FEATURE-LIST.md) — Feature List ทั้งระบบ รวบรวมจาก Requirement (pain point 5 ข้อ) และ Product Backlog ([[../../../ROADMAP.md|ROADMAP.md]])

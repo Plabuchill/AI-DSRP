@@ -126,6 +126,9 @@ erDiagram
   CASE }o--o| CASE_CLUSTER : "อาจถูกจัดเข้ากลุ่มเคสที่ AI เสนอ (nullable — นิยามเต็มของ CASE อยู่ใน ER Diagram 1.1)"
   CASE_CLUSTER }o--|| DISEASE : "เป็นกลุ่มของโรค (นิยามเต็มของ DISEASE อยู่ใน ER Diagram 1.2)"
   CASE_CLUSTER ||--o| INVESTIGATION_REPORT : "อาจมีรายงานสอบสวนโรค (สร้างได้เมื่อ confirmed แล้วเท่านั้น)"
+  CASE ||--o| SURVEILLANCE_REPORT_506 : "อาจมี รง.506 ที่สร้างจากเคสนี้ (nullable — นิยามเต็มของ CASE อยู่ใน ER Diagram 1.1)"
+  SURVEILLANCE_REPORT_506 }o--|| DISEASE : "ระบุโรคติดต่อ (นิยามเต็มของ DISEASE อยู่ใน ER Diagram 1.2)"
+  SURVEILLANCE_REPORT_506 }o--|| TEAM : "สร้างโดยทีมสอบสวนโรค (นิยามเต็มของ TEAM อยู่ใน ER Diagram 1.1)"
 
   CASE_CLUSTER {
     string cluster_id PK
@@ -143,9 +146,19 @@ erDiagram
     enum status
     date sent_at
   }
+  SURVEILLANCE_REPORT_506 {
+    string report_506_id PK
+    string case_id FK
+    string disease_id FK
+    enum status
+    number created_by_team_id FK
+    number decided_by_team_id FK
+    date created_at
+    date decided_at
+  }
 ```
 
-**หมายเหตุ cardinality ที่ยืนยันแล้ว**: `CASE_CLUSTER` ↔ `INVESTIGATION_REPORT` = **1:1 (optional)** — 1 กลุ่มเคสมีรายงานได้อย่างมาก 1 ฉบับ และสร้างได้เฉพาะกลุ่มที่ `status = confirmed` เท่านั้น (business rule) — chatbot ประสานงาน อสม. (`FEAT-ANALYSIS-03`) เป็น scripted demo แบบ fixed script ในรอบนี้ ไม่มี entity ข้อมูลของตัวเอง (ยังไม่ persist บทสนทนา) จนกว่า `FEAT-ANALYSIS-06` (chatbot จริง) จะถูกทำ
+**หมายเหตุ cardinality ที่ยืนยันแล้ว**: `CASE_CLUSTER` ↔ `INVESTIGATION_REPORT` = **1:1 (optional)** — 1 กลุ่มเคสมีรายงานได้อย่างมาก 1 ฉบับ และสร้างได้เฉพาะกลุ่มที่ `status = confirmed` เท่านั้น (business rule) — chatbot ประสานงาน อสม. (`FEAT-ANALYSIS-03`) เป็น scripted demo แบบ fixed script ในรอบนี้ ไม่มี entity ข้อมูลของตัวเอง (ยังไม่ persist บทสนทนา) จนกว่า `FEAT-ANALYSIS-06` (chatbot จริง) จะถูกทำ — `CASE` ↔ `SURVEILLANCE_REPORT_506` = **1:1 (optional/nullable)** — ไม่ใช่ทุกเคสจะมี รง.506 ที่สร้างขึ้น (`FEAT-ANALYSIS-07`)
 
 ### 1.4 Control Plan (`FEAT-CONTROL-*`)
 
@@ -156,6 +169,7 @@ erDiagram
   SPRAY_ASSIGNMENT }o--|| TEAM : "มอบหมายให้ทีมพ่น (นิยามเต็มของ TEAM อยู่ใน ER Diagram 1.1)"
   APPROVAL_REQUEST ||--|{ APPROVAL_REQUEST_CASE : "รวมเคสไว้ในคำขอรอบนี้"
   CASE ||--o{ APPROVAL_REQUEST_CASE : "ถูกรวมอยู่ในคำขออนุมัติ (ปรากฏได้หลายรอบ/หลายคำขอ)"
+  APPROVAL_REQUEST }o--|| TEAM : "สร้างโดยทีมพ่น (นิยามเต็มของ TEAM อยู่ใน ER Diagram 1.1)"
 
   CONTROL_LOCATION {
     string location_id PK
@@ -182,13 +196,17 @@ erDiagram
   APPROVAL_REQUEST {
     string request_id PK
     date created_at
-    enum status
+    enum status "เพิ่มค่า rejected"
     date sent_at
     date approved_at
+    date rejected_at
+    number created_by_team_id FK
+    string decided_by_name
   }
   APPROVAL_REQUEST_CASE {
     string request_id FK
     string case_id FK
+    enum fuel_type
   }
 ```
 
@@ -196,6 +214,7 @@ erDiagram
 - `CASE` ↔ `CONTROL_LOCATION` = **1:N (1 หรือ 2 ตำแหน่งต่อเคส — บ้าน/ที่ทำงาน)** — ต้องมี `active = true` อย่างน้อย 1 ตำแหน่งเสมอ (business rule)
 - `CONTROL_LOCATION` ↔ `SPRAY_ASSIGNMENT` = **1:1 (optional)** — สร้างแผนปฏิบัติงานเมื่อตำแหน่งนั้น active เท่านั้น
 - `APPROVAL_REQUEST` ↔ `CASE` = **N:M ผ่าน junction `APPROVAL_REQUEST_CASE`** — **1 คำขอต่อ 1 รอบ (batch ของเคส active ขณะนั้น) เก็บเป็น log ประวัติ** (ยืนยันแล้ว ไม่ใช่ single global draft แบบที่ mock ปัจจุบันทำ) — เคสเดียวกันปรากฏในหลายคำขอ (หลายรอบ) ได้ตามกาลเวลา
+- `APPROVAL_REQUEST` ↔ `TEAM` = **N:1** — 1 ทีมสร้างได้หลายคำขอ, 1 คำขอมีทีมผู้สร้างทีมเดียว
 
 ### 1.5 Field Tracking (`FEAT-TRACK-*`)
 
@@ -463,6 +482,23 @@ erDiagram
 
 **หมายเหตุ**: chatbot ประสานงาน อสม. (`FEAT-ANALYSIS-03`) เป็น scripted demo แบบข้อความคงที่ (fixed script) ในรอบนี้ — ยังไม่มี entity เก็บบทสนทนา จนกว่า `FEAT-ANALYSIS-06` (chatbot จริง, จำกัดสิทธิ์ตาม PDPA) จะถูกทำ
 
+### `SURVEILLANCE_REPORT_506` — บันทึกและยืนยันรายงานผู้ป่วยเฝ้าระวังโรค (รง.506)
+
+รองรับ Feature: `FEAT-ANALYSIS-07`
+
+| Attribute | Conceptual Type | จำเป็นต้องมี | คำอธิบาย |
+|---|---|---|---|
+| report_506_id | string (PK) | ใช่ | รหัส รง.506 |
+| case_id | reference → `CASE` (unique, nullable) | ไม่บังคับ (null = ยังไม่ผูกกับเคสใด) | เคสที่ รง.506 นี้เป็นของ — 1:1 optional เพราะไม่ใช่ทุกเคสจะมี รง.506 |
+| disease_id | reference → `DISEASE` | ใช่ | โรคติดต่อที่เลือกสำหรับรายการนี้ |
+| status | enum(รอพิจารณา, ยืนยัน, ไม่ยืนยัน) | ใช่ | สถานะ human-in-the-loop — เปลี่ยนได้ทางเดียวจาก "รอพิจารณา" → "ยืนยัน" หรือ "ไม่ยืนยัน" เท่านั้น (one-way, ไม่มี reopen กลับ "รอพิจารณา") |
+| created_by_team_id | reference → `TEAM` (team_type=investigation) | ใช่ | ทีมสอบสวนโรคผู้สร้างรายการนี้ |
+| decided_by_team_id | reference → `TEAM` (nullable) | ไม่บังคับ (null จนกว่าจะตัดสินใจ) | ทีมที่กดเปลี่ยนสถานะเป็นยืนยัน/ไม่ยืนยัน (มักเป็นทีมเดียวกับผู้สร้าง แต่ schema ไม่ได้ล็อกไว้ว่าต้องเป็นทีมเดียวกัน) |
+| created_at | date | ใช่ | เวลาที่สร้างรายการ |
+| decided_at | date (nullable) | ไม่บังคับ (null จนกว่าจะตัดสินใจ) | เวลาที่กดยืนยัน/ไม่ยืนยัน |
+
+**Business rule**: ไม่มี reopen กลับเป็น "รอพิจารณา" หลังตัดสินใจแล้ว (one-way transition ตามที่ยืนยันในแผน เช่นเดียวกับ `CASE_CLUSTER.status`)
+
 ### Module: Control Plan (`FEAT-CONTROL-*`)
 
 ### `CONTROL_LOCATION` — ตำแหน่งที่ต้องควบคุมโรค (บ้าน/ที่ทำงาน) ต่อเคส
@@ -509,11 +545,16 @@ erDiagram
 |---|---|---|---|
 | request_id | string (PK) | ใช่ | รหัสคำขออนุมัติ |
 | created_at | date | ใช่ | เวลาที่สร้างคำขอ (ร่างเริ่มต้น) |
-| status | enum(draft, sent, approved) | ใช่ | สถานะคำขอ |
+| status | enum(draft, sent, approved, rejected) | ใช่ | สถานะคำขอ — `rejected` เป็น terminal state เหมือน `approved` |
 | sent_at | date (nullable) | ไม่บังคับ | เวลาที่ส่งคำขอ |
 | approved_at | date (nullable) | ไม่บังคับ | เวลาที่อนุมัติ |
+| rejected_at | date (nullable) | ไม่บังคับ | เวลาที่ไม่อนุมัติ |
+| created_by_team_id | reference → `TEAM` (team_type=control) | ใช่ | ทีมพ่นผู้สร้างคำขอนี้ |
+| decided_by_name | string (nullable) | ไม่บังคับ (มีค่าเมื่อ status = approved/rejected) | ชื่อผู้อนุมัติ/ไม่อนุมัติ (free-text ชั่วคราว — ดู gap note ด้านล่าง) |
 
-**Business rule**: `draft` → `sent` ต้องมีเนื้อหา (รายการเคส) ไม่ว่าง; `sent` → `approved` เท่านั้น (ไม่มี fast-path จาก draft); ไม่มี reopen กลับ `draft` — **1 คำขอ = 1 รอบ (snapshot ของเคส active ขณะนั้น)** เก็บเป็น log ประวัติทุกรอบ (ยืนยันแล้ว ต่างจาก mock ปัจจุบันที่มี draft เดี่ยว global เพียงชุดเดียว)
+**Business rule**: `draft` → `sent` ต้องมีเนื้อหา (รายการเคส) ไม่ว่าง; `sent` → `approved` เท่านั้น (ไม่มี fast-path จาก draft); ไม่มี reopen กลับ `draft` — **1 คำขอ = 1 รอบ (snapshot ของเคส active ขณะนั้น)** เก็บเป็น log ประวัติทุกรอบ (ยืนยันแล้ว ต่างจาก mock ปัจจุบันที่มี draft เดี่ยว global เพียงชุดเดียว) `sent` → `rejected` เป็น terminal state เช่นเดียวกับ `sent` → `approved` (ไม่มี reopen กลับ `draft` เช่นกัน — ถ้าต้องการยื่นใหม่ต้องสร้างคำขอรอบใหม่)
+
+**Gap**: `decided_by_name` เก็บเป็น free-text ชั่วคราวเพราะระบบยังไม่มี USER/role entity (backlog "ระบบ login และสิทธิ์ผู้ใช้" ใน `ROADMAP.md` บรรทัด 70 ยังไม่ถูกทำ) — เมื่อ backlog นั้นถูกทำ ควรเปลี่ยนเป็น reference → USER แทน
 
 ### `APPROVAL_REQUEST_CASE` — เคสที่ถูกรวมอยู่ในคำขอแต่ละรอบ (junction)
 
@@ -523,6 +564,7 @@ erDiagram
 |---|---|---|---|
 | request_id | reference → `APPROVAL_REQUEST` | ใช่ | คำขอที่แถวนี้เป็นของ (ส่วนหนึ่งของ primary key ร่วม) |
 | case_id | reference → `CASE` | ใช่ | เคสที่ถูกรวมอยู่ในคำขอรอบนี้ (ส่วนหนึ่งของ primary key ร่วม) |
+| fuel_type | enum(gasoline, diesel, lubricant, chemical, other) | ใช่ | ชนิดน้ำมัน/น้ำยาเคมีที่เลือกสำหรับเคสนี้ในคำขอรอบนี้ |
 
 **หมายเหตุ**: primary key ร่วมคือ `(request_id, case_id)` — เป็น snapshot ประวัติว่าคำขอรอบไหนรวมเคสอะไรบ้าง ไม่ใช่ current state (เคสเดียวกันปรากฏในหลายคำขอ/หลายรอบตามกาลเวลาได้)
 

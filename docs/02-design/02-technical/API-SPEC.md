@@ -56,12 +56,13 @@ Traceability: operation 1-2 → `FEAT-ANALYSIS-01` (+ ฐานรองรั�
 | 2. แก้ไขตำแหน่ง/รัศมีควบคุมโรค | ทีมควบคุมโรค | ปรับที่อยู่/รัศมีพ่นสารเคมี และเปิด/ปิดตำแหน่ง active | location_id, ที่อยู่/ชื่อสถานที่, default_radius, active | `CONTROL_LOCATION` ที่อัปเดตแล้ว (ต้องมี active ≥ 1 ต่อเคสเสมอ) |
 | 3. กำหนด/แก้ไขแผนปฏิบัติงานพ่น | ทีมควบคุมโรค | มอบหมายทีมพ่น + กำหนดวัน/เวลา (Day 0/1/7) | location_id, assigned_team_id, day_offset, scheduled_time | `SPRAY_ASSIGNMENT` ที่อัปเดตแล้ว |
 | 4. อัปเดตสถานะพ่นแล้ว (Day 0/1/7) | ทีมควบคุมโรค | บันทึกว่าพ่นแล้วในแต่ละวัน | assignment_id, วันที่ทำเครื่องหมาย | `SPRAY_ASSIGNMENT.day{N}_done` → true |
-| 5. สร้างร่างคำขออนุมัติเบิกน้ำมัน/น้ำยาเคมี | ทีมควบคุมโรค | เริ่มคำขออนุมัติรอบใหม่จากเคส active ขณะนั้น | รายการ case_id ที่ active ขณะนั้น | `APPROVAL_REQUEST` ใหม่ (status = draft) + `APPROVAL_REQUEST_CASE` |
+| 5. สร้างร่างคำขออนุมัติเบิกน้ำมัน/น้ำยาเคมี | ทีมควบคุมโรค | เริ่มคำขออนุมัติรอบใหม่จากเคส active ขณะนั้น | รายการ (case_id, fuel_type) ที่ active ขณะนั้น, created_by_team_id | `APPROVAL_REQUEST` ใหม่ (status = draft, created_by_team_id) + `APPROVAL_REQUEST_CASE` (พร้อม fuel_type ต่อแถว) |
 | 6. ส่งคำขออนุมัติ | ทีมควบคุมโรค | ส่งคำขอให้ผู้บริหารพิจารณา | request_id (ต้องมีเคสรวมอยู่ไม่ว่าง) | `APPROVAL_REQUEST.status` → sent |
-| 7. อนุมัติคำขอ | ผู้บริหาร/หัวหน้างาน | อนุมัติคำขอเบิกน้ำมัน/น้ำยาเคมี | request_id (ต้องเป็น sent แล้ว) | `APPROVAL_REQUEST.status` → approved |
-| 8. ดึงประวัติคำขออนุมัติ | ทีมควบคุมโรค / ผู้บริหาร | ตรวจสอบประวัติคำขอแต่ละรอบ | filter: ช่วงวันที่ (optional) | list `APPROVAL_REQUEST` พร้อม `APPROVAL_REQUEST_CASE` |
+| 7. อนุมัติคำขอ | ผู้บริหาร/หัวหน้างาน | อนุมัติคำขอเบิกน้ำมัน/น้ำยาเคมี | request_id (ต้องเป็น sent แล้ว), decided_by_name | `APPROVAL_REQUEST.status` → approved + `approved_at` + `decided_by_name` |
+| 8. ไม่อนุมัติคำขอ | ผู้บริหาร/หัวหน้างาน | ไม่อนุมัติคำขอเบิกน้ำมัน/น้ำยาเคมี | request_id (ต้องเป็น sent แล้ว), decided_by_name | `APPROVAL_REQUEST.status` → rejected + `rejected_at` + `decided_by_name` |
+| 9. ดึงประวัติคำขออนุมัติ | ทีมควบคุมโรค / ผู้บริหาร | ตรวจสอบประวัติคำขอแต่ละรอบ | filter: ช่วงวันที่ (optional) | list `APPROVAL_REQUEST` พร้อม `APPROVAL_REQUEST_CASE` |
 
-Traceability: operation 1-4 → `FEAT-CONTROL-01` (+ ฐานรองรับ `FEAT-CONTROL-04`/`05`) · operation 5-8 → `FEAT-CONTROL-02` (+ ฐานรองรับ `FEAT-CONTROL-03`)
+Traceability: operation 1-4 → `FEAT-CONTROL-01` (+ ฐานรองรับ `FEAT-CONTROL-04`/`05`) · operation 5-9 → `FEAT-CONTROL-02` (+ ฐานรองรับ `FEAT-CONTROL-03`)
 
 ## 2E. Operation List — Module: Field Tracking (`FEAT-TRACK-*`)
 

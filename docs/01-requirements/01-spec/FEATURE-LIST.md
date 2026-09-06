@@ -67,6 +67,9 @@ Feature ID ในเอกสารนี้เป็นการตั้งข
 | FEAT-ANALYSIS-04 | Case clustering จริง | statistical/spatial-temporal clustering แทน pre-group mock | 🔲 (Phase 2) |
 | FEAT-ANALYSIS-05 | AI ร่างรายงานจริง | ดึงข้อมูลดิบจริงมาร่าง แทน template คงที่ | 🔲 (Phase 2) |
 | FEAT-ANALYSIS-06 | Chatbot จริง (จำกัดสิทธิ์) | นัดหมาย/แจ้งพื้นที่เท่านั้น ห้ามส่งข้อมูลเคสละเอียด (PDPA) | 🔲 (Phase 2) |
+| FEAT-ANALYSIS-07 | บันทึกและยืนยัน รง.506 | เจ้าหน้าที่สอบสวนโรคสร้างรายการ "รง.506" (รายงานผู้ป่วยเฝ้าระวังโรค) เลือก "โรคติดต่อ" ได้ต่อรายการ มีสถานะ "รอพิจารณา" → "ยืนยัน"/"ไม่ยืนยัน" โดยเจ้าหน้าที่สอบสวนโรคเป็นผู้กดเปลี่ยนสถานะเอง | 🔲 (Phase 2) |
+
+> **อัปเดต 2026-09-06**: เพิ่ม `FEAT-ANALYSIS-07` จาก `PAIN-INVESTIGATION-01` ใน REQUIREMENTS.md — ยังไม่มี UI ใน `prototypes/v1/case-analysis.html` และยังไม่มี FR-ANALYSIS test spec คู่กัน (รอ qa-doc-builder)
 
 ## FEAT-CONTROL — Control Plan
 

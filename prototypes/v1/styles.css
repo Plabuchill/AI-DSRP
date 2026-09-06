@@ -1647,6 +1647,15 @@ main.content-wrap {
   flex: 0 0 110px;
 }
 
+/* BUILD-PLAN.md รอบ 23: fuel/chemical type <select> per control-plan area
+   location — labels are longer than the radius <select>'s ("100 เมตร"),
+   so this modifier is wider than .input-inline-sm while still following
+   the same fixed-width pattern (.input-inline-xs/-sm above). */
+.input-inline-md {
+  width: 190px;
+  flex: 0 0 190px;
+}
+
 /* ---------------------------------------------------------
    Mini-map panel (reuses .spotmap-wrap / .region-legend / .pin-dot
    from the spot map pattern used in case-intake.js etc.)

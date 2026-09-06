@@ -7,11 +7,11 @@
 ## 0. หลักการอ่านเอกสารนี้ (ยืนยันแล้วใน Build Plan)
 
 - **ระดับความละเอียด Sequence Flow**: ทุก flow เป็น **coarse** (decision point หลัก + ผลสำเร็จ/ไม่สำเร็จ 2 ทาง) ยกเว้น **4 flow เสี่ยงสูง** ที่ทำแบบ **step-by-step ละเอียด** (มี validation/error/retry branch เต็ม): OCR Review & Confirm Flow, Case Clustering Confirm & Report Flow, Control Plan Approval Flow, Alert Assign & Close Flow
-- **ไม่มี State/Status Diagram แยก** ในรอบนี้ — ตรวจสอบแล้วไม่มี entity ใดมีสถานะ ≥4 ขั้นจริง (ALERT/APPROVAL_REQUEST/TEAM มี 3 สถานะ, CASE/CASE_CLUSTER มี 2 สถานะ) — ใช้ `Note` ใน sequence diagram บอกการเปลี่ยนสถานะแทนทุกจุด
+- **State/Status Diagram**: ส่วนใหญ่ไม่ทำแยก (ALERT/TEAM มี 3 สถานะ, CASE/CASE_CLUSTER มี 2 สถานะ — ใช้ `Note` ใน sequence diagram แทน) **ยกเว้น `APPROVAL_REQUEST`** ที่ข้าม threshold ≥4 สถานะจริงหลังเพิ่ม `rejected` (draft/sent/approved/rejected) — มี `stateDiagram-v2` แยกใน Flow 8 (ดูด้านล่าง)
 - **Error & Exception Handling** ครอบเฉพาะ error ที่กระทบ business-critical/ข้อมูลสุขภาพ: **เคสซ้ำ, cluster ผิดพื้นที่, แจ้งเตือนผิดทีม, อนุมัติซ้ำซ้อน, ปิด alert โดยไม่มี note** — flow ที่ไม่มี error ประเภทนี้เกี่ยวข้องจะระบุไว้ชัดเจนว่า "ไม่มี" แทนการยัดตารางที่ไม่จำเป็น ไม่ครอบ error ทั่วไป (network fail, timeout ฯลฯ)
 - **Tech Stack**: [[./TECH-STACK|TECH-STACK.md]] ยืนยันเฉพาะ Frontend (Vanilla JS + Node.js/EJS partials) และ Backend/API runtime (Node.js + Express/Fastify) — component อื่นที่ flow เหล่านี้เรียกใช้ (OCR/Document AI, Geocoding, Case Clustering, AI Vision QC) **ยังไม่ยืนยัน vendor จริง** จึง participant ในทุกไดอะแกรมยังเป็นชื่อ capability-level ตาม `HIGH-LEVEL-ARCHITECTURE.md` หัวข้อ 6 (เช่น "บริการ OCR/Document AI") ไม่ใช่ชื่อ vendor เจาะจง
 - **แกนอ้างอิงหลัก**: Dashboard ยึด [[../01-prototypes/USER-JOURNEY-outbreak-dashboard|USER-JOURNEY-outbreak-dashboard.md]] เป็นแกน — อีก 7 โมดูลยึด operation ใน `API-SPEC.md` เป็นแกน
-- Diagram ทั้งหมดใช้ `sequenceDiagram` เท่านั้น (Mermaid) — ไม่มี state diagram ในรอบนี้
+- Diagram ส่วนใหญ่ใช้ `sequenceDiagram` (Mermaid) — มี `stateDiagram-v2` เพิ่ม 1 diagram เฉพาะ Flow 8 (`APPROVAL_REQUEST`) ตามเหตุผลข้างต้น
 
 ---
 
@@ -517,8 +517,8 @@ sequenceDiagram
 | Trigger | ทีมควบคุมโรคต้องการขออนุมัติเบิกน้ำมัน/น้ำยาเคมีสำหรับรอบปฏิบัติงานปัจจุบัน |
 | Actor หลัก | ทีมควบคุมโรค (สร้าง/ส่งคำขอ), ผู้บริหาร/หัวหน้างาน (อนุมัติ) |
 | Precondition | มีเคส/ตำแหน่งที่ `CONTROL_LOCATION.active = true` อย่างน้อย 1 รายการ |
-| Postcondition | `APPROVAL_REQUEST.status = approved` (ถ้าดำเนินการครบ flow) |
-| Reference | Operation 5-8 (`API-SPEC.md` หัวข้อ 2D) · Entity `APPROVAL_REQUEST`, `APPROVAL_REQUEST_CASE`, `CASE` · Component Web App (Control Plan), API Server |
+| Postcondition | `APPROVAL_REQUEST.status = approved` หรือ `rejected` (terminal state ทั้งคู่ — แล้วแต่ผลการพิจารณาของผู้บริหาร) |
+| Reference | Operation 5-9 (`API-SPEC.md` หัวข้อ 2D) · Entity `APPROVAL_REQUEST`, `APPROVAL_REQUEST_CASE`, `CASE` · Component Web App (Control Plan), API Server |
 
 ### 2. Sequence Flow
 
@@ -548,17 +548,46 @@ sequenceDiagram
   end
 
   ผบห->>UI: เปิดดูคำขอที่สถานะ "รออนุมัติ"
-  ผบห->>UI: กด "อนุมัติ"
-  UI->>API: อนุมัติคำขอ (request_id)
-  API->>API: ตรวจสอบ request.status ต้อง = sent
-  alt status = sent
-    API->>Data: APPROVAL_REQUEST.status -> approved, approved_at = now
-    Note over API,Data: สถานะเปลี่ยน: sent -> approved (ทางเดียว ไม่มี reopen กลับ draft)
-    API-->>UI: แสดงสถานะ "อนุมัติแล้ว" + เปิดปุ่ม "พิมพ์เป็น PDF"
-  else status = draft หรือ approved อยู่แล้ว
-    API-->>UI: ปฏิเสธ (ป้องกันอนุมัติซ้ำซ้อน หรืออนุมัติคำขอที่ยังไม่ถูกส่ง)
+  alt ผู้บริหารกด "อนุมัติ"
+    ผบห->>UI: กด "อนุมัติ"
+    UI->>API: อนุมัติคำขอ (request_id, decided_by_name)
+    API->>API: ตรวจสอบ request.status ต้อง = sent
+    alt status = sent
+      API->>Data: APPROVAL_REQUEST.status -> approved, approved_at = now, decided_by_name = ผู้บริหาร
+      Note over API,Data: สถานะเปลี่ยน: sent -> approved (terminal state, ไม่มี reopen กลับ draft)
+      API-->>UI: แสดงสถานะ "อนุมัติแล้ว" + เปิดปุ่ม "พิมพ์เป็น PDF"
+    else status ไม่ใช่ sent (draft หรือ approved/rejected อยู่แล้ว)
+      API-->>UI: ปฏิเสธ (ป้องกันอนุมัติซ้ำซ้อน หรืออนุมัติคำขอที่ยังไม่ถูกส่ง/ตัดสินใจไปแล้ว)
+    end
+  else ผู้บริหารกด "ไม่อนุมัติ"
+    ผบห->>UI: กด "ไม่อนุมัติ"
+    UI->>API: ไม่อนุมัติคำขอ (request_id, decided_by_name)
+    API->>API: ตรวจสอบ request.status ต้อง = sent
+    alt status = sent
+      API->>Data: APPROVAL_REQUEST.status -> rejected, rejected_at = now, decided_by_name = ผู้บริหาร
+      Note over API,Data: สถานะเปลี่ยน: sent -> rejected (terminal state เช่นเดียวกับ approved, ไม่มี reopen กลับ draft — ต้องสร้างคำขอรอบใหม่ถ้าต้องการยื่นใหม่)
+      API-->>UI: แสดงสถานะ "ไม่อนุมัติแล้ว"
+    else status ไม่ใช่ sent (draft หรือ approved/rejected อยู่แล้ว)
+      API-->>UI: ปฏิเสธ (ป้องกันไม่อนุมัติซ้ำซ้อน หรือไม่อนุมัติคำขอที่ยังไม่ถูกส่ง/ตัดสินใจไปแล้ว)
+    end
   end
 ```
+
+### 2b. State Diagram — `APPROVAL_REQUEST`
+
+> เพิ่มใหม่ในรอบนี้ — `APPROVAL_REQUEST` ข้าม threshold ≥4 สถานะจริงหลังเพิ่ม `rejected` (ดูหัวข้อ 0 ต้นไฟล์)
+
+```mermaid
+stateDiagram-v2
+  [*] --> draft : สร้างร่างคำขอ
+  draft --> sent : ส่งคำขอ (ต้องมีเคสรวมอยู่ไม่ว่าง)
+  sent --> approved : ผู้บริหารกด "อนุมัติ"
+  sent --> rejected : ผู้บริหารกด "ไม่อนุมัติ"
+  approved --> [*]
+  rejected --> [*]
+```
+
+**หมายเหตุ**: `approved` และ `rejected` เป็น terminal state ทั้งคู่ — ไม่มี transition ย้อนกลับ `draft` จากสถานะใดเลย (ต้องสร้าง `APPROVAL_REQUEST` ใหม่ทั้งรายการถ้าต้องการยื่นคำขอรอบใหม่)
 
 ### 3. Business Rule / Validation Logic
 
@@ -567,6 +596,7 @@ sequenceDiagram
 | draft -> sent ต้องมีเนื้อหาไม่ว่าง | มีเคสรวมอยู่ในคำขออย่างน้อย 1 รายการ | ปุ่มส่งไม่ทำงาน | FEAT-CONTROL-02 |
 | sent -> approved เท่านั้น | ไม่มี fast-path จาก draft | ปฏิเสธ ต้องผ่านสถานะ sent ก่อน | FEAT-CONTROL-02 |
 | ไม่มี reopen กลับ draft | เสมอ | คำขอที่ approved แล้วคงสถานะตลอดไป | FEAT-CONTROL-02 |
+| sent -> rejected เท่านั้น | ไม่มี fast-path จาก draft, เป็น terminal state เช่นเดียวกับ sent -> approved | ปฏิเสธ ต้องผ่านสถานะ sent ก่อน, ไม่มี reopen กลับ draft | FEAT-CONTROL-02 |
 | 1 คำขอ = 1 รอบ (batch snapshot) | เก็บเป็น log ประวัติทุกรอบ | เคสเดียวกันปรากฏได้หลายคำขอ/หลายรอบ | DATA-MODEL.md |
 
 ### 4. Error & Exception Handling
@@ -574,6 +604,7 @@ sequenceDiagram
 | กรณี | จุดที่เกิด (อ้างจาก step ใน diagram) | การจัดการ | ผลกระทบต่อผู้ใช้/ข้อมูล |
 |---|---|---|---|
 | อนุมัติซ้ำซ้อน | ตอนผู้บริหารกด "อนุมัติ" | API ตรวจสอบ `request.status = sent` ก่อนเปลี่ยนเป็น `approved` ทุกครั้ง — ปฏิเสธถ้าเป็น `draft` (ยังไม่ส่ง) หรือ `approved` อยู่แล้ว (อนุมัติซ้ำ) | ป้องกันการเบิกจ่ายซ้ำซ้อนจากคำขอเดียวกัน |
+| ไม่อนุมัติซ้ำซ้อน/ไม่อนุมัติคำขอที่ยังไม่ส่ง | ตอนผู้บริหารกด "ไม่อนุมัติ" | API ตรวจสอบ `request.status = sent` ก่อนเปลี่ยนเป็น `rejected` ทุกครั้ง — ปฏิเสธถ้าเป็น `draft` (ยังไม่ส่ง) หรือ `approved`/`rejected` อยู่แล้ว (ตัดสินใจไปแล้ว) | ป้องกันการเปลี่ยนผลการพิจารณาซ้ำซ้อนจากคำขอเดียวกัน |
 | ส่งคำขอที่ไม่มีเคสรวมอยู่ | ตอนกด "ส่งคำขอ" | API ตรวจสอบเนื้อหาไม่ว่างก่อนเปลี่ยนเป็น `sent` | ปฏิเสธการส่ง ป้องกันคำขอเปล่า |
 
 ### 5. Traceability
@@ -582,7 +613,7 @@ sequenceDiagram
 |---|---|
 | Feature | FEAT-CONTROL-01, FEAT-CONTROL-02, FEAT-CONTROL-03 (backlog) |
 | Entity | `APPROVAL_REQUEST`, `APPROVAL_REQUEST_CASE`, `CASE` |
-| Operation | API-SPEC.md operation 5-8 (หัวข้อ 2D) |
+| Operation | API-SPEC.md operation 5-9 (หัวข้อ 2D) |
 | Component | Web App (Control Plan), API Server |
 
 ---
