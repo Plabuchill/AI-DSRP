@@ -51,3 +51,7 @@ npx http-server prototypes/v1 -p 8743 -c-1
 ## Roadmap
 
 ดู [ROADMAP.md](./ROADMAP.md) สำหรับแผนงานเต็ม แบ่งเป็นเฟส — ตั้งแต่การเชื่อมต่อ Google Sheet/Drive/LINE OA/Geocoding จริง, Alert & Response Management แบบเต็ม, ไปจนถึง backend/authentication และ hardening ก่อนใช้งานจริง
+
+## ผู้จัดทำ
+
+Suchavadee Chaiwanna
