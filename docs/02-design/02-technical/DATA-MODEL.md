@@ -404,13 +404,13 @@ erDiagram
 
 | Attribute | Conceptual Type | Native Type (Firestore) | จำเป็นต้องมี | คำอธิบาย |
 |---|---|---|---|---|
-| team_id | number (PK) | *(ดู flag ด้านล่าง — ไม่เดา)* | ใช่ | รหัสทีม — 5 รายการทีมสอบสวนโรค (`team_type = investigation`) + 4 รายการทีมพ่น (`team_type = control`) ตาม mock |
+| team_id | number (PK) | `string` (ใช้เป็น Firestore document ID ตรงๆ เช่น `"1"`-`"9"` — ดูหมายเหตุด้านล่าง) | ใช่ | รหัสทีม — 5 รายการทีมสอบสวนโรค (`team_type = investigation`) + 4 รายการทีมพ่น (`team_type = control`) ตาม mock |
 | team_name | string | `string` | ใช่ | ชื่อทีม เช่น "ทีมสอบสวนโรค เขต 1", "ทีมพ่น 1" |
 | team_type | enum(investigation, control) | `string` | ใช่ | **เพิ่มใหม่ในรอบนี้** — ประเภททีม แยกทีมสอบสวนโรคออกจากทีมพ่น |
 | status | enum(not_arrived, spraying, done) (nullable) | `string` (nullable) | ไม่บังคับ (ใช้เฉพาะ `team_type = control`) | **เพิ่มใหม่ในรอบนี้** (`FEAT-TRACK-01`) — สถานะปฏิบัติงานภาคสนามปัจจุบันของทีมพ่น เก็บแค่สถานะปัจจุบัน ไม่เก็บประวัติ (ยืนยันแล้ว) |
 | last_update_at | date (nullable) | `Timestamp` (nullable) | ไม่บังคับ (ใช้เฉพาะ `team_type = control`) | **เพิ่มใหม่ในรอบนี้** (`FEAT-TRACK-01`) — เวลาที่อัปเดตสถานะล่าสุด |
 
-**Flag — native type ของ `team_id` ยังไม่ยืนยัน**: `team_id` เป็น conceptual type `number` แต่ Firestore document ID **เก็บเป็น string เสมอ** (แม้ค่าจะดูเป็นตัวเลข เช่น `"3"`) — ยังไม่มี seed จริงสำหรับ `teams` ให้ตรวจสอบ (ต่างจาก `users`/`506Types`/`506Requests` ที่ seed แล้ว) จึงไม่เดาว่าจะ (ก) ใช้ `team_id` เป็น Firestore document ID ตรงๆ (ต้องแปลงเป็น string เสมอ ขัดกับ conceptual type `number`) หรือ (ข) เก็บ `team_id` เป็น field แยกชนิด `number` ภายใน document ที่มี auto-generated string ID ต่างหาก — ทุก reference field ที่ชี้มาที่ `TEAM` (เช่น `CASE.responsible_team`, `SPRAY_ASSIGNMENT.assigned_team_id`) ใช้ native type `string` ตามกฎ reference มาตรฐานอยู่แล้วไม่ว่าจะเลือกแนวทางไหน — ผู้ใช้ต้องตัดสินใจแนวทาง (ก)/(ข) ก่อน seed ข้อมูล `teams` จริง
+**หมายเหตุ native type ของ `team_id`**: ใช้ `team_id` เป็น Firestore document ID ตรงๆ (แปลงเป็น string เช่น `"1"`-`"9"`) — ตรงกับ convention เดียวกับ `users` (`CUCU1`/`SRRT1`/`SRRT3`) และ `506Types` (`66`/`67`/`68`) ที่ seed จริงไปแล้ว คือใช้ ID ทางธุรกิจเป็น document ID โดยตรง ไม่ใช้ auto-generated ID แยกต่างหาก — resolve แล้ว ไม่ใช่ open question อีกต่อไป (เดิม conceptual type ระบุเป็น `number` แต่ Firestore document ID เก็บเป็น string เสมอไม่ว่ากรณีใด จึงไม่ขัดกับแนวทางนี้)
 
 ### `SUBDISTRICT_ROUTING_RULE` — กฎ auto-route ตำบล → ทีมเริ่มต้น (lookup)
 
