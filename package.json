@@ -1,0 +1,12 @@
+{
+  "name": "ai-dsrp",
+  "private": true,
+  "version": "0.1.0",
+  "description": "AI Disease Surveillance & Response Platform — scripts and tooling (prototype UI is plain HTML/CSS/JS, see prototypes/v1/)",
+  "scripts": {
+    "seed:firestore": "node scripts/seed/seed-firestore.js"
+  },
+  "devDependencies": {
+    "firebase-admin": "^14.3.0"
+  }
+}

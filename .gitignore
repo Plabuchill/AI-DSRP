@@ -1,2 +1,4 @@
 .obsidian/
 ~$*.xlsx
+node_modules/
+scripts/seed/serviceAccountKey.json
