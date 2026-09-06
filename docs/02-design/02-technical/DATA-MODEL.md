@@ -328,31 +328,35 @@ erDiagram
 
 ## 2. Entity Dictionary
 
+> **Native Type (Firestore)** เพิ่มเข้ามาในรอบนี้ตาม Tech Stack Integration ที่ `TECH-STACK.md` ยืนยัน Database engine เป็น **Firebase Firestore** แล้ว — กฎ mapping ที่ใช้เหมือนกันทุก entity: `string`→`string`, `number`→`number`, `boolean`→`boolean`, `date`→`Timestamp`, `enum(...)`→`string` (Firestore ไม่มี enum จริง ค่าที่อนุญาตต้อง validate ที่ Security Rules/backend), `reference → X`→`string` (เก็บเป็น **document ID** ของ collection ปลายทาง ไม่ใช่ Firestore `DocumentReference` type — ตรงกับที่ seed script จริงใน `scripts/seed/seed-data.js` ทำไปแล้ว เช่น `requesterId: "SRRT1"`) ชื่อ collection ต่อ entity ระบุกำกับด้วยบรรทัด **Collection** ก่อนตารางของแต่ละ entity — entity/attribute ที่ยังไม่แน่ใจ native type ระบุ flag ไว้แทนการเดา (ดู `TEAM.team_id` และ `DISEASE` ด้านล่าง)
+
 ### `CASE` — เคสผู้ป่วยที่รายงานเข้าระบบ (ข้อมูลปัจจุบัน/effective)
 
 รองรับ Feature: `FEAT-INTAKE-01`, `FEAT-INTAKE-02`, `FEAT-INTAKE-03`, `FEAT-INTAKE-04`, `FEAT-INTAKE-07` (backlog — geo field), `FEAT-INTAKE-09` (backlog — unlock, ยังไม่รองรับในรอบนี้), `FEAT-DASH-*` (ผ่าน `community_id` — เพิ่มใหม่), `FEAT-ANALYSIS-01` (ผ่าน `cluster_id` — เพิ่มใหม่), `FEAT-CONTROL-01`/`02` (ผ่าน `CONTROL_LOCATION.case_id`)
 
-| Attribute | Conceptual Type | จำเป็นต้องมี | คำอธิบาย |
-|---|---|---|---|
-| case_id | string (PK) | ใช่ | รหัสอ้างอิงเคสหลัก ไม่ซ้ำกันในระบบ |
-| patient_name | string | ใช่ | ชื่อ-สกุลผู้ป่วย — แก้ไขได้ก่อนยืนยัน |
-| hn | string | ใช่ | Hospital Number — แก้ไขได้ก่อนยืนยัน |
-| house_no | string | ใช่ | บ้านเลขที่ — แก้ไขได้ก่อนยืนยัน |
-| village_no | string | ใช่ | หมู่ที่ — แก้ไขได้ก่อนยืนยัน |
-| village | string | ใช่ | ชื่อหมู่บ้าน — แก้ไขได้ก่อนยืนยัน |
-| subdistrict | string | ใช่ | ตำบล — แก้ไขได้ก่อนยืนยัน, การแก้ไขค่านี้ trigger auto-route `responsible_team` (ดู `SUBDISTRICT_ROUTING_RULE`) |
-| district | string | ใช่ | อำเภอ — **ไม่อยู่ในรายการฟิลด์ที่แก้ไขได้ผ่าน OCR Review ในรอบนี้** (ตรงกับ `saveEdit()` ของ prototype ปัจจุบันที่ไม่รวม `district`) |
-| province | string | ใช่ | จังหวัด — เช่นเดียวกับ `district`, ไม่อยู่ในรายการฟิลด์ที่แก้ไขได้รอบนี้ |
-| onset_date | date | ใช่ | วันที่เริ่มป่วยตามที่รายงาน — แก้ไขได้ก่อนยืนยัน |
-| lab_result | string | ใช่ | ผลตรวจทางห้องปฏิบัติการ/คลินิก — แก้ไขได้ก่อนยืนยัน |
-| status | enum(รอตรวจสอบ, ยืนยันแล้ว) | ใช่ | สถานะ human-in-the-loop — เปลี่ยนได้ทางเดียวจาก "รอตรวจสอบ" → "ยืนยันแล้ว" เท่านั้นในรอบนี้ (ไม่มี state สำหรับ unlock แก้ไขซ้ำ ตาม `FEAT-INTAKE-09` ที่ยังเป็น backlog) |
-| geo_accuracy | enum(high, low) | ใช่ | ระดับความแม่นยำของพิกัดที่ได้มา (mock ปัจจุบันสุ่มค่า, ของจริงจะมาจาก Geocoding API ตาม `FEAT-INTAKE-07`) |
-| geo_adjusted | boolean | ใช่ | ปรับพิกัดด้วยมือแล้วหรือยัง — มีผลเฉพาะกรณี `geo_accuracy = low` เป็น fallback ตามที่ ROADMAP.md ระบุ |
-| map_position | string (conceptual) | ใช่ | ตำแหน่งสำหรับวาดหมุดบน Spot Map — เป็นค่าจำลองสำหรับ layout ในรอบนี้ ไม่ใช่พิกัดภูมิศาสตร์จริง (lat/long) จนกว่า `FEAT-INTAKE-07` จะเชื่อมต่อจริง |
-| responsible_team | reference → `TEAM` | ใช่ | ทีมสอบสวนโรคที่รับผิดชอบเคสนี้ ณ ปัจจุบัน — auto-reassign ได้ตอนแก้ `subdistrict` (entity เปลี่ยนชื่อจาก `INVESTIGATION_TEAM` เป็น `TEAM` ในรอบนี้ — ดู Entity Dictionary ของ `TEAM` ด้านล่าง) |
-| community_id | reference → `COMMUNITY` (nullable) | ไม่บังคับ (null = ยังไม่ได้ผูกชุมชน) | **เพิ่มใหม่ในรอบนี้** — ชุมชนที่เคสนี้เกิดขึ้น คู่กับ field string เดิม (subdistrict/district/village/house_no) เพื่อให้ Dashboard (`FEAT-DASH-*`) join ได้จริงแทนพึ่ง string match — ไม่ลบ field string เดิม |
-| cluster_id | reference → `CASE_CLUSTER` (nullable) | ไม่บังคับ (null = ยังไม่ถูกจัดกลุ่ม) | **เพิ่มใหม่ในรอบนี้** — กลุ่มเคสที่ AI เสนอและอาจยืนยันแล้ว (`FEAT-ANALYSIS-01`) — เคสหนึ่งอยู่ในกลุ่มได้อย่างมาก 1 กลุ่ม ณ เวลาหนึ่ง |
-| deleted_at | date (nullable) | ไม่บังคับ (null = ยังไม่ถูกลบ) | soft delete marker — ดูหัวข้อ Cross-cutting concerns |
+**Collection**: `cases`
+
+| Attribute | Conceptual Type | Native Type (Firestore) | จำเป็นต้องมี | คำอธิบาย |
+|---|---|---|---|---|
+| case_id | string (PK) | `string` | ใช่ | รหัสอ้างอิงเคสหลัก ไม่ซ้ำกันในระบบ |
+| patient_name | string | `string` | ใช่ | ชื่อ-สกุลผู้ป่วย — แก้ไขได้ก่อนยืนยัน |
+| hn | string | `string` | ใช่ | Hospital Number — แก้ไขได้ก่อนยืนยัน |
+| house_no | string | `string` | ใช่ | บ้านเลขที่ — แก้ไขได้ก่อนยืนยัน |
+| village_no | string | `string` | ใช่ | หมู่ที่ — แก้ไขได้ก่อนยืนยัน |
+| village | string | `string` | ใช่ | ชื่อหมู่บ้าน — แก้ไขได้ก่อนยืนยัน |
+| subdistrict | string | `string` | ใช่ | ตำบล — แก้ไขได้ก่อนยืนยัน, การแก้ไขค่านี้ trigger auto-route `responsible_team` (ดู `SUBDISTRICT_ROUTING_RULE`) |
+| district | string | `string` | ใช่ | อำเภอ — **ไม่อยู่ในรายการฟิลด์ที่แก้ไขได้ผ่าน OCR Review ในรอบนี้** (ตรงกับ `saveEdit()` ของ prototype ปัจจุบันที่ไม่รวม `district`) |
+| province | string | `string` | ใช่ | จังหวัด — เช่นเดียวกับ `district`, ไม่อยู่ในรายการฟิลด์ที่แก้ไขได้รอบนี้ |
+| onset_date | date | `Timestamp` | ใช่ | วันที่เริ่มป่วยตามที่รายงาน — แก้ไขได้ก่อนยืนยัน |
+| lab_result | string | `string` | ใช่ | ผลตรวจทางห้องปฏิบัติการ/คลินิก — แก้ไขได้ก่อนยืนยัน |
+| status | enum(รอตรวจสอบ, ยืนยันแล้ว) | `string` | ใช่ | สถานะ human-in-the-loop — เปลี่ยนได้ทางเดียวจาก "รอตรวจสอบ" → "ยืนยันแล้ว" เท่านั้นในรอบนี้ (ไม่มี state สำหรับ unlock แก้ไขซ้ำ ตาม `FEAT-INTAKE-09` ที่ยังเป็น backlog) |
+| geo_accuracy | enum(high, low) | `string` | ใช่ | ระดับความแม่นยำของพิกัดที่ได้มา (mock ปัจจุบันสุ่มค่า, ของจริงจะมาจาก Geocoding API ตาม `FEAT-INTAKE-07`) |
+| geo_adjusted | boolean | `boolean` | ใช่ | ปรับพิกัดด้วยมือแล้วหรือยัง — มีผลเฉพาะกรณี `geo_accuracy = low` เป็น fallback ตามที่ ROADMAP.md ระบุ |
+| map_position | string (conceptual) | `string` | ใช่ | ตำแหน่งสำหรับวาดหมุดบน Spot Map — เป็นค่าจำลองสำหรับ layout ในรอบนี้ ไม่ใช่พิกัดภูมิศาสตร์จริง (lat/long) จนกว่า `FEAT-INTAKE-07` จะเชื่อมต่อจริง |
+| responsible_team | reference → `TEAM` | `string` (document ID → collection `teams`) | ใช่ | ทีมสอบสวนโรคที่รับผิดชอบเคสนี้ ณ ปัจจุบัน — auto-reassign ได้ตอนแก้ `subdistrict` (entity เปลี่ยนชื่อจาก `INVESTIGATION_TEAM` เป็น `TEAM` ในรอบนี้ — ดู Entity Dictionary ของ `TEAM` ด้านล่าง) |
+| community_id | reference → `COMMUNITY` (nullable) | `string` (document ID → collection `communities`, nullable) | ไม่บังคับ (null = ยังไม่ได้ผูกชุมชน) | **เพิ่มใหม่ในรอบนี้** — ชุมชนที่เคสนี้เกิดขึ้น คู่กับ field string เดิม (subdistrict/district/village/house_no) เพื่อให้ Dashboard (`FEAT-DASH-*`) join ได้จริงแทนพึ่ง string match — ไม่ลบ field string เดิม |
+| cluster_id | reference → `CASE_CLUSTER` (nullable) | `string` (document ID → collection `caseClusters`, nullable) | ไม่บังคับ (null = ยังไม่ถูกจัดกลุ่ม) | **เพิ่มใหม่ในรอบนี้** — กลุ่มเคสที่ AI เสนอและอาจยืนยันแล้ว (`FEAT-ANALYSIS-01`) — เคสหนึ่งอยู่ในกลุ่มได้อย่างมาก 1 กลุ่ม ณ เวลาหนึ่ง |
+| deleted_at | date (nullable) | `Timestamp` (nullable) | ไม่บังคับ (null = ยังไม่ถูกลบ) | soft delete marker — ดูหัวข้อ Cross-cutting concerns |
 
 **Business rule เพิ่มเติม**: แก้ไขข้อมูลได้เฉพาะเคสที่ `status = รอตรวจสอบ` เท่านั้น (ตรงกับ `startEdit()` ใน prototype ที่ปฏิเสธแถวที่ `confirmed`) — เคสที่ยืนยันแล้วต้องรอ `FEAT-INTAKE-09` (unlock flow, ยังไม่ทำ) ก่อนจะแก้ไขซ้ำได้
 
@@ -360,19 +364,21 @@ erDiagram
 
 รองรับ Feature: `FEAT-INTAKE-02` (ฐานสำหรับ diff ตอน human-in-the-loop), `FEAT-INTAKE-05` (backlog — วัดความแม่นยำ OCR จริงในอนาคต)
 
-| Attribute | Conceptual Type | จำเป็นต้องมี | คำอธิบาย |
-|---|---|---|---|
-| snapshot_id | string (PK) | ใช่ | รหัสอ้างอิง snapshot |
-| case_id | reference → `CASE` (unique) | ใช่ | เคสที่ snapshot นี้เป็นของ — 1:1 กับ CASE |
-| patient_name | string | ใช่ | ค่าดั้งเดิมจาก OCR (ก่อนแก้ไขใดๆ) |
-| hn | string | ใช่ | ค่าดั้งเดิมจาก OCR |
-| house_no | string | ใช่ | ค่าดั้งเดิมจาก OCR |
-| village_no | string | ใช่ | ค่าดั้งเดิมจาก OCR |
-| village | string | ใช่ | ค่าดั้งเดิมจาก OCR |
-| subdistrict | string | ใช่ | ค่าดั้งเดิมจาก OCR |
-| onset_date | date | ใช่ | ค่าดั้งเดิมจาก OCR |
-| lab_result | string | ใช่ | ค่าดั้งเดิมจาก OCR |
-| captured_at | date | ใช่ | เวลาที่ OCR extraction เสร็จ (ครั้งเดียว, immutable) |
+**Collection**: `caseOcrSnapshots`
+
+| Attribute | Conceptual Type | Native Type (Firestore) | จำเป็นต้องมี | คำอธิบาย |
+|---|---|---|---|---|
+| snapshot_id | string (PK) | `string` | ใช่ | รหัสอ้างอิง snapshot |
+| case_id | reference → `CASE` (unique) | `string` (document ID → collection `cases`) | ใช่ | เคสที่ snapshot นี้เป็นของ — 1:1 กับ CASE |
+| patient_name | string | `string` | ใช่ | ค่าดั้งเดิมจาก OCR (ก่อนแก้ไขใดๆ) |
+| hn | string | `string` | ใช่ | ค่าดั้งเดิมจาก OCR |
+| house_no | string | `string` | ใช่ | ค่าดั้งเดิมจาก OCR |
+| village_no | string | `string` | ใช่ | ค่าดั้งเดิมจาก OCR |
+| village | string | `string` | ใช่ | ค่าดั้งเดิมจาก OCR |
+| subdistrict | string | `string` | ใช่ | ค่าดั้งเดิมจาก OCR |
+| onset_date | date | `Timestamp` | ใช่ | ค่าดั้งเดิมจาก OCR |
+| lab_result | string | `string` | ใช่ | ค่าดั้งเดิมจาก OCR |
+| captured_at | date | `Timestamp` | ใช่ | เวลาที่ OCR extraction เสร็จ (ครั้งเดียว, immutable) |
 
 **หมายเหตุ**: mirror เฉพาะ field ที่แก้ไขได้ใน `CASE` เท่านั้น (ไม่รวม `district`/`province` เพราะไม่อยู่ในรายการฟิลด์ที่แก้ไขได้ — จึงไม่จำเป็นต้องเก็บค่าดั้งเดิมไว้ diff) — เป็น audit trail แบบ "ต้นฉบับคู่กับค่าที่แก้แล้ว" ตามที่ยืนยันในแผน ไม่ใช่ full version history ทุกครั้งที่แก้
 
@@ -380,36 +386,44 @@ erDiagram
 
 รองรับ Feature: `FEAT-INTAKE-01`, `FEAT-INTAKE-06` (backlog — เก็บจริงใน Google Drive)
 
-| Attribute | Conceptual Type | จำเป็นต้องมี | คำอธิบาย |
-|---|---|---|---|
-| attachment_id | string (PK) | ใช่ | รหัสอ้างอิงไฟล์แนบ |
-| case_id | reference → `CASE` (unique) | ใช่ | เคสที่ไฟล์นี้เป็นของ — 1:1 กับ CASE ในรอบนี้ |
-| file_name | string | ใช่ | ชื่อไฟล์ต้นฉบับ |
-| file_type | enum(PDF, JPEG) | ใช่ | ประเภทไฟล์ที่อัปโหลด |
-| file_size | string | ใช่ | ขนาดไฟล์แบบแสดงผล (เช่น "842 KB") |
-| uploaded_at | date | ใช่ | เวลาที่อัปโหลด |
-| storage_reference | string (conceptual) | ใช่ | ที่อยู่อ้างอิงของไฟล์ในระบบจัดเก็บ — รอบนี้เป็น concept กลางๆ เท่านั้น ไม่ได้ออกแบบผูกกับ Google Drive API จริงตาม `FEAT-INTAKE-06` |
+**Collection**: `caseAttachments`
+
+| Attribute | Conceptual Type | Native Type (Firestore) | จำเป็นต้องมี | คำอธิบาย |
+|---|---|---|---|---|
+| attachment_id | string (PK) | `string` | ใช่ | รหัสอ้างอิงไฟล์แนบ |
+| case_id | reference → `CASE` (unique) | `string` (document ID → collection `cases`) | ใช่ | เคสที่ไฟล์นี้เป็นของ — 1:1 กับ CASE ในรอบนี้ |
+| file_name | string | `string` | ใช่ | ชื่อไฟล์ต้นฉบับ |
+| file_type | enum(PDF, JPEG) | `string` | ใช่ | ประเภทไฟล์ที่อัปโหลด |
+| file_size | string | `string` | ใช่ | ขนาดไฟล์แบบแสดงผล (เช่น "842 KB") |
+| uploaded_at | date | `Timestamp` | ใช่ | เวลาที่อัปโหลด |
+| storage_reference | string (conceptual) | `string` | ใช่ | ที่อยู่อ้างอิงของไฟล์ในระบบจัดเก็บ — รอบนี้เป็น concept กลางๆ เท่านั้น ไม่ได้ออกแบบผูกกับ Google Drive API จริงตาม `FEAT-INTAKE-06` |
 
 ### `TEAM` — ทีมสอบสวนโรค/ทีมพ่น ตามเขตพื้นที่ (lookup)
 
 รองรับ Feature: `FEAT-INTAKE-03`, `FEAT-TRACK-01`, `FEAT-CONTROL-01`, `FEAT-ALERT-01` (**entity นี้เปลี่ยนชื่อจาก `INVESTIGATION_TEAM` ในรอบนี้ — ยืนยันแล้ว** เพื่อรวมทีมสอบสวนโรค 5 ทีมเดิมกับทีมพ่น 4 ทีมใหม่ไว้ที่ entity เดียวกัน แยกด้วย `team_type`)
 
-| Attribute | Conceptual Type | จำเป็นต้องมี | คำอธิบาย |
-|---|---|---|---|
-| team_id | number (PK) | ใช่ | รหัสทีม — 5 รายการทีมสอบสวนโรค (`team_type = investigation`) + 4 รายการทีมพ่น (`team_type = control`) ตาม mock |
-| team_name | string | ใช่ | ชื่อทีม เช่น "ทีมสอบสวนโรค เขต 1", "ทีมพ่น 1" |
-| team_type | enum(investigation, control) | ใช่ | **เพิ่มใหม่ในรอบนี้** — ประเภททีม แยกทีมสอบสวนโรคออกจากทีมพ่น |
-| status | enum(not_arrived, spraying, done) (nullable) | ไม่บังคับ (ใช้เฉพาะ `team_type = control`) | **เพิ่มใหม่ในรอบนี้** (`FEAT-TRACK-01`) — สถานะปฏิบัติงานภาคสนามปัจจุบันของทีมพ่น เก็บแค่สถานะปัจจุบัน ไม่เก็บประวัติ (ยืนยันแล้ว) |
-| last_update_at | date (nullable) | ไม่บังคับ (ใช้เฉพาะ `team_type = control`) | **เพิ่มใหม่ในรอบนี้** (`FEAT-TRACK-01`) — เวลาที่อัปเดตสถานะล่าสุด |
+**Collection**: `teams`
+
+| Attribute | Conceptual Type | Native Type (Firestore) | จำเป็นต้องมี | คำอธิบาย |
+|---|---|---|---|---|
+| team_id | number (PK) | *(ดู flag ด้านล่าง — ไม่เดา)* | ใช่ | รหัสทีม — 5 รายการทีมสอบสวนโรค (`team_type = investigation`) + 4 รายการทีมพ่น (`team_type = control`) ตาม mock |
+| team_name | string | `string` | ใช่ | ชื่อทีม เช่น "ทีมสอบสวนโรค เขต 1", "ทีมพ่น 1" |
+| team_type | enum(investigation, control) | `string` | ใช่ | **เพิ่มใหม่ในรอบนี้** — ประเภททีม แยกทีมสอบสวนโรคออกจากทีมพ่น |
+| status | enum(not_arrived, spraying, done) (nullable) | `string` (nullable) | ไม่บังคับ (ใช้เฉพาะ `team_type = control`) | **เพิ่มใหม่ในรอบนี้** (`FEAT-TRACK-01`) — สถานะปฏิบัติงานภาคสนามปัจจุบันของทีมพ่น เก็บแค่สถานะปัจจุบัน ไม่เก็บประวัติ (ยืนยันแล้ว) |
+| last_update_at | date (nullable) | `Timestamp` (nullable) | ไม่บังคับ (ใช้เฉพาะ `team_type = control`) | **เพิ่มใหม่ในรอบนี้** (`FEAT-TRACK-01`) — เวลาที่อัปเดตสถานะล่าสุด |
+
+**Flag — native type ของ `team_id` ยังไม่ยืนยัน**: `team_id` เป็น conceptual type `number` แต่ Firestore document ID **เก็บเป็น string เสมอ** (แม้ค่าจะดูเป็นตัวเลข เช่น `"3"`) — ยังไม่มี seed จริงสำหรับ `teams` ให้ตรวจสอบ (ต่างจาก `users`/`506Types`/`506Requests` ที่ seed แล้ว) จึงไม่เดาว่าจะ (ก) ใช้ `team_id` เป็น Firestore document ID ตรงๆ (ต้องแปลงเป็น string เสมอ ขัดกับ conceptual type `number`) หรือ (ข) เก็บ `team_id` เป็น field แยกชนิด `number` ภายใน document ที่มี auto-generated string ID ต่างหาก — ทุก reference field ที่ชี้มาที่ `TEAM` (เช่น `CASE.responsible_team`, `SPRAY_ASSIGNMENT.assigned_team_id`) ใช้ native type `string` ตามกฎ reference มาตรฐานอยู่แล้วไม่ว่าจะเลือกแนวทางไหน — ผู้ใช้ต้องตัดสินใจแนวทาง (ก)/(ข) ก่อน seed ข้อมูล `teams` จริง
 
 ### `SUBDISTRICT_ROUTING_RULE` — กฎ auto-route ตำบล → ทีมเริ่มต้น (lookup)
 
 รองรับ Feature: `FEAT-INTAKE-02` (ใช้ตอนแก้ไขและบันทึก), `FEAT-INTAKE-03`
 
-| Attribute | Conceptual Type | จำเป็นต้องมี | คำอธิบาย |
-|---|---|---|---|
-| subdistrict_name | string (PK) | ใช่ | ชื่อตำบลที่ระบบรู้จักล่วงหน้า (mock ปัจจุบันมี 6 รายการ) |
-| default_team | reference → `TEAM` | ใช่ | ทีมที่ควรรับผิดชอบตำบลนี้เป็นค่าเริ่มต้น (`team_type = investigation` เสมอในบริบทนี้) |
+**Collection**: `subdistrictRoutingRules`
+
+| Attribute | Conceptual Type | Native Type (Firestore) | จำเป็นต้องมี | คำอธิบาย |
+|---|---|---|---|---|
+| subdistrict_name | string (PK) | `string` | ใช่ | ชื่อตำบลที่ระบบรู้จักล่วงหน้า (mock ปัจจุบันมี 6 รายการ) |
+| default_team | reference → `TEAM` | `string` (document ID → collection `teams`) | ใช่ | ทีมที่ควรรับผิดชอบตำบลนี้เป็นค่าเริ่มต้น (`team_type = investigation` เสมอในบริบทนี้) |
 
 **Business rule สำคัญ**: กฎนี้ครอบคลุมเฉพาะตำบลที่มีอยู่ใน rule set เท่านั้น — ถ้าผู้ใช้แก้ไข `subdistrict` ของเคสเป็นชื่อตำบลที่**ไม่ตรง**กับ `subdistrict_name` ใดใน entity นี้ ระบบจะ**ไม่เปลี่ยน** `responsible_team` เดิมของเคสนั้น (คงค่าก่อนแก้ไขไว้) — ตรงกับ behavior ของ `SUBDISTRICT_TEAM_MAP` ใน `prototypes/v1/case-intake.js` ทุกประการ
 
@@ -417,14 +431,31 @@ erDiagram
 
 รองรับ Feature: `FEAT-INTAKE-03`, `FEAT-INTAKE-08` (backlog — ช่องทางแจ้งเตือนจริงผ่าน LINE OA)
 
-| Attribute | Conceptual Type | จำเป็นต้องมี | คำอธิบาย |
-|---|---|---|---|
-| log_id | string (PK) | ใช่ | รหัสอ้างอิง log entry |
-| case_id | reference → `CASE` | ใช่ | เคสที่ถูกแจ้งเตือน |
-| team | reference → `TEAM` | ใช่ | ทีมที่ได้รับแจ้งเตือน ณ เวลานั้น |
-| notified_at | date | ใช่ | เวลาที่ส่งแจ้งเตือน |
+**Collection**: `caseNotificationLogs`
+
+| Attribute | Conceptual Type | Native Type (Firestore) | จำเป็นต้องมี | คำอธิบาย |
+|---|---|---|---|---|
+| log_id | string (PK) | `string` | ใช่ | รหัสอ้างอิง log entry |
+| case_id | reference → `CASE` | `string` (document ID → collection `cases`) | ใช่ | เคสที่ถูกแจ้งเตือน |
+| team | reference → `TEAM` | `string` (document ID → collection `teams`) | ใช่ | ทีมที่ได้รับแจ้งเตือน ณ เวลานั้น |
+| notified_at | date | `Timestamp` | ใช่ | เวลาที่ส่งแจ้งเตือน |
 
 **หมายเหตุ**: entity นี้เก็บเฉพาะ reference ไปยัง `CASE`/`TEAM` + เวลา ไม่ denormalize ชื่อผู้ป่วย/ตำบลไว้ในตัวเอง (ต่างจาก mock `NOTIFICATIONS[]` ที่เก็บ `patientName`/`subdistrict` แบบ snapshot ไว้ตรงๆ เพื่อความสะดวกในการ render) — ข้อมูลแสดงผลเหล่านั้นต้องดึงผ่าน `case_id` ตอน query แทน ดู "Assumption" ท้ายผลลัพธ์
+
+### `USER` — ผู้ใช้งานปัจจุบันของระบบ (placeholder สะท้อนของจริงที่ seed แล้ว)
+
+รองรับ Feature: ไม่มี Feature ID ตรงในรอบนี้ — เพิ่มเข้ามาเพื่อสะท้อนสิ่งที่ seed จริงไว้แล้วใน collection `users` (`scripts/seed/seed-data.js`, ผู้ใช้ 3 ราย: CUCU1/SRRT1/SRRT3) **ยังไม่ใช่การออกแบบ Auth/Role-based Access เต็มรูปแบบ** — backlog "ระบบ login และสิทธิ์ผู้ใช้" (`FEAT-PLATFORM-02` ตาม `ROADMAP.md`) ยังไม่ถูกทำ entity นี้เป็นแค่ placeholder เก็บ user ปัจจุบันที่ seed ไปแล้วเท่านั้น
+
+**Collection**: `users`
+
+| Attribute | Conceptual Type | Native Type (Firestore) | จำเป็นต้องมี | คำอธิบาย |
+|---|---|---|---|---|
+| user_id | string (PK) | `string` | ใช่ | รหัสผู้ใช้ (เช่น `CUCU1`, `SRRT1`, `SRRT3` ตาม seed จริง) |
+| name | string | `string` | ใช่ | ชื่อ-สกุลผู้ใช้ |
+| email | string | `string` | ใช่ | อีเมลผู้ใช้ (seed ปัจจุบันใช้ค่าชั่วคราวรูปแบบ `{id}@ai-dsrp.local` สำหรับบางราย — ดู comment ใน `seed-data.js`) |
+| role | enum | `string` | ใช่ | บทบาทผู้ใช้ (ค่าที่ seed แล้ว: `manager`, `team1`, `team3` — ยังไม่มีชุดค่า role ที่เป็นทางการ/ผูก permission จริง) |
+
+**หมายเหตุ**: `requester_id`/`requester_name`/`approver_id`/`approver_name` ของ `SURVEILLANCE_REPORT_506`, `author_id`/`author_name` ของ `REPORT_506_APPROVAL_LOG`, และ `decided_by_name` ของ `APPROVAL_REQUEST` เป็น free-text/id snapshot ที่เขียนไว้ก่อนหน้ารอบนี้ (gap เดิม) — ค่าที่ seed จริงตรงกับ `user_id` ของ entity นี้แล้ว (เช่น `requesterId: "SRRT1"`) แต่ field เหล่านั้นยังไม่ถูกประกาศเป็น `reference → USER` อย่างเป็นทางการในรอบนี้เพราะไม่อยู่ในขอบเขตที่ Build Plan อนุมัติให้แก้ (นอกเหนือจากการเพิ่มคอลัมน์ Native Type) — คงไว้เป็น gap เดิมที่ flag ซ้ำ ไม่แก้ type ให้เงียบๆ
 
 ### Module: Dashboard (`FEAT-DASH-*`)
 
@@ -432,10 +463,12 @@ erDiagram
 
 รองรับ Feature: `FEAT-DASH-06`, `FEAT-ANALYSIS-01`, `FEAT-ALERT-01`
 
-| Attribute | Conceptual Type | จำเป็นต้องมี | คำอธิบาย |
-|---|---|---|---|
-| disease_id | string (PK) | ใช่ | รหัสโรค (dengue/influenza/covid19/hfmd/foodpoison ตาม mock) |
-| name | string | ใช่ | ชื่อโรคแสดงผล |
+**Collection**: `diseases` — **Gap (flag ตรงไปตรงมา)**: ในทางปฏิบัติปัจจุบันใช้ชื่อ collection `506Types` สำหรับข้อมูลโรค ตาม seed script จริง (`scripts/seed/seed-data.js`) ยังไม่ rename เป็น `diseases` — ถือเป็น gap ระหว่างชื่อ conceptual (`diseases`) กับชื่อจริงที่ seed ไปแล้ว (`506Types`) ต้อง flag ให้ผู้ใช้ตัดสินใจว่าจะ rename collection จริงเป็น `diseases` หรือแก้ชื่อในเอกสารนี้ให้ตรงกับของจริง (`506Types`) — ทุก reference field ที่ชี้มาที่ `DISEASE` ในเอกสารนี้ (เช่น `CASE_CLUSTER.disease_id`, `SURVEILLANCE_REPORT_506.disease_id`, `ALERT.disease_id`) ยังคงเขียนเป็น "collection `diseases`" ตามชื่อ conceptual เดิม จนกว่าจะมีการตัดสินใจ
+
+| Attribute | Conceptual Type | Native Type (Firestore) | จำเป็นต้องมี | คำอธิบาย |
+|---|---|---|---|---|
+| disease_id | string (PK) | `string` | ใช่ | รหัสโรค (dengue/influenza/covid19/hfmd/foodpoison ตาม mock — ค่าที่ seed จริงใน `506Types` ใช้รหัส `"66"`/`"67"`/`"68"` แทน) |
+| name | string | `string` | ใช่ | ชื่อโรคแสดงผล |
 
 **หมายเหตุ**: ตัวเลือก "ทุกโรค (All Diseases)" ในตัวกรอง UI ของ Dashboard เป็นค่าระดับ UI ที่แปลว่า "ไม่กรอง" เท่านั้น ไม่ใช่แถวข้อมูลจริงใน entity นี้
 
@@ -443,22 +476,26 @@ erDiagram
 
 รองรับ Feature: `FEAT-DASH-03`, `FEAT-DASH-07`, `FEAT-DASH-14`, `FEAT-ALERT-01`
 
-| Attribute | Conceptual Type | จำเป็นต้องมี | คำอธิบาย |
-|---|---|---|---|
-| zone_id | string (PK) | ใช่ | รหัสเขตบริการ (zone1-4 ตาม mock) |
-| name | string | ใช่ | ชื่อเขตบริการ เช่น "เขตบริการ 1" |
-| population | number | ใช่ | จำนวนประชากรในเขต — ใช้คำนวณอัตราป่วยต่อแสนประชากร (`FEAT-DASH-07`) |
+**Collection**: `serviceZones`
+
+| Attribute | Conceptual Type | Native Type (Firestore) | จำเป็นต้องมี | คำอธิบาย |
+|---|---|---|---|---|
+| zone_id | string (PK) | `string` | ใช่ | รหัสเขตบริการ (zone1-4 ตาม mock) |
+| name | string | `string` | ใช่ | ชื่อเขตบริการ เช่น "เขตบริการ 1" |
+| population | number | `number` | ใช่ | จำนวนประชากรในเขต — ใช้คำนวณอัตราป่วยต่อแสนประชากร (`FEAT-DASH-07`) |
 
 ### `COMMUNITY` — ชุมชนย่อยในเขตบริการ (lookup)
 
 รองรับ Feature: `FEAT-DASH-03`, `FEAT-DASH-13`
 
-| Attribute | Conceptual Type | จำเป็นต้องมี | คำอธิบาย |
-|---|---|---|---|
-| community_id | string (PK) | ใช่ | รหัสชุมชน |
-| name | string | ใช่ | ชื่อชุมชน (63 รายการรวมทุกเขตตาม mock) |
-| zone_id | reference → `SERVICE_ZONE` | ใช่ | เขตบริการที่ชุมชนนี้สังกัด |
-| team_id | reference → `TEAM` | ใช่ | ทีมสอบสวนโรค (`team_type = investigation`) ที่รับผิดชอบชุมชนนี้เป็นค่าเริ่มต้น |
+**Collection**: `communities`
+
+| Attribute | Conceptual Type | Native Type (Firestore) | จำเป็นต้องมี | คำอธิบาย |
+|---|---|---|---|---|
+| community_id | string (PK) | `string` | ใช่ | รหัสชุมชน |
+| name | string | `string` | ใช่ | ชื่อชุมชน (63 รายการรวมทุกเขตตาม mock) |
+| zone_id | reference → `SERVICE_ZONE` | `string` (document ID → collection `serviceZones`) | ใช่ | เขตบริการที่ชุมชนนี้สังกัด |
+| team_id | reference → `TEAM` | `string` (document ID → collection `teams`) | ใช่ | ทีมสอบสวนโรค (`team_type = investigation`) ที่รับผิดชอบชุมชนนี้เป็นค่าเริ่มต้น |
 
 **หมายเหตุ**: Dashboard ไม่มี entity ของตัวเองนอกจาก 3 lookup ข้างต้น — Stat tiles/กราฟ/ตารางวิเคราะห์เชิงลึกทั้งหมด (`FEAT-DASH-02`, `04`, `05`, `07` ถึง `15`) เป็นค่าคำนวณ/aggregate สดจาก `CASE`/`ALERT` ที่มีอยู่แล้ว — **gap ที่พบ**: `CASE` ในรอบนี้ยังไม่มี field ระดับ demographic (เพศ/อายุ/อาชีพ) หรือ `disease_id`/การวินิจฉัย DF-DHF ที่ Dashboard ต้องใช้จริงสำหรับ `FEAT-DASH-08` ถึง `11` — เนื่องจากไม่อยู่ในจุดที่ Build Plan อนุมัติให้แก้ไข `CASE` (อนุมัติเฉพาะ `community_id`/`cluster_id`) จึงไม่เพิ่มเองในรอบนี้ ถือเป็น gap ที่ flag ไว้ท้ายผลลัพธ์ ไม่ใช่ scope ที่ทำเงียบๆ
 
@@ -468,15 +505,17 @@ erDiagram
 
 รองรับ Feature: `FEAT-ANALYSIS-01`, `FEAT-ANALYSIS-02`, `FEAT-ANALYSIS-04` (backlog — clustering algorithm จริง)
 
-| Attribute | Conceptual Type | จำเป็นต้องมี | คำอธิบาย |
-|---|---|---|---|
-| cluster_id | string (PK) | ใช่ | รหัสกลุ่มเคส |
-| name | string | ใช่ | ชื่อกลุ่ม เช่น "กลุ่มไข้เลือดออก ต.หนองบัว" |
-| disease_id | reference → `DISEASE` | ใช่ | โรค/ภาวะของกลุ่มนี้ |
-| confidence_pct | number | ใช่ | ระดับความมั่นใจของ AI ในการจัดกลุ่ม (0-100) |
-| close_contacts_estimate | number | ใช่ | จำนวนผู้สัมผัสใกล้ชิดโดยประมาณ |
-| status | enum(pending, confirmed) | ใช่ | สถานะยืนยัน — เปลี่ยนได้ทางเดียวจาก `pending` → `confirmed` เท่านั้น (human-in-the-loop, ตรงกับ `confirmCluster()` ของ prototype) |
-| confirmed_at | date (nullable) | ไม่บังคับ (null จนกว่าจะยืนยัน) | เวลาที่ยืนยัน cluster |
+**Collection**: `caseClusters`
+
+| Attribute | Conceptual Type | Native Type (Firestore) | จำเป็นต้องมี | คำอธิบาย |
+|---|---|---|---|---|
+| cluster_id | string (PK) | `string` | ใช่ | รหัสกลุ่มเคส |
+| name | string | `string` | ใช่ | ชื่อกลุ่ม เช่น "กลุ่มไข้เลือดออก ต.หนองบัว" |
+| disease_id | reference → `DISEASE` | `string` (document ID → collection `diseases`/`506Types`, ดู gap ใน `DISEASE`) | ใช่ | โรค/ภาวะของกลุ่มนี้ |
+| confidence_pct | number | `number` | ใช่ | ระดับความมั่นใจของ AI ในการจัดกลุ่ม (0-100) |
+| close_contacts_estimate | number | `number` | ใช่ | จำนวนผู้สัมผัสใกล้ชิดโดยประมาณ |
+| status | enum(pending, confirmed) | `string` | ใช่ | สถานะยืนยัน — เปลี่ยนได้ทางเดียวจาก `pending` → `confirmed` เท่านั้น (human-in-the-loop, ตรงกับ `confirmCluster()` ของ prototype) |
+| confirmed_at | date (nullable) | `Timestamp` (nullable) | ไม่บังคับ (null จนกว่าจะยืนยัน) | เวลาที่ยืนยัน cluster |
 
 **Business rule**: ไม่มี reopen กลับเป็น `pending` หลังยืนยันแล้ว (one-way transition ตามที่ยืนยันในแผน)
 
@@ -484,13 +523,15 @@ erDiagram
 
 รองรับ Feature: `FEAT-ANALYSIS-02`, `FEAT-ANALYSIS-05` (backlog — AI ร่างจากข้อมูลดิบจริง)
 
-| Attribute | Conceptual Type | จำเป็นต้องมี | คำอธิบาย |
-|---|---|---|---|
-| report_id | string (PK) | ใช่ | รหัสรายงาน |
-| cluster_id | reference → `CASE_CLUSTER` (unique) | ใช่ | กลุ่มเคสที่รายงานนี้เป็นของ — 1:1 กับ `CASE_CLUSTER` |
-| content | string | ใช่ | เนื้อหารายงาน (ร่างจาก template/AI, แก้ไขต่อได้ก่อนส่ง) |
-| status | enum(draft, sent) | ใช่ | สถานะรายงาน |
-| sent_at | date (nullable) | ไม่บังคับ (null จนกว่าจะส่ง) | เวลาที่ส่งรายงาน |
+**Collection**: `investigationReports`
+
+| Attribute | Conceptual Type | Native Type (Firestore) | จำเป็นต้องมี | คำอธิบาย |
+|---|---|---|---|---|
+| report_id | string (PK) | `string` | ใช่ | รหัสรายงาน |
+| cluster_id | reference → `CASE_CLUSTER` (unique) | `string` (document ID → collection `caseClusters`) | ใช่ | กลุ่มเคสที่รายงานนี้เป็นของ — 1:1 กับ `CASE_CLUSTER` |
+| content | string | `string` | ใช่ | เนื้อหารายงาน (ร่างจาก template/AI, แก้ไขต่อได้ก่อนส่ง) |
+| status | enum(draft, sent) | `string` | ใช่ | สถานะรายงาน |
+| sent_at | date (nullable) | `Timestamp` (nullable) | ไม่บังคับ (null จนกว่าจะส่ง) | เวลาที่ส่งรายงาน |
 
 **Business rule**: สร้างรายงานได้เฉพาะ `CASE_CLUSTER.status = confirmed` เท่านั้น (ตรงกับ `renderReportControls()`/`generateReport()` ของ prototype ที่ปิดตัวเลือกกลุ่มที่ยังไม่ยืนยัน); ส่งรายงานได้ต่อเมื่อ `content` ไม่ว่าง (ตรงกับ `sendReport()`)
 
@@ -500,22 +541,24 @@ erDiagram
 
 รองรับ Feature: `FEAT-ANALYSIS-07`
 
-| Attribute | Conceptual Type | จำเป็นต้องมี | คำอธิบาย |
-|---|---|---|---|
-| report_506_id | string (PK) | ใช่ | รหัส รง.506 |
-| case_id | reference → `CASE` (unique, nullable) | ไม่บังคับ (null = ยังไม่ผูกกับเคสใด) | เคสที่ รง.506 นี้เป็นของ — 1:1 optional เพราะไม่ใช่ทุกเคสจะมี รง.506 |
-| disease_id | reference → `DISEASE` | ใช่ | โรคติดต่อที่เลือกสำหรับรายการนี้ |
-| title | string | ใช่ | หัวเรื่องรายงาน |
-| reason | string | ใช่ | เหตุผล/รายละเอียดประกอบการรายงาน |
-| event_start_date | date | ใช่ | วันที่เริ่มต้นของช่วงเวลาการระบาด/เหตุการณ์ที่รายงาน |
-| event_end_date | date (nullable) | ไม่บังคับ (null = เหตุการณ์ยังไม่สิ้นสุด) | วันที่สิ้นสุดของช่วงเวลาที่รายงาน |
-| status | enum(รอพิจารณา, ยืนยัน, ไม่ยืนยัน) | ใช่ | สถานะ human-in-the-loop — เปลี่ยนได้ทางเดียวจาก "รอพิจารณา" → "ยืนยัน" หรือ "ไม่ยืนยัน" เท่านั้น (one-way, ไม่มี reopen กลับ "รอพิจารณา") |
-| requester_id | string | ใช่ | รหัสอ้างอิงผู้สร้างรายการ (free-text/snapshot ชั่วคราว — ระบบยังไม่มี USER entity, ดู Gap note ของ `APPROVAL_REQUEST`) |
-| requester_name | string | ใช่ | ชื่อผู้สร้างรายการ ณ ขณะสร้าง (snapshot) |
-| approver_id | string (nullable) | ไม่บังคับ (null จนกว่าจะตัดสินใจ) | รหัสอ้างอิงผู้ตัดสินใจ (free-text/snapshot ชั่วคราว — gap เดียวกับ `requester_id`) |
-| approver_name | string (nullable) | ไม่บังคับ (null จนกว่าจะตัดสินใจ) | ชื่อผู้ตัดสินใจ ณ ขณะตัดสินใจ (snapshot) |
-| created_at | date | ใช่ | เวลาที่สร้างรายการ |
-| decided_at | date (nullable) | ไม่บังคับ (null จนกว่าจะตัดสินใจ) | เวลาที่กดยืนยัน/ไม่ยืนยัน |
+**Collection**: `506Requests` (ตรงกับ seed จริงที่ทำไปแล้วใน `scripts/seed/seed-firestore.js` — ไม่ใช่ `surveillanceReports506` ตามที่เคยเสนอไว้ในแผนคุยกันตอนแรก, document ID เป็น auto-generated ID จาก `db.collection("506Requests").doc()`)
+
+| Attribute | Conceptual Type | Native Type (Firestore) | จำเป็นต้องมี | คำอธิบาย |
+|---|---|---|---|---|
+| report_506_id | string (PK) | `string` (auto-generated Firestore document ID) | ใช่ | รหัส รง.506 |
+| case_id | reference → `CASE` (unique, nullable) | `string` (document ID → collection `cases`, nullable) | ไม่บังคับ (null = ยังไม่ผูกกับเคสใด) | เคสที่ รง.506 นี้เป็นของ — 1:1 optional เพราะไม่ใช่ทุกเคสจะมี รง.506 |
+| disease_id | reference → `DISEASE` | `string` (document ID → collection `diseases`/`506Types`, ดู gap ใน `DISEASE`) | ใช่ | โรคติดต่อที่เลือกสำหรับรายการนี้ |
+| title | string | `string` | ใช่ | หัวเรื่องรายงาน |
+| reason | string | `string` | ใช่ | เหตุผล/รายละเอียดประกอบการรายงาน |
+| event_start_date | date | `Timestamp` | ใช่ | วันที่เริ่มต้นของช่วงเวลาการระบาด/เหตุการณ์ที่รายงาน |
+| event_end_date | date (nullable) | `Timestamp` (nullable) | ไม่บังคับ (null = เหตุการณ์ยังไม่สิ้นสุด) | วันที่สิ้นสุดของช่วงเวลาที่รายงาน |
+| status | enum(รอพิจารณา, ยืนยัน, ไม่ยืนยัน) | `string` | ใช่ | สถานะ human-in-the-loop — เปลี่ยนได้ทางเดียวจาก "รอพิจารณา" → "ยืนยัน" หรือ "ไม่ยืนยัน" เท่านั้น (one-way, ไม่มี reopen กลับ "รอพิจารณา") |
+| requester_id | string | `string` (ตรงกับ `user_id` ของ `USER` ในทางปฏิบัติ — ดูหมายเหตุใน `USER`) | ใช่ | รหัสอ้างอิงผู้สร้างรายการ (free-text/snapshot ชั่วคราว — ระบบยังไม่มี USER entity ที่เป็นทางการ, ดู Gap note ของ `APPROVAL_REQUEST`) |
+| requester_name | string | `string` | ใช่ | ชื่อผู้สร้างรายการ ณ ขณะสร้าง (snapshot) |
+| approver_id | string (nullable) | `string` (nullable, ตรงกับ `user_id` ของ `USER` ในทางปฏิบัติ) | ไม่บังคับ (null จนกว่าจะตัดสินใจ) | รหัสอ้างอิงผู้ตัดสินใจ (free-text/snapshot ชั่วคราว — gap เดียวกับ `requester_id`) |
+| approver_name | string (nullable) | `string` (nullable) | ไม่บังคับ (null จนกว่าจะตัดสินใจ) | ชื่อผู้ตัดสินใจ ณ ขณะตัดสินใจ (snapshot) |
+| created_at | date | `Timestamp` | ใช่ | เวลาที่สร้างรายการ |
+| decided_at | date (nullable) | `Timestamp` (nullable) | ไม่บังคับ (null จนกว่าจะตัดสินใจ) | เวลาที่กดยืนยัน/ไม่ยืนยัน |
 
 **Business rule**: ไม่มี reopen กลับเป็น "รอพิจารณา" หลังตัดสินใจแล้ว (one-way transition ตามที่ยืนยันในแผน เช่นเดียวกับ `CASE_CLUSTER.status`)
 
@@ -525,14 +568,16 @@ erDiagram
 
 รองรับ Feature: `FEAT-ANALYSIS-07`
 
-| Attribute | Conceptual Type | จำเป็นต้องมี | คำอธิบาย |
-|---|---|---|---|
-| log_id | string (PK) | ใช่ | รหัส log |
-| report_506_id | reference → `SURVEILLANCE_REPORT_506` | ใช่ | รง.506 ที่ log นี้เป็นของ |
-| author_id | string | ใช่ | รหัสอ้างอิงผู้เขียนความเห็น (id snapshot ชั่วคราว เหมือน `requester_id`/`approver_id` — gap เดียวกัน) |
-| author_name | string | ใช่ | ชื่อผู้เขียนความเห็น ณ ขณะบันทึก (snapshot) |
-| message | string | ใช่ | ข้อความความเห็น/บันทึกประกอบการพิจารณา |
-| created_at | date | ใช่ | เวลาที่บันทึกความเห็นนี้ |
+**Collection**: `506RequestApprovalLogs` (top-level collection แยก ไม่ใช่ Firestore sub-collection ของ `506Requests` — ยืนยันแล้ว, field `report_506_id` อ้างอิงกลับไปยัง document ID ใน `506Requests` เอง)
+
+| Attribute | Conceptual Type | Native Type (Firestore) | จำเป็นต้องมี | คำอธิบาย |
+|---|---|---|---|---|
+| log_id | string (PK) | `string` | ใช่ | รหัส log |
+| report_506_id | reference → `SURVEILLANCE_REPORT_506` | `string` (document ID → collection `506Requests`) | ใช่ | รง.506 ที่ log นี้เป็นของ |
+| author_id | string | `string` (ตรงกับ `user_id` ของ `USER` ในทางปฏิบัติ) | ใช่ | รหัสอ้างอิงผู้เขียนความเห็น (id snapshot ชั่วคราว เหมือน `requester_id`/`approver_id` — gap เดียวกัน) |
+| author_name | string | `string` | ใช่ | ชื่อผู้เขียนความเห็น ณ ขณะบันทึก (snapshot) |
+| message | string | `string` | ใช่ | ข้อความความเห็น/บันทึกประกอบการพิจารณา |
+| created_at | date | `Timestamp` | ใช่ | เวลาที่บันทึกความเห็นนี้ |
 
 **Cardinality**: `SURVEILLANCE_REPORT_506` ↔ `REPORT_506_APPROVAL_LOG` = **1:N** — 1 รง.506 มีบันทึกความเห็นได้หลายรายการตามลำดับเวลา ไม่มี limit
 
@@ -542,17 +587,19 @@ erDiagram
 
 รองรับ Feature: `FEAT-CONTROL-01`, `FEAT-CONTROL-02`
 
-| Attribute | Conceptual Type | จำเป็นต้องมี | คำอธิบาย |
-|---|---|---|---|
-| location_id | string (PK) | ใช่ | รหัสตำแหน่งควบคุมโรค |
-| case_id | reference → `CASE` | ใช่ | เคสที่ตำแหน่งนี้เป็นของ |
-| type | enum(home, work) | ใช่ | ประเภทตำแหน่ง — ที่อยู่ (บ้าน) หรือสถานที่ทำงาน/สถานศึกษา |
-| address | string (nullable) | ไม่บังคับ (ใช้เมื่อ `type = home`) | ที่อยู่ — แก้ไขได้ |
-| house_no | string (nullable) | ไม่บังคับ (ใช้เมื่อ `type = home`) | บ้านเลขที่ — แก้ไขได้ |
-| workplace_name | string (nullable) | ไม่บังคับ (ใช้เมื่อ `type = work`) | ชื่อสถานที่ทำงาน/สถานศึกษา — แก้ไขได้ |
-| map_position | string (conceptual) | ใช่ | ตำแหน่งสำหรับวาดหมุดบน mini-map (mock, ไม่ใช่พิกัดจริง) |
-| default_radius | enum(100, 150, 200) | ใช่ | รัศมีที่เลือกพ่นสารเคมี (เมตร) — ใช้คำนวณจำนวนหลังคาเรือนโดยประมาณด้วย |
-| active | boolean | ใช่ | ตำแหน่งนี้ active อยู่ในแผนปัจจุบันหรือไม่ — เลือกได้มากกว่า 1 ตำแหน่งต่อเคสพร้อมกัน |
+**Collection**: `controlLocations`
+
+| Attribute | Conceptual Type | Native Type (Firestore) | จำเป็นต้องมี | คำอธิบาย |
+|---|---|---|---|---|
+| location_id | string (PK) | `string` | ใช่ | รหัสตำแหน่งควบคุมโรค |
+| case_id | reference → `CASE` | `string` (document ID → collection `cases`) | ใช่ | เคสที่ตำแหน่งนี้เป็นของ |
+| type | enum(home, work) | `string` | ใช่ | ประเภทตำแหน่ง — ที่อยู่ (บ้าน) หรือสถานที่ทำงาน/สถานศึกษา |
+| address | string (nullable) | `string` (nullable) | ไม่บังคับ (ใช้เมื่อ `type = home`) | ที่อยู่ — แก้ไขได้ |
+| house_no | string (nullable) | `string` (nullable) | ไม่บังคับ (ใช้เมื่อ `type = home`) | บ้านเลขที่ — แก้ไขได้ |
+| workplace_name | string (nullable) | `string` (nullable) | ไม่บังคับ (ใช้เมื่อ `type = work`) | ชื่อสถานที่ทำงาน/สถานศึกษา — แก้ไขได้ |
+| map_position | string (conceptual) | `string` | ใช่ | ตำแหน่งสำหรับวาดหมุดบน mini-map (mock, ไม่ใช่พิกัดจริง) |
+| default_radius | enum(100, 150, 200) | `string` | ใช่ | รัศมีที่เลือกพ่นสารเคมี (เมตร) — ใช้คำนวณจำนวนหลังคาเรือนโดยประมาณด้วย |
+| active | boolean | `boolean` | ใช่ | ตำแหน่งนี้ active อยู่ในแผนปัจจุบันหรือไม่ — เลือกได้มากกว่า 1 ตำแหน่งต่อเคสพร้อมกัน |
 
 **Business rule**: ต้องมี `active = true` อย่างน้อย 1 ตำแหน่งต่อเคสเสมอ (ตรงกับ `activeLocTypesByAreaId` ของ prototype ที่ไม่มี state ว่างเปล่า)
 
@@ -560,17 +607,19 @@ erDiagram
 
 รองรับ Feature: `FEAT-CONTROL-01`, `FEAT-CONTROL-04` (backlog — real-time tracking จริง), `FEAT-CONTROL-05` (backlog — AI vision QC จริง)
 
-| Attribute | Conceptual Type | จำเป็นต้องมี | คำอธิบาย |
-|---|---|---|---|
-| assignment_id | string (PK) | ใช่ | รหัสรายการมอบหมาย |
-| location_id | reference → `CONTROL_LOCATION` (unique) | ใช่ | ตำแหน่งที่มอบหมายนี้เป็นของ — 1:1 |
-| assigned_team_id | reference → `TEAM` | ใช่ | ทีมพ่น (`team_type = control`) ที่รับผิดชอบ — แก้ไขได้ (ทีมใดรับผิดชอบกี่แถวก็ได้) |
-| day_offset | enum(0, 1, 7) | ใช่ | วันปฏิบัติงานนับจากวันพบเคส (Day 0/1/7 ตามมาตรฐานควบคุมพาหะไข้เลือดออก) |
-| scheduled_time | string (conceptual, เวลา 24 ชม.) | ใช่ | เวลาที่กำหนดปฏิบัติงาน |
-| household_count | number | ใช่ | จำนวนหลังคาเรือนโดยประมาณในรัศมีที่เลือก (คำนวณจาก `CONTROL_LOCATION.default_radius`) |
-| day0_done | boolean | ใช่ | สถานะพ่นแล้ว Day 0 |
-| day1_done | boolean | ใช่ | สถานะพ่นแล้ว Day 1 |
-| day7_done | boolean | ใช่ | สถานะพ่นแล้ว Day 7 |
+**Collection**: `sprayAssignments`
+
+| Attribute | Conceptual Type | Native Type (Firestore) | จำเป็นต้องมี | คำอธิบาย |
+|---|---|---|---|---|
+| assignment_id | string (PK) | `string` | ใช่ | รหัสรายการมอบหมาย |
+| location_id | reference → `CONTROL_LOCATION` (unique) | `string` (document ID → collection `controlLocations`) | ใช่ | ตำแหน่งที่มอบหมายนี้เป็นของ — 1:1 |
+| assigned_team_id | reference → `TEAM` | `string` (document ID → collection `teams`) | ใช่ | ทีมพ่น (`team_type = control`) ที่รับผิดชอบ — แก้ไขได้ (ทีมใดรับผิดชอบกี่แถวก็ได้) |
+| day_offset | enum(0, 1, 7) | `string` | ใช่ | วันปฏิบัติงานนับจากวันพบเคส (Day 0/1/7 ตามมาตรฐานควบคุมพาหะไข้เลือดออก) |
+| scheduled_time | string (conceptual, เวลา 24 ชม.) | `string` | ใช่ | เวลาที่กำหนดปฏิบัติงาน |
+| household_count | number | `number` | ใช่ | จำนวนหลังคาเรือนโดยประมาณในรัศมีที่เลือก (คำนวณจาก `CONTROL_LOCATION.default_radius`) |
+| day0_done | boolean | `boolean` | ใช่ | สถานะพ่นแล้ว Day 0 |
+| day1_done | boolean | `boolean` | ใช่ | สถานะพ่นแล้ว Day 1 |
+| day7_done | boolean | `boolean` | ใช่ | สถานะพ่นแล้ว Day 7 |
 
 **หมายเหตุ**: แถวที่ Day 0/1/7 ครบทุกวันแล้วจะถูกซ่อนจากตารางแผนปฏิบัติงาน (ตรงกับ `isSprayFullyDone()` ของ prototype) แต่ยังคงอยู่ใน entity ไม่ถูกลบ
 
@@ -578,16 +627,18 @@ erDiagram
 
 รองรับ Feature: `FEAT-CONTROL-02`, `FEAT-CONTROL-03` (backlog — workflow อนุมัติจริง)
 
-| Attribute | Conceptual Type | จำเป็นต้องมี | คำอธิบาย |
-|---|---|---|---|
-| request_id | string (PK) | ใช่ | รหัสคำขออนุมัติ |
-| created_at | date | ใช่ | เวลาที่สร้างคำขอ (ร่างเริ่มต้น) |
-| status | enum(draft, sent, approved, rejected) | ใช่ | สถานะคำขอ — `rejected` เป็น terminal state เหมือน `approved` |
-| sent_at | date (nullable) | ไม่บังคับ | เวลาที่ส่งคำขอ |
-| approved_at | date (nullable) | ไม่บังคับ | เวลาที่อนุมัติ |
-| rejected_at | date (nullable) | ไม่บังคับ | เวลาที่ไม่อนุมัติ |
-| created_by_team_id | reference → `TEAM` (team_type=control) | ใช่ | ทีมพ่นผู้สร้างคำขอนี้ |
-| decided_by_name | string (nullable) | ไม่บังคับ (มีค่าเมื่อ status = approved/rejected) | ชื่อผู้อนุมัติ/ไม่อนุมัติ (free-text ชั่วคราว — ดู gap note ด้านล่าง) |
+**Collection**: `approvalRequests`
+
+| Attribute | Conceptual Type | Native Type (Firestore) | จำเป็นต้องมี | คำอธิบาย |
+|---|---|---|---|---|
+| request_id | string (PK) | `string` | ใช่ | รหัสคำขออนุมัติ |
+| created_at | date | `Timestamp` | ใช่ | เวลาที่สร้างคำขอ (ร่างเริ่มต้น) |
+| status | enum(draft, sent, approved, rejected) | `string` | ใช่ | สถานะคำขอ — `rejected` เป็น terminal state เหมือน `approved` |
+| sent_at | date (nullable) | `Timestamp` (nullable) | ไม่บังคับ | เวลาที่ส่งคำขอ |
+| approved_at | date (nullable) | `Timestamp` (nullable) | ไม่บังคับ | เวลาที่อนุมัติ |
+| rejected_at | date (nullable) | `Timestamp` (nullable) | ไม่บังคับ | เวลาที่ไม่อนุมัติ |
+| created_by_team_id | reference → `TEAM` (team_type=control) | `string` (document ID → collection `teams`) | ใช่ | ทีมพ่นผู้สร้างคำขอนี้ |
+| decided_by_name | string (nullable) | `string` (nullable, ตรงกับ `name` ของ `USER` ในทางปฏิบัติ) | ไม่บังคับ (มีค่าเมื่อ status = approved/rejected) | ชื่อผู้อนุมัติ/ไม่อนุมัติ (free-text ชั่วคราว — ดู gap note ด้านล่าง) |
 
 **Business rule**: `draft` → `sent` ต้องมีเนื้อหา (รายการเคส) ไม่ว่าง; `sent` → `approved` เท่านั้น (ไม่มี fast-path จาก draft); ไม่มี reopen กลับ `draft` — **1 คำขอ = 1 รอบ (snapshot ของเคส active ขณะนั้น)** เก็บเป็น log ประวัติทุกรอบ (ยืนยันแล้ว ต่างจาก mock ปัจจุบันที่มี draft เดี่ยว global เพียงชุดเดียว) `sent` → `rejected` เป็น terminal state เช่นเดียวกับ `sent` → `approved` (ไม่มี reopen กลับ `draft` เช่นกัน — ถ้าต้องการยื่นใหม่ต้องสร้างคำขอรอบใหม่)
 
@@ -597,13 +648,15 @@ erDiagram
 
 รองรับ Feature: `FEAT-CONTROL-02`
 
-| Attribute | Conceptual Type | จำเป็นต้องมี | คำอธิบาย |
-|---|---|---|---|
-| request_id | reference → `APPROVAL_REQUEST` | ใช่ | คำขอที่แถวนี้เป็นของ (ส่วนหนึ่งของ primary key ร่วม) |
-| case_id | reference → `CASE` | ใช่ | เคสที่ถูกรวมอยู่ในคำขอรอบนี้ (ส่วนหนึ่งของ primary key ร่วม) |
-| fuel_type | enum(gasoline, diesel, lubricant, chemical, other) | ใช่ | ชนิดน้ำมัน/น้ำยาเคมีที่เลือกสำหรับเคสนี้ในคำขอรอบนี้ |
+**Collection**: `approvalRequestCases` (top-level collection แยก ไม่ใช่ Firestore sub-collection ของ `approvalRequests` — ยืนยันแล้ว, document ID เป็น auto-generated เพราะ Firestore ไม่รองรับ composite primary key จริง — ความไม่ซ้ำของ `(request_id, case_id)` ต้องบังคับที่ระดับ backend/Security Rules แทน)
 
-**หมายเหตุ**: primary key ร่วมคือ `(request_id, case_id)` — เป็น snapshot ประวัติว่าคำขอรอบไหนรวมเคสอะไรบ้าง ไม่ใช่ current state (เคสเดียวกันปรากฏในหลายคำขอ/หลายรอบตามกาลเวลาได้)
+| Attribute | Conceptual Type | Native Type (Firestore) | จำเป็นต้องมี | คำอธิบาย |
+|---|---|---|---|---|
+| request_id | reference → `APPROVAL_REQUEST` | `string` (document ID → collection `approvalRequests`) | ใช่ | คำขอที่แถวนี้เป็นของ (ส่วนหนึ่งของ primary key ร่วมเชิงแนวคิด) |
+| case_id | reference → `CASE` | `string` (document ID → collection `cases`) | ใช่ | เคสที่ถูกรวมอยู่ในคำขอรอบนี้ (ส่วนหนึ่งของ primary key ร่วมเชิงแนวคิด) |
+| fuel_type | enum(gasoline, diesel, lubricant, chemical, other) | `string` | ใช่ | ชนิดน้ำมัน/น้ำยาเคมีที่เลือกสำหรับเคสนี้ในคำขอรอบนี้ |
+
+**หมายเหตุ**: primary key ร่วมเชิงแนวคิดคือ `(request_id, case_id)` — เป็น snapshot ประวัติว่าคำขอรอบไหนรวมเคสอะไรบ้าง ไม่ใช่ current state (เคสเดียวกันปรากฏในหลายคำขอ/หลายรอบตามกาลเวลาได้) — ใน Firestore จริง entity นี้เก็บเป็น top-level collection แยกที่มี document ID auto-generated (ไม่ใช่ composite key ตรงๆ)
 
 ### Module: Field Tracking (`FEAT-TRACK-*`)
 
@@ -611,18 +664,20 @@ erDiagram
 
 รองรับ Feature: `FEAT-TRACK-02`, `FEAT-CONTROL-05` (backlog — AI vision QC จริงจากพิกัด/เวลาที่เก็บผ่านแอปตอนถ่าย)
 
-| Attribute | Conceptual Type | จำเป็นต้องมี | คำอธิบาย |
-|---|---|---|---|
-| photo_id | string (PK) | ใช่ | รหัสรูปภาพ |
-| team_id | reference → `TEAM` | ใช่ | ทีมที่ถ่ายภาพนี้ (`team_type = control`) |
-| captured_at | date | ใช่ | เวลาที่ถ่ายภาพ |
-| area | string | ใช่ | พื้นที่ที่ควรพ่น (ข้อความอธิบาย) |
-| location_match | boolean | ใช่ | ผลตรวจ AI ว่าพิกัดภาพตรงกับพื้นที่ที่วางแผนหรือไม่ |
-| location_note | string (nullable) | ไม่บังคับ (ใช้เมื่อ `location_match = false`) | หมายเหตุเมื่อพิกัดไม่ตรง |
-| time_match | boolean | ใช่ | ผลตรวจ AI ว่าเวลาถ่ายตรงกับแผนปฏิบัติงานหรือไม่ |
-| time_note | string (nullable) | ไม่บังคับ (ใช้เมื่อ `time_match = false`) | หมายเหตุเมื่อเวลาไม่ตรง |
-| manual_checked | boolean | ใช่ | ตรวจสอบด้วยมือแล้วหรือไม่ — เปลี่ยนได้ทางเดียวจาก `false` → `true` |
-| storage_reference | string (conceptual) | ใช่ | ที่อยู่อ้างอิงของไฟล์รูปในระบบจัดเก็บ |
+**Collection**: `fieldPhotos`
+
+| Attribute | Conceptual Type | Native Type (Firestore) | จำเป็นต้องมี | คำอธิบาย |
+|---|---|---|---|---|
+| photo_id | string (PK) | `string` | ใช่ | รหัสรูปภาพ |
+| team_id | reference → `TEAM` | `string` (document ID → collection `teams`) | ใช่ | ทีมที่ถ่ายภาพนี้ (`team_type = control`) |
+| captured_at | date | `Timestamp` | ใช่ | เวลาที่ถ่ายภาพ |
+| area | string | `string` | ใช่ | พื้นที่ที่ควรพ่น (ข้อความอธิบาย) |
+| location_match | boolean | `boolean` | ใช่ | ผลตรวจ AI ว่าพิกัดภาพตรงกับพื้นที่ที่วางแผนหรือไม่ |
+| location_note | string (nullable) | `string` (nullable) | ไม่บังคับ (ใช้เมื่อ `location_match = false`) | หมายเหตุเมื่อพิกัดไม่ตรง |
+| time_match | boolean | `boolean` | ใช่ | ผลตรวจ AI ว่าเวลาถ่ายตรงกับแผนปฏิบัติงานหรือไม่ |
+| time_note | string (nullable) | `string` (nullable) | ไม่บังคับ (ใช้เมื่อ `time_match = false`) | หมายเหตุเมื่อเวลาไม่ตรง |
+| manual_checked | boolean | `boolean` | ใช่ | ตรวจสอบด้วยมือแล้วหรือไม่ — เปลี่ยนได้ทางเดียวจาก `false` → `true` |
+| storage_reference | string (conceptual) | `string` | ใช่ | ที่อยู่อ้างอิงของไฟล์รูปในระบบจัดเก็บ |
 
 **Business rule**: ตรวจสอบด้วยมือทำได้เฉพาะรูปที่ `location_match = false` หรือ `time_match = false` เท่านั้น (ตรงกับเงื่อนไข `needsCheck` ของ prototype)
 
@@ -632,28 +687,32 @@ erDiagram
 
 รองรับ Feature: `FEAT-ASM-01`, `FEAT-ASM-03` (backlog — รับรูปจาก LINE OA จริง)
 
-| Attribute | Conceptual Type | จำเป็นต้องมี | คำอธิบาย |
-|---|---|---|---|
-| photo_id | string (PK) | ใช่ | รหัสรูปภาพ |
-| asm_name | string | ใช่ | ชื่อ อสม. ผู้ส่งรูป |
-| area | string | ใช่ | พื้นที่ที่เกี่ยวข้อง (ยังไม่ผูกเป็น reference ในรอบนี้) |
-| captured_at | date | ใช่ | วันที่ส่งรูป |
-| status | enum(done, not_done) | ใช่ | สถานะสรุปโดย AI vision (พ่นแล้ว/ยังไม่พ่น) — เป็น read-only ผลจาก AI ในรอบนี้ |
-| storage_reference | string (conceptual) | ใช่ | ที่อยู่อ้างอิงของไฟล์รูปในระบบจัดเก็บ |
+**Collection**: `asmPhotoIntakes`
+
+| Attribute | Conceptual Type | Native Type (Firestore) | จำเป็นต้องมี | คำอธิบาย |
+|---|---|---|---|---|
+| photo_id | string (PK) | `string` | ใช่ | รหัสรูปภาพ |
+| asm_name | string | `string` | ใช่ | ชื่อ อสม. ผู้ส่งรูป |
+| area | string | `string` | ใช่ | พื้นที่ที่เกี่ยวข้อง (ยังไม่ผูกเป็น reference ในรอบนี้) |
+| captured_at | date | `Timestamp` | ใช่ | วันที่ส่งรูป |
+| status | enum(done, not_done) | `string` | ใช่ | สถานะสรุปโดย AI vision (พ่นแล้ว/ยังไม่พ่น) — เป็น read-only ผลจาก AI ในรอบนี้ |
+| storage_reference | string (conceptual) | `string` | ใช่ | ที่อยู่อ้างอิงของไฟล์รูปในระบบจัดเก็บ |
 
 ### `ADVANCE_NOTICE_QUEUE` — คิวแจ้งเตือนล่วงหน้าก่อนพ่น (2 รอบต่อพื้นที่)
 
 รองรับ Feature: `FEAT-ASM-02`, `FEAT-ASM-04` (backlog — ส่งแจ้งเตือน LINE จริง)
 
-| Attribute | Conceptual Type | จำเป็นต้องมี | คำอธิบาย |
-|---|---|---|---|
-| queue_id | string (PK) | ใช่ | รหัสคิวแจ้งเตือน |
-| area | string | ใช่ | พื้นที่ที่จะแจ้งเตือน (ยังไม่ผูกเป็น reference ในรอบนี้) |
-| day0_date | date | ใช่ | วันที่พ่นรอบแรก (Day 0) |
-| reminder1_date | date | ใช่ | วันที่กำหนดส่งแจ้งเตือนล่วงหน้ารอบ 1 (ก่อน Day 0) |
-| reminder1_status | enum(sent, pending) | ใช่ | สถานะการส่งแจ้งเตือนรอบ 1 |
-| reminder2_date | date | ใช่ | วันที่กำหนดส่งแจ้งเตือนล่วงหน้ารอบ 2 (ก่อน Day 0+7) |
-| reminder2_status | enum(sent, pending) | ใช่ | สถานะการส่งแจ้งเตือนรอบ 2 |
+**Collection**: `advanceNoticeQueues`
+
+| Attribute | Conceptual Type | Native Type (Firestore) | จำเป็นต้องมี | คำอธิบาย |
+|---|---|---|---|---|
+| queue_id | string (PK) | `string` | ใช่ | รหัสคิวแจ้งเตือน |
+| area | string | `string` | ใช่ | พื้นที่ที่จะแจ้งเตือน (ยังไม่ผูกเป็น reference ในรอบนี้) |
+| day0_date | date | `Timestamp` | ใช่ | วันที่พ่นรอบแรก (Day 0) |
+| reminder1_date | date | `Timestamp` | ใช่ | วันที่กำหนดส่งแจ้งเตือนล่วงหน้ารอบ 1 (ก่อน Day 0) |
+| reminder1_status | enum(sent, pending) | `string` | ใช่ | สถานะการส่งแจ้งเตือนรอบ 1 |
+| reminder2_date | date | `Timestamp` | ใช่ | วันที่กำหนดส่งแจ้งเตือนล่วงหน้ารอบ 2 (ก่อน Day 0+7) |
+| reminder2_status | enum(sent, pending) | `string` | ใช่ | สถานะการส่งแจ้งเตือนรอบ 2 |
 
 **หมายเหตุ**: เก็บแบบ embedded 2 reminder ต่อแถว (ไม่ normalize แยกเป็นตารางย่อย) ตามที่ยืนยันในแผน ตรงกับโครงสร้าง `QUEUE[]` ของ prototype
 
@@ -663,15 +722,17 @@ erDiagram
 
 รองรับ Feature: `FEAT-REPORT-01`, `FEAT-REPORT-02`, `FEAT-REPORT-03` (backlog — รวมข้อมูล real-time จริงจากทุกทีม)
 
-| Attribute | Conceptual Type | จำเป็นต้องมี | คำอธิบาย |
-|---|---|---|---|
-| log_id | string (PK) | ใช่ | รหัส log |
-| generated_at | date | ใช่ | เวลาที่สร้างรายงานสรุป |
-| period_type | enum(daily, weekly) | ใช่ | ประเภทช่วงเวลาของรายงาน |
-| snapshot_values | string (conceptual) | ใช่ | ค่า KPI ที่คำนวณได้ ณ ตอนสร้าง/ส่งรายงาน (จำนวนเคส, HI/CI, % พ่นแล้ว, % QC ผ่าน ฯลฯ) — เป็น snapshot ครั้งเดียว ไม่ใช่ reference สดไปยังค่าปัจจุบัน |
-| sent_at | date | ใช่ | เวลาที่ส่งรายงาน |
-| channel | enum(LINE, PDF) | ใช่ | ช่องทางที่ส่ง |
-| status | enum(sent) | ใช่ | สถานะ — รอบนี้มีค่าเดียว (`sent`) เพราะยังไม่มี draft state ที่ persist ก่อนส่ง |
+**Collection**: `reportSendLogs`
+
+| Attribute | Conceptual Type | Native Type (Firestore) | จำเป็นต้องมี | คำอธิบาย |
+|---|---|---|---|---|
+| log_id | string (PK) | `string` | ใช่ | รหัส log |
+| generated_at | date | `Timestamp` | ใช่ | เวลาที่สร้างรายงานสรุป |
+| period_type | enum(daily, weekly) | `string` | ใช่ | ประเภทช่วงเวลาของรายงาน |
+| snapshot_values | string (conceptual) | `string` | ใช่ | ค่า KPI ที่คำนวณได้ ณ ตอนสร้าง/ส่งรายงาน (จำนวนเคส, HI/CI, % พ่นแล้ว, % QC ผ่าน ฯลฯ) — เป็น snapshot ครั้งเดียว ไม่ใช่ reference สดไปยังค่าปัจจุบัน |
+| sent_at | date | `Timestamp` | ใช่ | เวลาที่ส่งรายงาน |
+| channel | enum(LINE, PDF) | `string` | ใช่ | ช่องทางที่ส่ง |
+| status | enum(sent) | `string` | ใช่ | สถานะ — รอบนี้มีค่าเดียว (`sent`) เพราะยังไม่มี draft state ที่ persist ก่อนส่ง |
 
 **หมายเหตุ**: KPI ที่แสดงบนหน้า Reports (จำนวนเคส, สถานะควบคุมโรค, HI/CI, รายงานสอบสวนที่ส่งแล้ว) เป็นค่า**คำนวณสด**จาก `CASE`/`SPRAY_ASSIGNMENT`/`FIELD_PHOTO`/`INVESTIGATION_REPORT` ที่มีอยู่แล้ว ไม่ persist เป็น entity แยก — `REPORT_SEND_LOG` มีไว้เพื่อเป็น audit log ว่าส่งอะไรไปเมื่อไหร่เท่านั้น
 
@@ -681,19 +742,21 @@ erDiagram
 
 รองรับ Feature: `FEAT-ALERT-01`, `FEAT-ALERT-02`, `FEAT-ALERT-03` (backlog — เชื่อมข้อมูล real-time กับ Dashboard)
 
-| Attribute | Conceptual Type | จำเป็นต้องมี | คำอธิบาย |
-|---|---|---|---|
-| alert_id | string (PK) | ใช่ | รหัสการแจ้งเตือน |
-| disease_id | reference → `DISEASE` | ใช่ | โรคที่เกี่ยวข้อง |
-| zone_id | reference → `SERVICE_ZONE` | ใช่ | เขตบริการที่เกิดเหตุ — **แทนที่ `regionId` แบบ 6-ภาคทั่วประเทศใน mock เดิมด้วย `SERVICE_ZONE` ปัจจุบัน (4 เขต) ตามที่ยืนยันแล้ว** |
-| community | string (nullable) | ไม่บังคับ | ชุมชน/พื้นที่เจาะจงเพิ่มเติมแบบ freeform — ยังไม่ผูกเป็น `reference → COMMUNITY` ในรอบนี้ |
-| severity | enum(warning, danger) | ใช่ | ระดับความรุนแรง |
-| message | string | ใช่ | ข้อความแจ้งเตือน |
-| status | enum(new, in_progress, closed) | ใช่ | สถานะ — one-way, ไม่มี reopen/unassign |
-| assigned_team_id | reference → `TEAM` (nullable) | ไม่บังคับ (null จนกว่าจะมอบหมาย) | ทีมที่ได้รับมอบหมาย — เป็นได้ทั้ง `team_type = investigation` หรือ `control` (9 ตัวเลือกตาม mock) |
-| assigned_at | date (nullable) | ไม่บังคับ | เวลาที่มอบหมาย |
-| close_note | string (nullable) | ไม่บังคับ (**บังคับกรอกก่อนเปลี่ยนเป็น `closed`**) | บันทึกสรุปก่อนปิดเคส |
-| closed_at | date (nullable) | ไม่บังคับ | เวลาที่ปิดเคส |
+**Collection**: `alerts`
+
+| Attribute | Conceptual Type | Native Type (Firestore) | จำเป็นต้องมี | คำอธิบาย |
+|---|---|---|---|---|
+| alert_id | string (PK) | `string` | ใช่ | รหัสการแจ้งเตือน |
+| disease_id | reference → `DISEASE` | `string` (document ID → collection `diseases`/`506Types`, ดู gap ใน `DISEASE`) | ใช่ | โรคที่เกี่ยวข้อง |
+| zone_id | reference → `SERVICE_ZONE` | `string` (document ID → collection `serviceZones`) | ใช่ | เขตบริการที่เกิดเหตุ — **แทนที่ `regionId` แบบ 6-ภาคทั่วประเทศใน mock เดิมด้วย `SERVICE_ZONE` ปัจจุบัน (4 เขต) ตามที่ยืนยันแล้ว** |
+| community | string (nullable) | `string` (nullable) | ไม่บังคับ | ชุมชน/พื้นที่เจาะจงเพิ่มเติมแบบ freeform — ยังไม่ผูกเป็น `reference → COMMUNITY` ในรอบนี้ |
+| severity | enum(warning, danger) | `string` | ใช่ | ระดับความรุนแรง |
+| message | string | `string` | ใช่ | ข้อความแจ้งเตือน |
+| status | enum(new, in_progress, closed) | `string` | ใช่ | สถานะ — one-way, ไม่มี reopen/unassign |
+| assigned_team_id | reference → `TEAM` (nullable) | `string` (document ID → collection `teams`, nullable) | ไม่บังคับ (null จนกว่าจะมอบหมาย) | ทีมที่ได้รับมอบหมาย — เป็นได้ทั้ง `team_type = investigation` หรือ `control` (9 ตัวเลือกตาม mock) |
+| assigned_at | date (nullable) | `Timestamp` (nullable) | ไม่บังคับ | เวลาที่มอบหมาย |
+| close_note | string (nullable) | `string` (nullable) | ไม่บังคับ (**บังคับกรอกก่อนเปลี่ยนเป็น `closed`**) | บันทึกสรุปก่อนปิดเคส |
+| closed_at | date (nullable) | `Timestamp` (nullable) | ไม่บังคับ | เวลาที่ปิดเคส |
 
 **Business rule**: มอบหมายทีมต้องเลือกทีมก่อนเปลี่ยนสถานะเป็น `in_progress`; ปิดเคสต้องมี `close_note` ไม่ว่างก่อนเปลี่ยนเป็น `closed`; ไม่มี reopen/unassign ในรอบนี้ (ตรงกับ prototype ทุกประการ)
 

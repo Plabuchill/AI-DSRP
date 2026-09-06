@@ -190,10 +190,10 @@ Phase 7 (Platform Foundations: Backend/API, Auth, Database) ควรทำค�
 
 | Component | หน้าที่ | เชื่อมกับ | Feature ID |
 |---|---|---|---|
-| Web App (Frontend) — 8 โมดูล (Dashboard / Case Intake / Case Analysis / Control Plan / Field Tracking / ASM Coordination / Reports / Alerts) | ส่วนติดต่อผู้ใช้ทั้ง 6 บทบาท ต่อยอดจาก 8 หน้า prototype ปัจจุบัน | Auth/Role-based Access, API Server | FEAT-DASH, FEAT-INTAKE, FEAT-ANALYSIS, FEAT-CONTROL, FEAT-TRACK, FEAT-ASM, FEAT-REPORT, FEAT-ALERT |
-| API Server | จุดกลางรับ-ส่ง/ประมวลผลข้อมูลระหว่าง Web App กับ Database, บริการ AI/Extraction, และบริการภายนอกทั้งหมด | Web App, Auth, Database, บริการ OCR/Geocoding/Case Clustering/Vision QC/Chatbot, Google Sheet/Drive, LINE OA | FEAT-PLATFORM-01 |
+| Web App (Frontend) — 8 โมดูล (Dashboard / Case Intake / Case Analysis / Control Plan / Field Tracking / ASM Coordination / Reports / Alerts) | ส่วนติดต่อผู้ใช้ทั้ง 6 บทบาท ต่อยอดจาก 8 หน้า prototype ปัจจุบัน (เทคโนโลยีที่ยืนยัน: Vanilla JS + Node.js/EJS (หรือ Handlebars) partials — ดู TECH-STACK.md) | Auth/Role-based Access, API Server | FEAT-DASH, FEAT-INTAKE, FEAT-ANALYSIS, FEAT-CONTROL, FEAT-TRACK, FEAT-ASM, FEAT-REPORT, FEAT-ALERT |
+| API Server | จุดกลางรับ-ส่ง/ประมวลผลข้อมูลระหว่าง Web App กับ Database, บริการ AI/Extraction, และบริการภายนอกทั้งหมด (เทคโนโลยีที่ยืนยัน: Node.js + Express (หรือ Fastify) — ดู TECH-STACK.md) | Web App, Auth, Database, บริการ OCR/Geocoding/Case Clustering/Vision QC/Chatbot, Google Sheet/Drive, LINE OA | FEAT-PLATFORM-01 |
 | Auth / Role-based Access | ตรวจสอบตัวตนและจำกัดสิทธิ์การเข้าถึงข้อมูล/ฟังก์ชันตาม 6 บทบาท | Web App, API Server | FEAT-PLATFORM-02 |
-| Database | จัดเก็บประวัติเคสและไฟล์ต้นฉบับระยะยาว (มาแทน Google Sheet/Drive เมื่อ Phase 7 เสร็จ ดู Decision Log ข้อ 1) | API Server | FEAT-PLATFORM-03 |
+| Database | จัดเก็บประวัติเคสและไฟล์ต้นฉบับระยะยาว (มาแทน Google Sheet/Drive เมื่อ Phase 7 เสร็จ ดู Decision Log ข้อ 1) (เทคโนโลยีที่ยืนยัน: Firebase Firestore — ดู TECH-STACK.md) | API Server | FEAT-PLATFORM-03 |
 | บริการดึงข้อมูลจากภาพเอกสาร (OCR/Document AI) | แปลงไฟล์ PDF/JPEG รายงานเคสเป็นข้อมูล (ชื่อ/HN/ที่อยู่/วันป่วย/ผลตรวจ) ให้เจ้าหน้าที่ตรวจสอบ/แก้ไขก่อนยืนยัน (human-in-the-loop) | API Server (โมดูล Case Intake) | FEAT-INTAKE-05 |
 | บริการ Geocoding | แปลงที่อยู่เป็นพิกัดจริง พร้อม fallback ให้ปักหมุดด้วยมือเมื่อความแม่นยำต่ำ | API Server (โมดูล Case Intake) | FEAT-INTAKE-07 |
 | บริการ Case Clustering (statistical/spatial-temporal) | วิเคราะห์เชื่อมโยงเคสตามเวลา/พื้นที่/ความสัมพันธ์ผู้สัมผัส เสนอ "cluster ที่เป็นไปได้" ให้นักระบาดวิทยายืนยันก่อนทุกครั้ง (human-in-the-loop) | API Server (โมดูล Case Analysis) | FEAT-ANALYSIS-04 |
@@ -204,6 +204,7 @@ Phase 7 (Platform Foundations: Backend/API, Auth, Database) ควรทำค�
 | บริการติดตามตำแหน่งทีมพ่น (แอปแยก/LIFF) | ขอสิทธิ์ตำแหน่งต่อเนื่องจากทีมพ่น เทียบกับ spot map ที่วางแผนไว้ — ต้องเป็นแอปแยกจาก LINE native chat เพราะ LINE ไม่มี API ติดตามตำแหน่งต่อเนื่อง (ดู Decision Log ข้อ 5) | API Server, Web App (โมดูล Field Tracking) | FEAT-CONTROL-04 |
 | บริการรวมข้อมูลสรุปผู้บริหาร (Reporting aggregation) | รวมข้อมูลจากทุกทีม (จำนวนเคส, สถานะควบคุมโรค, รูปถ่ายยืนยัน, HI/CI, รายงานสอบสวน) เป็นรายงานประจำวัน/รายสัปดาห์อัตโนมัติ | API Server, Database, Web App (โมดูล Reports) | FEAT-REPORT-03 |
 | การเชื่อมข้อมูล real-time ระหว่าง Alert Management กับ Dashboard | sync สถานะแจ้งเตือน/การมอบหมายงานจากโมดูล Alerts เข้าสู่ Outbreak Dashboard แทน mock data คนละชุด | API Server, Web App (โมดูล Alerts, Dashboard) | FEAT-ALERT-03 |
+| Hosting/Infrastructure | โครงสร้างพื้นฐานที่ให้บริการ Web App และ API Server (เทคโนโลยีที่ยืนยัน: Firebase Hosting หรือ Cloud Run + Cloud Functions — ดู TECH-STACK.md) | Web App, API Server | FEAT-PLATFORM-01 |
 
 ## 7. Decision Log
 
