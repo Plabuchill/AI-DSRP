@@ -128,7 +128,7 @@ erDiagram
   CASE_CLUSTER ||--o| INVESTIGATION_REPORT : "อาจมีรายงานสอบสวนโรค (สร้างได้เมื่อ confirmed แล้วเท่านั้น)"
   CASE ||--o| SURVEILLANCE_REPORT_506 : "อาจมี รง.506 ที่สร้างจากเคสนี้ (nullable — นิยามเต็มของ CASE อยู่ใน ER Diagram 1.1)"
   SURVEILLANCE_REPORT_506 }o--|| DISEASE : "ระบุโรคติดต่อ (นิยามเต็มของ DISEASE อยู่ใน ER Diagram 1.2)"
-  SURVEILLANCE_REPORT_506 }o--|| TEAM : "สร้างโดยทีมสอบสวนโรค (นิยามเต็มของ TEAM อยู่ใน ER Diagram 1.1)"
+  SURVEILLANCE_REPORT_506 ||--o{ REPORT_506_APPROVAL_LOG : "มีบันทึกความเห็นประกอบการพิจารณาได้หลายรายการ"
 
   CASE_CLUSTER {
     string cluster_id PK
@@ -150,15 +150,29 @@ erDiagram
     string report_506_id PK
     string case_id FK
     string disease_id FK
+    string title
+    string reason
+    date event_start_date
+    date event_end_date
     enum status
-    number created_by_team_id FK
-    number decided_by_team_id FK
+    string requester_id
+    string requester_name
+    string approver_id
+    string approver_name
     date created_at
     date decided_at
   }
+  REPORT_506_APPROVAL_LOG {
+    string log_id PK
+    string report_506_id FK
+    string author_id
+    string author_name
+    string message
+    date created_at
+  }
 ```
 
-**หมายเหตุ cardinality ที่ยืนยันแล้ว**: `CASE_CLUSTER` ↔ `INVESTIGATION_REPORT` = **1:1 (optional)** — 1 กลุ่มเคสมีรายงานได้อย่างมาก 1 ฉบับ และสร้างได้เฉพาะกลุ่มที่ `status = confirmed` เท่านั้น (business rule) — chatbot ประสานงาน อสม. (`FEAT-ANALYSIS-03`) เป็น scripted demo แบบ fixed script ในรอบนี้ ไม่มี entity ข้อมูลของตัวเอง (ยังไม่ persist บทสนทนา) จนกว่า `FEAT-ANALYSIS-06` (chatbot จริง) จะถูกทำ — `CASE` ↔ `SURVEILLANCE_REPORT_506` = **1:1 (optional/nullable)** — ไม่ใช่ทุกเคสจะมี รง.506 ที่สร้างขึ้น (`FEAT-ANALYSIS-07`)
+**หมายเหตุ cardinality ที่ยืนยันแล้ว**: `CASE_CLUSTER` ↔ `INVESTIGATION_REPORT` = **1:1 (optional)** — 1 กลุ่มเคสมีรายงานได้อย่างมาก 1 ฉบับ และสร้างได้เฉพาะกลุ่มที่ `status = confirmed` เท่านั้น (business rule) — chatbot ประสานงาน อสม. (`FEAT-ANALYSIS-03`) เป็น scripted demo แบบ fixed script ในรอบนี้ ไม่มี entity ข้อมูลของตัวเอง (ยังไม่ persist บทสนทนา) จนกว่า `FEAT-ANALYSIS-06` (chatbot จริง) จะถูกทำ — `CASE` ↔ `SURVEILLANCE_REPORT_506` = **1:1 (optional/nullable)** — ไม่ใช่ทุกเคสจะมี รง.506 ที่สร้างขึ้น (`FEAT-ANALYSIS-07`) — `SURVEILLANCE_REPORT_506` ↔ `REPORT_506_APPROVAL_LOG` = **1:N (ไม่มี limit)** — 1 รง.506 มีบันทึกความเห็นประกอบการพิจารณาได้หลายรายการตามลำดับเวลา — `requester_id`/`requester_name`/`approver_id`/`approver_name` (ของ `SURVEILLANCE_REPORT_506`) และ `author_id`/`author_name` (ของ `REPORT_506_APPROVAL_LOG`) เป็น free-text/id snapshot ชั่วคราวเพราะระบบยังไม่มี USER entity — gap เดียวกับที่ flag ไว้ใน `APPROVAL_REQUEST.decided_by_name` ด้านล่าง
 
 ### 1.4 Control Plan (`FEAT-CONTROL-*`)
 
@@ -491,13 +505,36 @@ erDiagram
 | report_506_id | string (PK) | ใช่ | รหัส รง.506 |
 | case_id | reference → `CASE` (unique, nullable) | ไม่บังคับ (null = ยังไม่ผูกกับเคสใด) | เคสที่ รง.506 นี้เป็นของ — 1:1 optional เพราะไม่ใช่ทุกเคสจะมี รง.506 |
 | disease_id | reference → `DISEASE` | ใช่ | โรคติดต่อที่เลือกสำหรับรายการนี้ |
+| title | string | ใช่ | หัวเรื่องรายงาน |
+| reason | string | ใช่ | เหตุผล/รายละเอียดประกอบการรายงาน |
+| event_start_date | date | ใช่ | วันที่เริ่มต้นของช่วงเวลาการระบาด/เหตุการณ์ที่รายงาน |
+| event_end_date | date (nullable) | ไม่บังคับ (null = เหตุการณ์ยังไม่สิ้นสุด) | วันที่สิ้นสุดของช่วงเวลาที่รายงาน |
 | status | enum(รอพิจารณา, ยืนยัน, ไม่ยืนยัน) | ใช่ | สถานะ human-in-the-loop — เปลี่ยนได้ทางเดียวจาก "รอพิจารณา" → "ยืนยัน" หรือ "ไม่ยืนยัน" เท่านั้น (one-way, ไม่มี reopen กลับ "รอพิจารณา") |
-| created_by_team_id | reference → `TEAM` (team_type=investigation) | ใช่ | ทีมสอบสวนโรคผู้สร้างรายการนี้ |
-| decided_by_team_id | reference → `TEAM` (nullable) | ไม่บังคับ (null จนกว่าจะตัดสินใจ) | ทีมที่กดเปลี่ยนสถานะเป็นยืนยัน/ไม่ยืนยัน (มักเป็นทีมเดียวกับผู้สร้าง แต่ schema ไม่ได้ล็อกไว้ว่าต้องเป็นทีมเดียวกัน) |
+| requester_id | string | ใช่ | รหัสอ้างอิงผู้สร้างรายการ (free-text/snapshot ชั่วคราว — ระบบยังไม่มี USER entity, ดู Gap note ของ `APPROVAL_REQUEST`) |
+| requester_name | string | ใช่ | ชื่อผู้สร้างรายการ ณ ขณะสร้าง (snapshot) |
+| approver_id | string (nullable) | ไม่บังคับ (null จนกว่าจะตัดสินใจ) | รหัสอ้างอิงผู้ตัดสินใจ (free-text/snapshot ชั่วคราว — gap เดียวกับ `requester_id`) |
+| approver_name | string (nullable) | ไม่บังคับ (null จนกว่าจะตัดสินใจ) | ชื่อผู้ตัดสินใจ ณ ขณะตัดสินใจ (snapshot) |
 | created_at | date | ใช่ | เวลาที่สร้างรายการ |
 | decided_at | date (nullable) | ไม่บังคับ (null จนกว่าจะตัดสินใจ) | เวลาที่กดยืนยัน/ไม่ยืนยัน |
 
 **Business rule**: ไม่มี reopen กลับเป็น "รอพิจารณา" หลังตัดสินใจแล้ว (one-way transition ตามที่ยืนยันในแผน เช่นเดียวกับ `CASE_CLUSTER.status`)
+
+**Gap**: `requester_id`/`requester_name`/`approver_id`/`approver_name` เก็บเป็น free-text/id snapshot ชั่วคราวเพราะระบบยังไม่มี USER/role entity (backlog "ระบบ login และสิทธิ์ผู้ใช้" ใน `ROADMAP.md` บรรทัด 70 ยังไม่ถูกทำ — gap เดียวกับ `APPROVAL_REQUEST.decided_by_name`) — เมื่อ backlog นั้นถูกทำ ควรเปลี่ยนเป็น reference → USER แทน
+
+### `REPORT_506_APPROVAL_LOG` — บันทึกความเห็นประกอบการพิจารณา รง.506 (log ต่อรายการ)
+
+รองรับ Feature: `FEAT-ANALYSIS-07`
+
+| Attribute | Conceptual Type | จำเป็นต้องมี | คำอธิบาย |
+|---|---|---|---|
+| log_id | string (PK) | ใช่ | รหัส log |
+| report_506_id | reference → `SURVEILLANCE_REPORT_506` | ใช่ | รง.506 ที่ log นี้เป็นของ |
+| author_id | string | ใช่ | รหัสอ้างอิงผู้เขียนความเห็น (id snapshot ชั่วคราว เหมือน `requester_id`/`approver_id` — gap เดียวกัน) |
+| author_name | string | ใช่ | ชื่อผู้เขียนความเห็น ณ ขณะบันทึก (snapshot) |
+| message | string | ใช่ | ข้อความความเห็น/บันทึกประกอบการพิจารณา |
+| created_at | date | ใช่ | เวลาที่บันทึกความเห็นนี้ |
+
+**Cardinality**: `SURVEILLANCE_REPORT_506` ↔ `REPORT_506_APPROVAL_LOG` = **1:N** — 1 รง.506 มีบันทึกความเห็นได้หลายรายการตามลำดับเวลา ไม่มี limit
 
 ### Module: Control Plan (`FEAT-CONTROL-*`)
 
