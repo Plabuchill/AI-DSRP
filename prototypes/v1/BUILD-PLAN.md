@@ -825,3 +825,32 @@ Day 0/1/7 ไม่ตรวจสอบว่าซ้อนกับ workplan 
 
 ### Design Reference
 อ้างอิง `DESIGN.md` ฉบับ Earth Tone/Muji เดิม — reuse `.panel`/`.panel-header`/`.badge`/`.btn`/`.btn-primary`/`.btn-outline`/`.btn-sm` ที่มีอยู่แล้วทั้งหมด เพิ่ม `.detail-list`/`.detail-row` ใหม่แบบ minimal
+
+## เพิ่มเติม 2026-09-07 (รอบ 27) — ปรับพิกัดด้วยมือในตาราง OCR Review เป็นการกรอกละติจูด/ลองจิจูดจริง (FEAT-INTAKE-02)
+
+### Requirement ต้นทาง
+FEAT-INTAKE-02 — กลไก "ปรับพิกัดด้วยมือ" ในแถวที่ `geoAccuracy === "low"` ของตาราง OCR Review เดิมเป็นแค่ toggle checkbox ที่ไม่มีผลต่อตำแหน่งหมุดจริง ผู้ใช้ต้องการให้กรอกค่าละติจูด/ลองจิจูดได้จริง แล้วให้หมุดบน Spot Map ขยับไปตามค่าที่กรอกจริง
+
+### Scope
+เฉพาะแถวที่ `geoAccuracy === "low"` ในตาราง OCR Review ของ `case-intake.html`/`case-intake.js` — ไม่แตะแถว `geoAccuracy === "high"`, ไม่แตะ upload list/notification log/ฟิลด์ข้อมูลทั่วไปอื่น (patient_name/hn/house_no ฯลฯ)
+
+### การเปลี่ยนแปลง
+1. **`geoCellHtml(c)`** — เพิ่ม state ที่ 3 คือ "กำลังกรอกพิกัด" (`c._editingGeo === true`) แสดงช่อง `<input type="number" step="0.0001">` ละติจูด/ลองจิจูด 2 ช่อง + ปุ่ม "บันทึกพิกัด"/"ยกเลิก" — state เดิม 2 แบบ (`geoAccuracy === "high"` และยังไม่กด) ยังคงพฤติกรรมเดิม แต่ปุ่ม "ปรับพิกัดด้วยมือ" (state ยังไม่กด) เปลี่ยนคลาสจาก `.btn-toggle-geo` เป็น `.btn-start-geo` เพื่อเปิดโหมดกรอกแทนการ toggle ทันที ส่วน state "ปรับพิกัดด้วยมือแล้ว" เพิ่มข้อความค่าพิกัดที่บันทึกไว้ + ปุ่ม "แก้ไข" (`.btn-edit-geo`) ใหม่ ควบคู่กับปุ่ม "เลิกทำ" (`.btn-toggle-geo`) เดิม
+2. **ฟังก์ชันใหม่**: `startGeoEdit(id)` (เปิดโหมดกรอก, ใช้ทั้งปุ่ม "ปรับพิกัดด้วยมือ" ครั้งแรกและปุ่ม "แก้ไข" — pre-fill ค่าเดิมอัตโนมัติเพราะอ่านจาก `c.latitude`/`c.longitude` ใน `geoCellHtml`), `cancelGeoEdit(id)` (ปิดโหมดกรอกโดยไม่ validate/ไม่บันทึก), `saveGeoCoordinates(id, lat, lng)` (validate ช่วงพิกัดประเทศไทยคร่าวๆ lat 5.5–21 / lng 97–106 ด้วย `alert()` ถ้าไม่ผ่าน, ถ้าผ่านเก็บ `c.latitude`/`c.longitude` แล้ว normalize เป็น `c.mapX`/`c.mapY` ใหม่ พร้อม clamp 0-100, set `geoAdjusted = true`)
+3. **`toggleGeoAdjust(id)`** (ปุ่ม "เลิกทำ") — นอกจาก set `geoAdjusted = false` ตอนนี้ล้าง `c.latitude`/`c.longitude` (เป็น `undefined`) และคืนค่า `c.mapX`/`c.mapY` กลับเป็นค่า mock เดิมจาก `c._originalMapX`/`c._originalMapY` ที่ snapshot ไว้ตอน initialize array `CASES` (ก่อนมีการแก้ไขใดๆ)
+4. **`buildSpotMapSVG()`** — ไม่แก้ logic ใดๆ ตรวจสอบแล้วว่ายังทำงานถูกต้องกับพิกัดที่ปรับใหม่ เพราะอ่าน `c.mapX`/`c.mapY` เดิมที่ข้อ 2 คำนวณให้ตรงแล้ว
+5. **CSS** — เพิ่ม `.input-inline-geo` ใน `styles.css` (width คงที่ 90px, reuse `.input-inline`/`.edit-field-row` เดิมทั้งหมด ไม่เพิ่มสีใหม่)
+
+### Backlog/Feature ที่ไม่รวมในรอบนี้
+ไม่ต่อ Geocoding API จริง ไม่ใช้ map tile ภายนอก ยังเป็นแผนที่จำลอง SVG เดิม
+
+### Assumption ที่ตั้งไว้
+- โจทย์ระบุว่าปุ่ม "เลิกทำ" ต้องคงคลาสเดิม `.btn-toggle-geo` ไว้ (ระบุชัดเจน) แต่ไม่ได้บังคับคลาสของปุ่ม "ปรับพิกัดด้วยมือ" (สถานะเริ่มต้นก่อนกด) ไว้ตายตัว — จึงแยกคลาสใหม่ `.btn-start-geo` ให้ปุ่มนั้น เพื่อให้ `toggleGeoAdjust()` ทำหน้าที่เดียวคือ "เลิกทำ/undo" อย่างชัดเจน ไม่ปนกับ logic เปิดโหมดกรอก ลด edge case ที่ event handler ต้องแยกแยะ state ซ้อนกัน
+- ปุ่ม "แก้ไข" (state ปรับพิกัดแล้ว) และปุ่ม "ปรับพิกัดด้วยมือ" (state เริ่มต้น) เรียกฟังก์ชันร่วมกัน `startGeoEdit(id)` เพราะพฤติกรรมเหมือนกันทุกประการ (เปิด `_editingGeo = true` แล้ว re-render) ต่างกันแค่ค่าที่ pre-fill ในช่อง input ซึ่งจัดการอัตโนมัติแล้วโดยอ่านจาก `c.latitude`/`c.longitude` ที่มีอยู่หรือไม่มี
+- error message เมื่อกรอกพิกัดนอกช่วงใช้ `alert()` แบบง่ายที่สุดตามที่โจทย์ระบุเป็นทางเลือกสำรอง เพราะไม่มี pattern inline error message ที่ชัดเจนอยู่เดิมในไฟล์นี้สำหรับ cell-level validation
+
+### Version
+แก้ไข `prototypes/v1` เดิมในที่ (ไม่สร้าง v2) — ยืนยันจากผู้ใช้แล้ว
+
+### Design Reference
+อ้างอิง `DESIGN.md` ข้อ 3 (Input/Form: label บนสุด, กรอบ 1px สี border, radius 4px) — reuse `.input-inline`/`.edit-field-row`/`.row-actions`/`.badge`/`.btn-primary`/`.btn-outline`/`.btn-sm` ที่มีอยู่แล้วทั้งหมด ไม่เพิ่มสีใหม่ตามข้อจำกัดของโจทย์

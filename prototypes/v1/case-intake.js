@@ -175,6 +175,16 @@
     }
   ];
 
+  // Snapshot the original mock map position of every case *before* any
+  // manual geo-adjustment can happen, so "เลิกทำ" (undo) can restore it
+  // exactly. Also seed the editing-mode flag used by the manual
+  // lat/long entry flow below.
+  CASES.forEach(function (c) {
+    c._originalMapX = c.mapX;
+    c._originalMapY = c.mapY;
+    c._editingGeo = false;
+  });
+
   // Notification log — seeded with the log entry for the pre-confirmed case.
   var NOTIFICATIONS = [
     {
@@ -275,18 +285,44 @@
     if (c.geoAccuracy === "high") {
       return '<div class="geo-cell"><span class="geo-note">พิกัดแม่นยำสูง</span></div>';
     }
+
+    // Currently entering/editing manual coordinates — takes priority over
+    // both the "not adjusted yet" and "already adjusted" display states.
+    if (c._editingGeo) {
+      var latVal = (c.latitude !== undefined && c.latitude !== null) ? c.latitude : "";
+      var lngVal = (c.longitude !== undefined && c.longitude !== null) ? c.longitude : "";
+      return (
+        '<div class="geo-cell">' +
+          '<span class="geo-note">กรอกพิกัดจากอุปกรณ์ GPS/แผนที่ภายนอก</span>' +
+          '<div class="edit-field-row">' +
+            '<input type="number" step="0.0001" class="input-inline input-inline-geo" id="geo-lat-input-' + c.id + '" placeholder="13.7563" aria-label="ละติจูด" value="' + escapeHtml(latVal) + '">' +
+            '<input type="number" step="0.0001" class="input-inline input-inline-geo" id="geo-lng-input-' + c.id + '" placeholder="100.5018" aria-label="ลองจิจูด" value="' + escapeHtml(lngVal) + '">' +
+          "</div>" +
+          '<div class="row-actions">' +
+            '<button type="button" class="btn btn-primary btn-sm btn-save-geo" data-id="' + c.id + '">บันทึกพิกัด</button>' +
+            '<button type="button" class="btn btn-outline btn-sm btn-cancel-geo" data-id="' + c.id + '">ยกเลิก</button>' +
+          "</div>" +
+        "</div>"
+      );
+    }
+
     if (c.geoAdjusted) {
       return (
         '<div class="geo-cell">' +
           '<span class="badge badge-adjusted">ปรับพิกัดด้วยมือแล้ว</span>' +
-          '<button type="button" class="btn btn-outline btn-sm btn-toggle-geo" data-id="' + c.id + '">เลิกทำ</button>' +
+          '<span class="geo-note">' + c.latitude.toFixed(4) + ", " + c.longitude.toFixed(4) + "</span>" +
+          '<div class="row-actions">' +
+            '<button type="button" class="btn btn-outline btn-sm btn-edit-geo" data-id="' + c.id + '">แก้ไข</button>' +
+            '<button type="button" class="btn btn-outline btn-sm btn-toggle-geo" data-id="' + c.id + '">เลิกทำ</button>' +
+          "</div>" +
         "</div>"
       );
     }
+
     return (
       '<div class="geo-cell">' +
         '<span class="badge badge-flag">พิกัดแม่นยำต่ำ</span>' +
-        '<button type="button" class="btn btn-outline btn-sm btn-toggle-geo" data-id="' + c.id + '">ปรับพิกัดด้วยมือ</button>' +
+        '<button type="button" class="btn btn-outline btn-sm btn-start-geo" data-id="' + c.id + '">ปรับพิกัดด้วยมือ</button>' +
       "</div>"
     );
   }
@@ -507,10 +543,65 @@
     renderSpotMap();
   }
 
+  // "เลิกทำ" — undo a manual adjustment and restore the original mock pin
+  // position saved in c._originalMapX/Y before any edit ever happened.
   function toggleGeoAdjust(id) {
     var c = getCaseById(id);
     if (!c || c.geoAccuracy !== "low") return;
-    c.geoAdjusted = !c.geoAdjusted;
+    c.geoAdjusted = false;
+    c.latitude = undefined;
+    c.longitude = undefined;
+    c.mapX = c._originalMapX;
+    c.mapY = c._originalMapY;
+    c._editingGeo = false;
+    renderOCRTable();
+    renderSpotMap();
+  }
+
+  // Open the manual lat/long entry fields for a row (first time: blank
+  // inputs; re-editing an already-adjusted row: pre-filled via geoCellHtml
+  // reading c.latitude/c.longitude, which are left untouched here).
+  function startGeoEdit(id) {
+    var c = getCaseById(id);
+    if (!c || c.geoAccuracy !== "low") return;
+    c._editingGeo = true;
+    renderOCRTable();
+  }
+
+  // "ยกเลิก" while entering coordinates — just closes the input fields,
+  // no validation, no data changes.
+  function cancelGeoEdit(id) {
+    var c = getCaseById(id);
+    if (!c) return;
+    c._editingGeo = false;
+    renderOCRTable();
+  }
+
+  // Validate and persist manually-entered coordinates, then recompute the
+  // pin's SVG position (c.mapX/c.mapY) by normalizing lat/long within a
+  // rough Thailand bounding box (lat 5.5–21, lng 97–106), clamped to 0-100
+  // so the pin can never render outside the mock map's SVG viewport.
+  function saveGeoCoordinates(id, lat, lng) {
+    var c = getCaseById(id);
+    if (!c) return;
+
+    lat = parseFloat(lat);
+    lng = parseFloat(lng);
+
+    if (isNaN(lat) || isNaN(lng) || lat < 5.5 || lat > 21 || lng < 97 || lng > 106) {
+      alert("กรุณากรอกละติจูดในช่วง 5.5–21 และลองจิจูดในช่วง 97–106 (พิกัดภายในประเทศไทย)");
+      return;
+    }
+
+    c.latitude = lat;
+    c.longitude = lng;
+    var mapX = ((lng - 97) / (106 - 97)) * 100;
+    var mapY = ((21 - lat) / (21 - 5.5)) * 100;
+    c.mapX = Math.max(0, Math.min(100, mapX));
+    c.mapY = Math.max(0, Math.min(100, mapY));
+    c.geoAdjusted = true;
+    c._editingGeo = false;
+
     renderOCRTable();
     renderSpotMap();
   }
@@ -580,6 +671,29 @@
       var geoBtn = e.target.closest(".btn-toggle-geo");
       if (geoBtn) {
         toggleGeoAdjust(parseInt(geoBtn.getAttribute("data-id"), 10));
+        return;
+      }
+      var startGeoBtn = e.target.closest(".btn-start-geo");
+      if (startGeoBtn) {
+        startGeoEdit(parseInt(startGeoBtn.getAttribute("data-id"), 10));
+        return;
+      }
+      var editGeoBtn = e.target.closest(".btn-edit-geo");
+      if (editGeoBtn) {
+        startGeoEdit(parseInt(editGeoBtn.getAttribute("data-id"), 10));
+        return;
+      }
+      var cancelGeoBtn = e.target.closest(".btn-cancel-geo");
+      if (cancelGeoBtn) {
+        cancelGeoEdit(parseInt(cancelGeoBtn.getAttribute("data-id"), 10));
+        return;
+      }
+      var saveGeoBtn = e.target.closest(".btn-save-geo");
+      if (saveGeoBtn) {
+        var geoId = parseInt(saveGeoBtn.getAttribute("data-id"), 10);
+        var latInput = document.getElementById("geo-lat-input-" + geoId);
+        var lngInput = document.getElementById("geo-lng-input-" + geoId);
+        saveGeoCoordinates(geoId, latInput ? latInput.value : "", lngInput ? lngInput.value : "");
         return;
       }
       var fileLink = e.target.closest(".file-link");

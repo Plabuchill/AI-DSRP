@@ -1210,6 +1210,12 @@ main.content-wrap {
   flex: 0 0 56px;
 }
 
+/* Manual lat/long entry (OCR review — low geo-accuracy rows only) */
+.input-inline-geo {
+  width: 90px;
+  flex: 0 0 90px;
+}
+
 @media (max-width: 720px) {
   .edit-field-group {
     min-width: 140px;
