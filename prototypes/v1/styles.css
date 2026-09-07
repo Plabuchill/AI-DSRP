@@ -2436,3 +2436,47 @@ main.content-wrap {
     grid-template-columns: 1fr;
   }
 }
+
+/* ---------------------------------------------------------
+   รง.506 detail view (506-request-detail.html, FEAT-ANALYSIS-07)
+   Read-only definition list — reuses .form-field's label styling
+   language (caption, uppercase, text-secondary) for <dt>, and
+   .data-table's border-bottom row rhythm for <dd> separators.
+   --------------------------------------------------------- */
+.detail-list {
+  margin: 0 0 var(--space-2);
+}
+
+.detail-row {
+  display: grid;
+  grid-template-columns: 160px 1fr;
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.detail-row:last-child {
+  border-bottom: none;
+}
+
+.detail-row dt {
+  font-size: var(--fs-caption);
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.detail-row dd {
+  margin: 0;
+  color: var(--color-text-primary);
+  font-size: var(--fs-small);
+  line-height: 1.6;
+}
+
+@media (max-width: 640px) {
+  .detail-row {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+}

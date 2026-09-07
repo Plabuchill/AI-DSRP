@@ -797,3 +797,31 @@ Day 0/1/7 ไม่ตรวจสอบว่าซ้อนกับ workplan 
 
 ### Design Reference
 อ้างอิง `DESIGN.md` ฉบับ Earth Tone/Muji เดิม — reuse `.panel`/`.panel-header`/`.btn`/`.btn-primary`/`.btn-outline`/`.btn-sm`/`.filter-field`/`.report-textarea` ที่มีอยู่แล้ว เพิ่ม `.request-form`/`.form-field`/`.form-field-full` ใหม่แบบ minimal สำหรับ layout ฟอร์ม 2 คอลัมน์
+
+## เพิ่มเติม 2026-09-06 (รอบ 26) — หน้ารายละเอียด รง.506 (506-request-detail.html) พร้อมปุ่มแก้เฉพาะ status
+
+### Requirement ต้นทาง
+ต่อยอดจากรอบ 24-25 — ผู้ใช้ต้องการหน้าดูรายละเอียด รง.506 ทีละใบ พร้อมปุ่มยืนยัน/ไม่ยืนยันที่ **แก้เฉพาะ field `status` เท่านั้น ห้ามแตะ field อื่น** (จงใจต่างจากปุ่มในตารางรายการที่ `case-analysis-506.js` ซึ่งแก้ `approverId`/`approverName` ด้วย) — สอบถามความไม่ชัดเจนแล้ว ผู้ใช้ยืนยัน: (1) เป็นหน้าใหม่ที่ต้องสร้าง ไม่ใช่หน้าที่มีอยู่แล้ว, (2) แก้เฉพาะ `status` จริงๆ ตามที่ขอ ไม่ใช่ behavior เดียวกับปุ่มเดิม
+
+### Scope
+เพิ่มไฟล์ใหม่ `prototypes/v1/506-request-detail.html` + `506-request-detail.js`, แก้ `prototypes/v1/case-analysis-506.js` (เฉพาะจุด render คอลัมน์หัวเรื่องให้เป็นลิงก์ — ไม่แตะ logic อื่น), แก้ `prototypes/v1/styles.css` (เพิ่ม CSS `.detail-list`/`.detail-row` แบบ minimal)
+
+### การเปลี่ยนแปลง
+1. **หน้าใหม่ `506-request-detail.html`** — อ่าน `id` จาก URL query string (`?id=`) แสดงรายละเอียด รง.506 1 รายการแบบ real-time (`onSnapshot`) ครบทุก field (หัวเรื่อง/เหตุผล/โรค/ผู้แจ้ง/ช่วงเวลา/สถานะ badge/ผู้พิจารณา — ซ่อนแถวผู้พิจารณาถ้ายังไม่มีค่า)
+2. **ปุ่มยืนยัน/ไม่ยืนยัน** แสดงเฉพาะ `status === "รอพิจารณา"` กดแล้วเรียก `updateDoc(doc(db, "506Requests", id), { status: newStatus })` **เท่านั้น** — ไม่มี `approverId`/`approverName` หรือ field อื่นปนอยู่ในการเรียกนี้เด็ดขาด (ตรวจสอบด้วย `grep updateDoc` แล้วยืนยันด้วยการอ่านค่าจริงจาก Firestore หลังกดว่า approver ยังเป็น `null` เหมือนเดิม)
+3. **ลิงก์จากหน้ารายการ** — คอลัมน์ "หัวเรื่อง" ในตาราง `#report506-table` ของ `case-analysis-506.js` เปลี่ยนจาก text ธรรมดาเป็น `<a href="506-request-detail.html?id=...">` (บรรทัดเดียว ไม่แตะ logic อื่นของไฟล์)
+4. ปุ่ม "← กลับหน้ารายการ" ลิงก์กลับ `case-analysis.html`
+
+### Backlog/Feature ที่ไม่รวมในรอบนี้
+ไม่มีฟอร์มแก้ไข field อื่น (title/reason/disease ฯลฯ) ในหน้านี้ — เป็นหน้าดูรายละเอียด + เปลี่ยนสถานะเท่านั้น
+
+### Assumption ที่ตั้งไว้
+- ไม่มี pattern definition-list สำหรับแสดงผลอยู่เดิมในโปรเจกต์ จึงเพิ่ม `.detail-row`/`dt`/`dd` ใหม่โดยยึด spacing/border/font token เดิมที่มีอยู่แล้ว ไม่เดาค่าใหม่
+- กดยืนยัน/ไม่ยืนยันแล้วไม่ redirect ออกจากหน้า (ต่างจาก `new-506-request.js`) เพราะให้ `onSnapshot` re-render หน้าที่ real-time แล้วซ่อนปุ่มเองเมื่อ status เปลี่ยน
+- ทดสอบ end-to-end จริงแล้ว (คลิกลิงก์จากตาราง → เห็นรายละเอียดถูกต้อง → กดยืนยัน → status เปลี่ยน real-time → ตรวจสอบผ่าน Firestore REST API ตรงๆ ว่า approver ยังเป็น null) รีเซ็ตข้อมูลทดสอบกลับตั้งต้นหลังยืนยันผลแล้ว
+
+### Version
+แก้ไข `prototypes/v1` เดิมในที่ (ไม่สร้าง v2) — ยืนยันจากผู้ใช้แล้ว
+
+### Design Reference
+อ้างอิง `DESIGN.md` ฉบับ Earth Tone/Muji เดิม — reuse `.panel`/`.panel-header`/`.badge`/`.btn`/`.btn-primary`/`.btn-outline`/`.btn-sm` ที่มีอยู่แล้วทั้งหมด เพิ่ม `.detail-list`/`.detail-row` ใหม่แบบ minimal

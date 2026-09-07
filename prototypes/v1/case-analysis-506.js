@@ -87,7 +87,7 @@ function init() {
 
       return (
         '<tr>' +
-          '<td>' + escapeHtml(d.title) + '</td>' +
+          '<td><a href="506-request-detail.html?id=' + encodeURIComponent(item.id) + '">' + escapeHtml(d.title) + '</a></td>' +
           '<td>' + escapeHtml(d.requesterName) + '</td>' +
           '<td>' + escapeHtml(d.diseaseName) + '</td>' +
           '<td>' + formatDateRange(d.startDate, d.endDate) + '</td>' +
