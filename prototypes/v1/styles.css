@@ -2561,6 +2561,11 @@ main.content-wrap {
   padding: 8px 10px;
 }
 
+#login-info {
+  color: var(--color-text-secondary);
+  background: var(--color-success-bg);
+}
+
 .login-submit {
   width: 100%;
   margin-top: var(--space-1);

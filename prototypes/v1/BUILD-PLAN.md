@@ -940,3 +940,28 @@ FEAT-PLATFORM-02 — prototype v1 ยังไม่มี auth guard เลย 
 
 ### Design Reference
 อ้างอิง `DESIGN.md` เดิม (Earth Tone + Minimalist + Muji) ให้เข้าชุดกับหน้าอื่น — หน้า login reuse `.form-field`/`.panel`/`.btn` pattern ที่มีอยู่แล้ว ไม่สร้าง component ใหม่นอกเหนือ layout centered card
+
+## เพิ่มเติม 2026-09-07 (รอบ 31) — ปุ่ม "ลืมรหัสผ่าน" ในหน้า Login (FEAT-PLATFORM-02)
+
+### Requirement ต้นทาง
+ต่อยอดจากรอบ 30 (ระบบ login) — ผู้ใช้ขอเพิ่มช่อง/ลิงก์ "ลืมรหัสผ่าน" ในหน้า login ก่อนที่จะลืมทำ ใช้ฟังก์ชัน `sendPasswordResetEmail()` ของ Firebase Auth ที่มีอยู่แล้วในตัว SDK ไม่ต้องสร้าง backend เพิ่ม — ผู้ใช้ยืนยัน "ทำเลย" หลังเห็นแผนคร่าวๆ
+
+### Scope
+แก้ `prototypes/v1/login.html`, `login.js`, `styles.css` เท่านั้น — ไม่แตะไฟล์อื่น (หน้ารีเซ็ตรหัสผ่านจริงใช้ default UI ที่ Firebase สร้างให้อัตโนมัติหลังคลิกลิงก์ในอีเมล ไม่ต้องสร้างหน้าเว็บเพิ่มเอง)
+
+### การเปลี่ยนแปลง
+1. เพิ่มปุ่ม "ลืมรหัสผ่าน?" (`btn btn-outline`, `type="button"` ไม่ trigger form submit) ใต้ปุ่ม "เข้าสู่ระบบ"
+2. เพิ่ม `<p id="login-info">` แยกจาก `#login-error` เดิม สำหรับข้อความสถานะที่ไม่ใช่ error (สีเขียวอ่อนจาก `--color-success-bg`)
+3. กดปุ่มแล้ว: ถ้าช่องอีเมลว่าง → แจ้งให้กรอกก่อน (ใช้ `#login-error`); ถ้ามีอีเมล → เรียก `sendPasswordResetEmail(auth, email)` → สำเร็จหรือล้มเหลวก็แสดงข้อความเดียวกันใน `#login-info` ("หากอีเมลนี้มีอยู่ในระบบ จะได้รับลิงก์...") — **ไม่บอกตรงๆ ว่าอีเมลนี้มีอยู่จริงไหม** เพื่อป้องกัน user enumeration attack
+
+### Backlog/Feature ที่ไม่รวมในรอบนี้
+ไม่ได้ปรับแต่ง email template ของ Firebase (ใช้ default template ที่ Firebase ให้มา) — ต้องเช็คเองที่ Firebase Console → Authentication → Templates ว่าเปิดใช้งานอยู่
+
+### Assumption ที่ตั้งไว้
+- ข้อความตอบกลับหลังกด "ลืมรหัสผ่าน" เหมือนกันไม่ว่าอีเมลจะมีอยู่จริงหรือไม่ (best practice ด้าน security ป้องกันคนสุ่มเช็คว่าอีเมลไหนมีในระบบ) — ทดสอบยิง API ตรงผ่าน `curl` แล้วยืนยันว่า Firebase ตอบ 200 OK ปกติสำหรับอีเมลที่มีอยู่จริงในระบบ
+
+### Version
+แก้ไข `prototypes/v1` เดิมในที่ (ไม่สร้าง v2)
+
+### Design Reference
+อ้างอิง `DESIGN.md` เดิม — reuse `.login-error`/`.btn-outline`/`.login-submit` ที่มีอยู่แล้ว เพิ่ม `#login-info` เป็น id-selector เฉพาะสำหรับ override สีให้ต่างจาก error (ใช้ `--color-success-bg` ที่มีอยู่แล้วในระบบสี ไม่เพิ่มสีใหม่)
