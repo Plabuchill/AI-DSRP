@@ -440,9 +440,11 @@ erDiagram
 
 **หมายเหตุ**: entity นี้เก็บเฉพาะ reference ไปยัง `CASE`/`TEAM` + เวลา ไม่ denormalize ชื่อผู้ป่วย/ตำบลไว้ในตัวเอง (ต่างจาก mock `NOTIFICATIONS[]` ที่เก็บ `patientName`/`subdistrict` แบบ snapshot ไว้ตรงๆ เพื่อความสะดวกในการ render) — ข้อมูลแสดงผลเหล่านั้นต้องดึงผ่าน `case_id` ตอน query แทน ดู "Assumption" ท้ายผลลัพธ์
 
-### `USER` — ผู้ใช้งานปัจจุบันของระบบ (placeholder สะท้อนของจริงที่ seed แล้ว)
+### `USER` — ผู้ใช้งานปัจจุบันของระบบ
 
-รองรับ Feature: ไม่มี Feature ID ตรงในรอบนี้ — เพิ่มเข้ามาเพื่อสะท้อนสิ่งที่ seed จริงไว้แล้วใน collection `users` (`scripts/seed/seed-data.js`, ผู้ใช้ 3 ราย: CUCU1/SRRT1/SRRT3) **ยังไม่ใช่การออกแบบ Auth/Role-based Access เต็มรูปแบบ** — backlog "ระบบ login และสิทธิ์ผู้ใช้" (`FEAT-PLATFORM-02` ตาม `ROADMAP.md`) ยังไม่ถูกทำ entity นี้เป็นแค่ placeholder เก็บ user ปัจจุบันที่ seed ไปแล้วเท่านั้น
+รองรับ Feature: `FEAT-PLATFORM-02` (Firebase Authentication, Email/Password — ยืนยันแล้วใน `TECH-STACK.md`, implement จริงแล้วใน prototype: `login.html`/`auth-guard.js`)
+
+**สถานะการเชื่อม Auth (2026-09-07)**: มี Firebase Auth account จริง 3 บัญชี (ผูก email เดียวกับ 3 แถวใน collection นี้) — วิธีจับคู่ที่ implement จริงคือ **query `users` ด้วย `where("email", "==", auth.currentUser.email")` หลัง login สำเร็จ** (ดู `auth-guard.js`/`case-analysis-506.js`) **ไม่ได้เก็บ Firebase Auth UID เป็น field ในเอกสารนี้เลย** — เป็นทางเลือกที่ใช้งานได้จริงในระดับ prototype แต่มีข้อจำกัด: อีเมลซ้ำ/เปลี่ยนอีเมลจะทำให้จับคู่ผิดพลาด, ต้อง query ทุกครั้งแทนที่จะ lookup ตรงด้วย UID — ยังไม่ใช่ role-based authorization เต็มรูปแบบ (ทุกผู้ใช้ที่ login เห็นทุกหน้า/ทุกฟังก์ชันเหมือนกัน ไม่มีการจำกัดสิทธิ์ตาม `role` จริง)
 
 **Collection**: `users`
 
