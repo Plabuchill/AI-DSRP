@@ -282,10 +282,6 @@
      Render: OCR review table
      --------------------------------------------------------- */
   function geoCellHtml(c) {
-    if (c.geoAccuracy === "high") {
-      return '<div class="geo-cell"><span class="geo-note">พิกัดแม่นยำสูง</span></div>';
-    }
-
     // Currently entering/editing manual coordinates — takes priority over
     // both the "not adjusted yet" and "already adjusted" display states.
     if (c._editingGeo) {
@@ -315,6 +311,15 @@
             '<button type="button" class="btn btn-outline btn-sm btn-edit-geo" data-id="' + c.id + '">แก้ไข</button>' +
             '<button type="button" class="btn btn-outline btn-sm btn-toggle-geo" data-id="' + c.id + '">เลิกทำ</button>' +
           "</div>" +
+        "</div>"
+      );
+    }
+
+    if (c.geoAccuracy === "high") {
+      return (
+        '<div class="geo-cell">' +
+          '<span class="geo-note">พิกัดแม่นยำสูง</span>' +
+          '<button type="button" class="btn btn-outline btn-sm btn-start-geo" data-id="' + c.id + '">ปรับพิกัดด้วยมือ</button>' +
         "</div>"
       );
     }
@@ -498,7 +503,7 @@
       var px = (c.mapX / 100) * W;
       var py = (c.mapY / 100) * H;
       var flagged = c.geoAccuracy === "low" && !c.geoAdjusted;
-      var adjusted = c.geoAccuracy === "low" && c.geoAdjusted;
+      var adjusted = c.geoAdjusted; // ไม่ผูกกับ geoAccuracy อีกต่อไป — ปรับพิกัดด้วยมือได้ทุก accuracy tier
       var color = flagged ? "#C9A66B" : (adjusted ? "#7A6A53" : "#8A9A5B");
       var dash = flagged ? ' stroke-dasharray="5 4"' : "";
       var statusLabel = flagged ? "พิกัดแม่นยำต่ำ (ยังไม่ปรับ)" : (adjusted ? "ปรับพิกัดด้วยมือแล้ว" : "พิกัดแม่นยำสูง");
@@ -547,7 +552,7 @@
   // position saved in c._originalMapX/Y before any edit ever happened.
   function toggleGeoAdjust(id) {
     var c = getCaseById(id);
-    if (!c || c.geoAccuracy !== "low") return;
+    if (!c) return;
     c.geoAdjusted = false;
     c.latitude = undefined;
     c.longitude = undefined;
@@ -563,7 +568,7 @@
   // reading c.latitude/c.longitude, which are left untouched here).
   function startGeoEdit(id) {
     var c = getCaseById(id);
-    if (!c || c.geoAccuracy !== "low") return;
+    if (!c) return;
     c._editingGeo = true;
     renderOCRTable();
   }
