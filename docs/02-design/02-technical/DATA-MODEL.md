@@ -548,16 +548,18 @@ erDiagram
 | diseaseName | string | `string` | ใช่ | ชื่อโรค snapshot ณ ขณะสร้างรายการ (denormalized คู่กับ `diseaseId`) |
 | title | string | `string` | ใช่ | หัวเรื่องรายงาน |
 | reason | string | `string` | ใช่ | เหตุผล/รายละเอียดประกอบการรายงาน |
-| startDate | date | `Timestamp` | ใช่ | วันที่เริ่มต้นของช่วงเวลาการระบาด/เหตุการณ์ที่รายงาน |
-| endDate | date (nullable) | `Timestamp` (nullable) | ไม่บังคับ (null = เหตุการณ์ยังไม่สิ้นสุด) | วันที่สิ้นสุดของช่วงเวลาที่รายงาน |
+| startDate | date | `string` (ISO date เช่น `"2026-08-19"` — ไม่ใช่ Firestore `Timestamp`, ดูหมายเหตุด้านล่าง) | ใช่ | วันที่เริ่มต้นของช่วงเวลาการระบาด/เหตุการณ์ที่รายงาน |
+| endDate | date (nullable) | `string` (nullable, ISO date เช่นเดียวกับ `startDate`) | ไม่บังคับ (null = เหตุการณ์ยังไม่สิ้นสุด) | วันที่สิ้นสุดของช่วงเวลาที่รายงาน |
 | status | enum(รอพิจารณา, ยืนยัน, ไม่ยืนยัน) | `string` | ใช่ | สถานะ human-in-the-loop — เปลี่ยนได้ทางเดียวจาก "รอพิจารณา" → "ยืนยัน" หรือ "ไม่ยืนยัน" เท่านั้น (one-way, ไม่มี reopen กลับ "รอพิจารณา") |
 | requesterId | string | `string` (ตรงกับ `user_id` ของ `USER` ในทางปฏิบัติ — ดูหมายเหตุใน `USER`) | ใช่ | รหัสอ้างอิงผู้สร้างรายการ (free-text/snapshot ชั่วคราว — ระบบยังไม่มี USER entity ที่เป็นทางการ, ดู Gap note ของ `APPROVAL_REQUEST`) |
 | requesterName | string | `string` | ใช่ | ชื่อผู้สร้างรายการ ณ ขณะสร้าง (snapshot) |
 | approverId | string (nullable) | `string` (nullable, ตรงกับ `user_id` ของ `USER` ในทางปฏิบัติ) | ไม่บังคับ (null จนกว่าจะตัดสินใจ) | รหัสอ้างอิงผู้ตัดสินใจ (free-text/snapshot ชั่วคราว — gap เดียวกับ `requesterId`) |
 | approverName | string (nullable) | `string` (nullable) | ไม่บังคับ (null จนกว่าจะตัดสินใจ) | ชื่อผู้ตัดสินใจ ณ ขณะตัดสินใจ (snapshot) |
-| createdAt | date | `Timestamp` | ใช่ | เวลาที่สร้างรายการ |
+| createdAt | date | `string` (ISO 8601 timestamp เช่น `"2026-08-19T14:02:00+07:00"` — ไม่ใช่ Firestore `Timestamp`) | ใช่ | เวลาที่สร้างรายการ |
 
 **Business rule**: ไม่มี reopen กลับเป็น "รอพิจารณา" หลังตัดสินใจแล้ว (one-way transition ตามที่ยืนยันในแผน เช่นเดียวกับ `CASE_CLUSTER.status`)
+
+**หมายเหตุ native type ของ field วันที่ (`startDate`/`endDate`/`createdAt`)**: ตรวจสอบข้อมูลจริงใน Firestore แล้วพบว่าทุก field เก็บเป็น `stringValue` ทั้งหมด ไม่มี field ใดเป็น Firestore `timestampValue` เลย (ต่างจากที่เอกสารเคยระบุไว้ว่าเป็น `Timestamp`) — แก้ให้ตรงกับของจริงแล้ว (2026-09-06) เพื่อไม่ให้เอกสารชวนให้เขียนโค้ดที่คาดหวัง Firestore `Timestamp` object ผิดประเภทจากของจริง
 
 **Gap**: `requesterId`/`requesterName`/`approverId`/`approverName` เก็บเป็น free-text/id snapshot ชั่วคราวเพราะระบบยังไม่มี USER/role entity (backlog "ระบบ login และสิทธิ์ผู้ใช้" ใน `ROADMAP.md` บรรทัด 70 ยังไม่ถูกทำ — gap เดียวกับ `APPROVAL_REQUEST.decided_by_name`) — เมื่อ backlog นั้นถูกทำ ควรเปลี่ยนเป็น reference → USER แทน
 

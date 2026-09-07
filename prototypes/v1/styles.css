@@ -2356,3 +2356,83 @@ main.content-wrap {
   border-radius: 3px;
   flex-shrink: 0;
 }
+
+/* ---------------------------------------------------------
+   New รง.506 request form (new-506-request.html, FEAT-ANALYSIS-07)
+   Reuses .filter-field's label styling language (caption, uppercase,
+   text-secondary) and .report-textarea's input border/focus treatment
+   — just laid out as a responsive form grid instead of a filter bar.
+   --------------------------------------------------------- */
+.request-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+  margin-bottom: var(--space-2);
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.form-field-full {
+  grid-column: 1 / -1;
+}
+
+.form-field label {
+  font-size: var(--fs-caption);
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.form-field input[type="text"],
+.form-field input[type="date"],
+.form-field select,
+.form-field textarea {
+  font-family: var(--font-family);
+  font-size: var(--fs-small);
+  color: var(--color-text-primary);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-control);
+  padding: 8px 10px;
+  width: 100%;
+}
+
+.form-field select {
+  cursor: pointer;
+}
+
+.form-field textarea {
+  resize: vertical;
+  line-height: 1.6;
+}
+
+.form-field input:hover,
+.form-field select:hover,
+.form-field textarea:hover {
+  border-color: var(--color-primary);
+}
+
+.form-field input:focus,
+.form-field select:focus,
+.form-field textarea:focus {
+  border-color: var(--color-primary);
+  outline: 2px solid var(--color-primary);
+  outline-offset: -1px;
+}
+
+.form-field select:disabled {
+  color: var(--color-text-disabled);
+  cursor: not-allowed;
+}
+
+@media (max-width: 860px) {
+  .request-form {
+    grid-template-columns: 1fr;
+  }
+}

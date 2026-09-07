@@ -768,3 +768,32 @@ Day 0/1/7 ไม่ตรวจสอบว่าซ้อนกับ workplan 
 
 ### Design Reference
 อ้างอิง `DESIGN.md` ฉบับ Earth Tone/Muji เดิม — reuse `.panel`/`.panel-header`/`.data-table`/`.badge`/`.btn`/`.btn-sm`/`.row-actions` ที่มีอยู่แล้วทั้งหมด ไม่เพิ่ม CSS class ใหม่
+
+## เพิ่มเติม 2026-09-06 (รอบ 25) — หน้าสร้าง รง.506 ใหม่ (new-506-request.html) เชื่อมต่อ Firestore จริง
+
+### Requirement ต้นทาง
+ต่อยอดจากรอบ 24 (ดูตาราง "บันทึกและยืนยัน รง.506" ใน `case-analysis.html`) — ผู้ใช้ต้องการหน้าฟอร์มแยก `new-506-request.html` ให้เจ้าหน้าที่สอบสวนโรคสร้างรายการ รง.506 ใหม่ได้จริง บันทึกเข้า Firestore ตั้งสถานะเริ่มต้นเป็น "รอพิจารณา" แล้วเด้งกลับไปหน้ารายการ — สอบถามความไม่ชัดเจนแล้ว ผู้ใช้ยืนยัน: (1) แก้ `v1` เดิมในที่ ไม่สร้าง v2, (2) ผู้แจ้ง (requester) เลือกจาก dropdown ที่ดึงจาก collection `users` จริงแบบ real-time (ไม่ hardcode ไม่ใช้ free text)
+
+ระหว่างวางแผนพบเพิ่มว่า field วันที่ (`startDate`/`endDate`/`createdAt`) ของ `SURVEILLANCE_REPORT_506` ที่ seed จริงเก็บเป็น `stringValue` ทั้งหมด ไม่ใช่ Firestore `Timestamp` ตามที่ `DATA-MODEL.md` เคยระบุไว้ — แก้เอกสารให้ตรงของจริงในรอบนี้ด้วย (ผู้ใช้ยืนยัน "ได้เลย")
+
+### Scope
+เพิ่มไฟล์ใหม่ `prototypes/v1/new-506-request.html` + `new-506-request.js`, แก้ `prototypes/v1/case-analysis.html` (เพิ่มปุ่มลิงก์เท่านั้น), แก้ `prototypes/v1/styles.css` (เพิ่ม CSS ฟอร์มแบบ minimal) — ไม่แตะ `case-analysis-506.js` เดิม
+
+### การเปลี่ยนแปลง
+1. **หน้าใหม่ `new-506-request.html`** — โครง head/left-rail/footer เหมือน `case-analysis.html` ทุกประการ (active state ที่ "Case Analysis" เพราะเป็น flow ย่อยของโมดูลเดียวกัน) มีฟอร์ม: หัวเรื่อง, เหตุผล, โรคติดต่อ (dropdown จาก `506Types`), ผู้แจ้ง (dropdown จาก `users`), วันที่เริ่มต้น (required), วันที่สิ้นสุด (ไม่บังคับ) + ปุ่มบันทึก/ยกเลิก
+2. **`new-506-request.js`** — reuse pattern จาก `case-analysis-506.js` ทุกจุด (Firebase SDK v10.13.2 CDN, `firebaseConfig` เดียวกัน, `escapeHtml`, error handling ไม่ throw) เติม dropdown แบบ real-time ด้วย `onSnapshot()`, validate required field ก่อน `addDoc()` เข้า `506Requests` ด้วย `status: "รอพิจารณา"`, `approverId`/`approverName: null`, `createdAt: new Date().toISOString()` (string ธรรมดา ไม่ใช้ Timestamp) — สำเร็จแล้ว `window.location.href = "case-analysis.html"`
+3. **ปุ่มลิงก์ใหม่** "+ สร้าง รง.506 ใหม่" ใน panel-header ของ section รง.506 ที่ `case-analysis.html` (ย้าย description ออกมาเป็นบรรทัดแยกเพื่อให้ปุ่มจัดชิดขวาได้)
+4. **`DATA-MODEL.md`** — แก้ Native Type ของ `startDate`/`endDate`/`createdAt` ใน `SURVEILLANCE_REPORT_506` จาก `Timestamp` เป็น `string` (ทำใน main loop ไม่ผ่าน subagent นี้)
+
+### Backlog/Feature ที่ไม่รวมในรอบนี้
+ไม่ตั้ง Firestore Security Rules เพิ่ม (ใช้ของเดิมจากรอบ 24), ไม่เพิ่ม validation ฝั่ง Security Rules (validate แค่ฝั่ง client), ไม่เปลี่ยนสถานะ `FEAT-ANALYSIS-07` ใน `FEATURE-LIST.md`
+
+### Assumption ที่ตั้งไว้
+- Active nav item ("Case Analysis") ทำเป็น `<a>` คลิกกลับได้แทน `<span>` แบบ non-interactive ของหน้าอื่น เพื่อให้กลับหน้ารายการสะดวกขึ้น (หน้านี้เป็นหน้าลูกของโมดูล ไม่ใช่หน้าหลัก)
+- ทดสอบ end-to-end จริงแล้ว (กรอกฟอร์ม → บันทึกเข้า Firestore จริง → redirect → ขึ้นในตาราง real-time) ลบข้อมูลทดสอบออกหลังยืนยันผลแล้ว — พบว่าชื่อผู้ใช้ `SRRT3` ใน collection `users` จริง ("สุรีลักษณ์ พุทธินำชัย") ถูกแก้ไขหลัง seed ครั้งแรกให้ต่างจาก `seed-data.js` ("สุรัลักษณ์") เล็กน้อย — เป็น denormalized snapshot คนละจุดกัน ไม่กระทบการทำงาน ยังไม่ได้แก้ให้ตรงกัน
+
+### Version
+แก้ไข `prototypes/v1` เดิมในที่ (ไม่สร้าง v2) — ยืนยันจากผู้ใช้แล้ว
+
+### Design Reference
+อ้างอิง `DESIGN.md` ฉบับ Earth Tone/Muji เดิม — reuse `.panel`/`.panel-header`/`.btn`/`.btn-primary`/`.btn-outline`/`.btn-sm`/`.filter-field`/`.report-textarea` ที่มีอยู่แล้ว เพิ่ม `.request-form`/`.form-field`/`.form-field-full` ใหม่แบบ minimal สำหรับ layout ฟอร์ม 2 คอลัมน์
