@@ -1,4 +1,16 @@
 .obsidian/
 ~$*.xlsx
 node_modules/
+
+# --- ไฟล์ตั้งค่า/คีย์ ห้ามขึ้น GitHub เด็ดขาด ---
 scripts/seed/serviceAccountKey.json
+*serviceAccountKey*.json
+*firebase-adminsdk*.json
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*credentials*.json
+*secret*.json

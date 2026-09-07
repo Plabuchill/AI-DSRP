@@ -82,3 +82,32 @@
 - `requirements-pipeline-orchestrator` เรียง 5 skill สาย requirements/planning ให้รันต่อเนื่องในคำสั่งเดียว: `requirement-builder` → `release-plan-builder` → `feature-list-builder` → `user-journey-builder` (ทำทีละ module) → `qa-doc-builder`
 
 ทั้งสอง orchestrator เช็กเอกสารที่มีอยู่ก่อนแล้วถามผู้ใช้ว่าจะข้ามขั้นตอนที่เสร็จแล้วไหม แต่**ไม่ข้ามการยืนยัน Build Plan/Ambiguity Protocol ของแต่ละ skill** ไม่มี subagent ของตัวเอง (delegate ให้ subagent ของแต่ละ skill ที่เรียกไปตามปกติ)
+
+## 7. Commands
+
+โปรเจกต์นี้ไม่มี build/lint/test tooling — `prototypes/v1/` เป็น static HTML/CSS/JS ล้วน ไม่มี bundler/framework
+
+- **เปิดดู prototype**: `npx http-server prototypes/v1 -p 8743 -c-1` แล้วเข้า `http://localhost:8743` (หรือเปิด `prototypes/v1/index.html` ตรงๆ ในเบราว์เซอร์ก็ได้ แต่บาง path relative อาจไม่ครบ)
+- **ติดตั้ง dependency ของสคริปต์เสริม**: `npm install` (มีแค่ `firebase-admin` เป็น devDependency สำหรับ `scripts/seed/`)
+- **Seed ข้อมูลตัวอย่างเข้า Firestore**: `npm run seed:firestore` — ต้องมี `scripts/seed/serviceAccountKey.json` ก่อน (ดาวน์โหลดเองจาก Firebase Console → Project Settings → Service Accounts → Generate new private key, ไฟล์นี้อยู่ใน `.gitignore` แล้ว ห้าม commit)
+
+## 8. Code Architecture
+
+- **`prototypes/v1/`** — 8 หน้า HTML แยกอิสระ (`index`, `case-intake`, `case-analysis`, `control-plan`, `field-tracking`, `asm-coordination`, `reports`, `alerts`) ใช้ `styles.css` ร่วมกัน และ left-rail navigation ที่ copy-paste ซ้ำทุกหน้า (ยังไม่มี templating/partial ตามที่ `TECH-STACK.md` วางแผนไว้) แต่ละหน้าคู่กับไฟล์ `<page>.js` แบบ classic script (IIFE) ที่ฝัง mock data array ไว้ในตัว — ทำงานออฟไลน์ได้ทั้งหมด **ยกเว้น** ข้อถัดไป
+- **ข้อยกเว้น**: `case-analysis.html` โหลดสคริปต์เพิ่มอีกตัวคือ `case-analysis-506.js` แบบ `type="module"` ซึ่งเชื่อมต่อ Firebase Firestore จริง (project `ai-dsrp`) แทน mock data สำหรับ feature "บันทึกและยืนยัน รง.506" (`FEAT-ANALYSIS-07`) — เป็นจุดเดียวใน prototype ที่ต้องมีอินเทอร์เน็ตและมี backendจริงอยู่เบื้องหลัง อ่าน/เขียนผ่าน `onSnapshot()`/`updateDoc()` ตรงจาก browser โดยไม่มี server คั่นกลาง
+- **`scripts/seed/`** — Node + `firebase-admin` (Admin SDK, API แบบ modular: `admin.cert()`/`getFirestore()` ไม่ใช่ `admin.credential.cert()`/`admin.firestore()` แบบเก่า) สำหรับ seed/จัดการข้อมูลใน Firestore โดยตรง `seed-data.js` เก็บข้อมูลตัวอย่างแยกจาก `seed-firestore.js` (logic การเขียน)
+- **Firestore field naming ไม่สม่ำเสมอโดยตั้งใจ**: entity ที่ seed ข้อมูลจริงแล้ว (`users`, `506Types`, `506Requests`) ใช้ camelCase ตรงกับโค้ดจริง ส่วน entity อื่นที่ยังเป็น conceptual design ล้วน (ยังไม่ seed) ใน `DATA-MODEL.md` คง snake_case ตาม convention เอกสารเดิม — ดูคอลัมน์ "Native Type (Firestore)" ในแต่ละ entity ของ `DATA-MODEL.md` ก่อนเขียนโค้ดที่ต้องต่อ Firestore เสมอ อย่าเดาชื่อ field
+- **เอกสารคือ source of truth ของ scope/สถาปัตยกรรมที่ตั้งใจไว้** ไม่ใช่โค้ด — โค้ดปัจจุบันยังตามหลัง `ROADMAP.md`/`FEATURE-LIST.md`/`DATA-MODEL.md`/`TECH-STACK.md` อยู่มาก (ส่วนใหญ่ยังเป็น mock, มีแค่ 1 feature ที่ต่อ backend จริง) ก่อนเพิ่มฟีเจอร์ใหม่ในโค้ดต้องเช็กเอกสารเหล่านี้ก่อนเสมอ (ดูข้อ 1-6 ด้านบน) — ห้ามอนุมานสถาปัตยกรรมจากโค้ดที่มีอยู่เพียงอย่างเดียว
+
+### Firestore Collection Glossary (`project ai-dsrp`)
+
+ชื่อ collection จริงไม่ตรงกับชื่อ entity ใน `DATA-MODEL.md` แบบตรงตัวเสมอไป (ตั้งชื่อตามที่ผู้ใช้ยืนยันตอน seed จริง ไม่ใช่ snake_case ของ entity name) — ห้ามเดา ให้ยึดตารางนี้:
+
+| Collection จริง | Entity ใน `DATA-MODEL.md` | สถานะ | คำอธิบาย |
+|---|---|---|---|
+| `users` | `USER` (placeholder) | seed แล้ว | ผู้ใช้ปัจจุบัน 3 ราย (`CUCU1`/`SRRT1`/`SRRT3`) — ยังไม่ใช่ระบบ Auth/role จริง (`FEAT-PLATFORM-02` เป็น backlog) |
+| `506Types` | `DISEASE` | seed แล้ว | ชื่อโรคติดต่อ (`66` ไข้เลือดออก, `67` ไข้เลือดออกรุนแรง, `68` โควิด-19) — **ไม่ใช่** `diseases` |
+| `506Requests` | `SURVEILLANCE_REPORT_506` | seed แล้ว | รง.506 — field เป็น camelCase (`requesterId`, `startDate` ฯลฯ) status จริงคือ **`รอพิจารณา` / `ยืนยัน` / `ไม่ยืนยัน`** (ไม่ใช่ `รออนุมัติ`/`อนุมัติ`/`ไม่อนุมัติ` — คำนี้เป็นศัพท์จาก draft แรกที่ถูกแก้ไปแล้ว อย่าใช้) |
+| `506RequestApprovalLogs` | `REPORT_506_APPROVAL_LOG` | **ยังไม่ seed** (conceptual เท่านั้น) | บันทึกความเห็นประกอบการพิจารณา รง.506 (1:N) — field ยังเป็น snake_case เดิม เพราะยังไม่มีของจริงให้ยึดตาม |
+
+ก่อนอ้างชื่อ collection/field/status ในโค้ดหรือคำตอบใดๆ ให้เช็คตารางนี้หรือ `docs/02-design/02-technical/DATA-MODEL.md` ก่อนเสมอ — ห้ามใช้ศัพท์ "leave request" ที่หลงเหลือจาก draft แรก (เช่น `leaveTypeId`, `approvals` เป็นชื่อ collection แยก, `อนุมัติ/ไม่อนุมัติ`)
