@@ -965,3 +965,57 @@ FEAT-PLATFORM-02 — prototype v1 ยังไม่มี auth guard เลย 
 
 ### Design Reference
 อ้างอิง `DESIGN.md` เดิม — reuse `.login-error`/`.btn-outline`/`.login-submit` ที่มีอยู่แล้ว เพิ่ม `#login-info` เป็น id-selector เฉพาะสำหรับ override สีให้ต่างจาก error (ใช้ `--color-success-bg` ที่มีอยู่แล้วในระบบสี ไม่เพิ่มสีใหม่)
+
+## เพิ่มเติม 2026-09-07 (รอบ 32) — Account Lockout หลังกรอกรหัสผ่านผิดครบ 5 ครั้ง (FEAT-PLATFORM-02)
+
+### Requirement ต้นทาง
+ผู้ใช้ขอ "lockin" ให้บัญชี — สอบถามความหมายแล้วยืนยันเป็น account lockout ป้องกัน brute-force: ล็อก 5 ครั้งผิดติดกัน, ปลดล็อกอัตโนมัติหลัง 15 นาที
+
+### Scope
+แก้ `prototypes/v1/login.js` เท่านั้น
+
+### การเปลี่ยนแปลง
+พบข้อจำกัดสำคัญก่อนแก้: Firestore Security Rules ปัจจุบันต้อง `request.auth != null` ถึงเขียนได้ แต่ตอน login ผิดผู้ใช้ยังไม่ auth เลยเขียนตัวนับลง Firestore ไม่ได้ — ผู้ใช้ยืนยันให้ใช้ **localStorage ของเบราว์เซอร์แทน** (เร็ว/ไม่ต้องแก้ Security Rules แต่ป้องกันได้แค่ระดับเบราว์เซอร์/เครื่องเดียวกัน ไม่ใช่ล็อกระดับบัญชีจริงฝั่ง server)
+
+1. เก็บ state ต่อบัญชี (`attempts`, `lockedUntil`) ใน `localStorage` คีย์ `ai-dsrp-login-lockout:{email}`
+2. ก่อน sign-in ทุกครั้ง เช็ก `lockedUntil` ก่อน ถ้ายังไม่หมดอายุ บล็อกทันทีไม่ยิง Firebase Auth เลย (ประหยัด quota + กันบล็อกด้วยรหัสผ่านถูกก็ยังเข้าไม่ได้ระหว่างล็อก)
+3. Sign-in สำเร็จ → รีเซ็ต state เป็น 0/null; ล้มเหลว → เพิ่ม `attempts` และแจ้งจำนวนโอกาสที่เหลือ; ครบ 5 → ตั้ง `lockedUntil` = ตอนนี้ + 15 นาที
+
+### Assumption ที่ตั้งไว้
+ทดสอบ end-to-end จริงครบ (ผิด 1-4 ครั้ง → แจ้งโอกาสที่เหลือ, ผิดครั้งที่ 5 → ล็อก, ล็อกอยู่แม้รหัสถูกก็ยังบล็อก, ปลดล็อกอัตโนมัติหลังหมดเวลา → login สำเร็จ) โดยปลอมเวลา `lockedUntil` ผ่าน `localStorage` ให้หมดอายุแล้วเพื่อทดสอบขั้นตอนสุดท้ายโดยไม่ต้องรอจริง 15 นาที
+
+### Version
+แก้ไข `prototypes/v1` เดิมในที่ (ไม่สร้าง v2)
+
+### Design Reference
+ไม่มี UI ใหม่ — ใช้ `#login-error` เดิมแสดงข้อความทั้งหมด
+
+## เพิ่มเติม 2026-09-07 (รอบ 33) — สมัครสมาชิก + อนุมัติโดย Manager (FEAT-PLATFORM-02)
+
+### Requirement ต้นทาง
+ผู้ใช้ขอ "ช่องสมัครสมาชิก" เพิ่มจากระบบ login เดิม (รอบ 30-31) โดยให้ผู้ใช้ที่มี `role = manager` ใน collection `users` เป็นผู้อนุมัติ — สอบถามความไม่ชัดเจนแล้วผู้ใช้ยืนยัน: (1) ฟอร์มสมัครเก็บแค่ชื่อ/อีเมล/รหัสผ่าน role กำหนดตอนอนุมัติแทน, (2) สร้างหน้าใหม่ `user-approval.html` แยกต่างหาก, (3) ปฏิเสธคำขอ = เปลี่ยน status เป็น rejected เท่านั้น ไม่ลบบัญชี Firebase Auth จริง (client-side ลบบัญชีคนอื่นไม่ได้ ต้องมี Cloud Function ซึ่งยังไม่มีในโปรเจกต์นี้)
+
+### Scope
+เพิ่มไฟล์ใหม่ `signup.html`/`signup.js`, `user-approval.html`/`user-approval.js` — แก้ `login.html`/`login.js` (เพิ่มลิงก์สมัครสมาชิก + เช็ก status ก่อนปล่อยเข้าใช้งาน)
+
+### การเปลี่ยนแปลง
+1. **`signup.html`/`signup.js`** — ฟอร์มชื่อ/อีเมล/รหัสผ่าน → `createUserWithEmailAndPassword()` สร้างบัญชี Firebase Auth (sign-in ให้อัตโนมัติ) → สร้าง Firestore `users/{uid}` ด้วย `role: null, status: "pending"` → `signOut()` ทันที (ไม่ให้ใช้งานก่อนอนุมัติ) → กลับ `login.html?signup=success`
+2. **`login.js`** — หลัง sign-in สำเร็จ query `users` ด้วย email เช็ก `status`: `pending`/`rejected` → sign out ทันที + แจ้งเตือน, ไม่มี status หรือ `approved` → เข้าใช้งานปกติ (แยก error handling ส่วนนี้ออกจาก catch ของ "รหัสผ่านผิด" เพื่อไม่ให้ error อื่นถูกนับเป็นความพยายาม lockout ผิดพลาด)
+3. **`user-approval.html`/`user-approval.js`** — แสดงรายการ `status = pending` แบบ real-time (`onSnapshot`) พร้อม dropdown เลือก role (`team1`/`team3` — ไม่มีตัวเลือก manager) ปุ่ม "อนุมัติ" (`status: approved` + บันทึก role ที่เลือก) และ "ปฏิเสธ" (`status: rejected` เท่านั้น ไม่แตะ Firebase Auth)
+4. อัปเดต 3 บัญชีเดิม (CUCU1/SRRT1/SRRT3) ให้มี `status: "approved"` ผ่าน Admin SDK ก่อน ไม่งั้นจะถูกบล็อกด้วยเงื่อนไขใหม่นี้
+
+### Backlog/Feature ที่ไม่รวมในรอบนี้
+- ไม่จำกัดสิทธิ์การเข้าถึง `user-approval.html` ว่าต้องเป็น manager เท่านั้น (ยังไม่มี role-based route protection ในระบบ — ตรงกับ gap ที่ `ACL.md` ระบุไว้แล้ว) — ใครก็ตามที่ login ได้เข้าหน้านี้ได้เหมือนกันหมด
+- ไม่ลบบัญชี Firebase Auth จริงตอนปฏิเสธ (ต้องมี Cloud Function ในอนาคตถ้าต้องการ)
+- ไม่เพิ่มลิงก์ไปหน้า `user-approval.html` ใน left-rail ของอีก 8 หน้าเดิม (เข้าผ่าน URL ตรงเท่านั้นตอนนี้)
+
+### Assumption ที่ตั้งไว้
+- doc ID ของ `users` สำหรับผู้สมัครใหม่ใช้ Firebase Auth UID ตรงๆ (ต่างจาก 3 บัญชีเดิมที่ใช้ business code เช่น `CUCU1`) — ไม่กระทบ logic เพราะทุกจุดค้นหาด้วย query email ไม่เคยอ้าง doc ID ตรงๆ
+- ทดสอบ end-to-end จริงครบ (สมัคร → ถูกบล็อก pending → manager อนุมัติพร้อมเลือก role → login ได้จริง) ลบบัญชีทดสอบหลังยืนยันผลแล้ว
+- **พบระหว่างทดสอบ (ไม่เกี่ยวกับโค้ดรอบนี้)**: บัญชี Firebase Auth เดิมของ manager (`cucu1@ai-dsrp.local`) หายไปจากระบบ และ Firestore doc `CUCU1` ถูกแก้ email เป็น `suchavade.chai@gmail.com` แทน (มีบัญชี Auth ใหม่ผูกอยู่แล้ว) — คาดว่ามีการแก้ไขตรงใน Firebase Console นอกเซสชันนี้ ไม่ใช่จากโค้ด/สคริปต์ใดๆ ที่เขียนในรอบนี้หรือรอบก่อนหน้า ได้ตั้งรหัสผ่านชั่วคราว `TempTest123!` ให้บัญชีนี้เพื่อทดสอบ — **ควรเปลี่ยนรหัสผ่านนี้เองหลังจากนี้**
+
+### Version
+แก้ไข `prototypes/v1` เดิมในที่ (ไม่สร้าง v2)
+
+### Design Reference
+อ้างอิง `DESIGN.md` เดิม — `signup.html` reuse layout เดียวกับ `login.html` ทุกประการ, `user-approval.html` reuse โครง left-rail/`.panel`/`.data-table`/`.btn` จากหน้าอื่นที่มีอยู่แล้วทั้งหมด ไม่เพิ่ม CSS ใหม่

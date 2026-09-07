@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>สมัครสมาชิก — AI-DSRP</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="login-shell">
+  <div class="login-card">
+    <div class="login-brand">
+      <span class="login-brand-mark">ai-dsrp</span>
+    </div>
+    <h1 class="login-title">สมัครสมาชิกใหม่</h1>
+    <p class="body-secondary login-subtitle">สมัครแล้วต้องรอหัวหน้า (Manager) อนุมัติก่อน จึงจะเข้าใช้งานระบบได้</p>
+
+    <form id="signup-form" class="login-form" novalidate>
+      <div class="form-field">
+        <label for="signup-name">ชื่อ-สกุล</label>
+        <input type="text" id="signup-name" name="name" autocomplete="name" placeholder="เช่น สมชาย ใจดี" required>
+      </div>
+
+      <div class="form-field">
+        <label for="signup-email">อีเมล</label>
+        <input type="email" id="signup-email" name="email" autocomplete="username" placeholder="เช่น somchai@ai-dsrp.local" required>
+      </div>
+
+      <div class="form-field">
+        <label for="signup-password">รหัสผ่าน</label>
+        <input type="password" id="signup-password" name="password" autocomplete="new-password" placeholder="อย่างน้อย 6 ตัวอักษร" required>
+      </div>
+
+      <p id="signup-error" class="login-error" role="alert" style="display:none;"></p>
+
+      <button type="submit" class="btn btn-primary login-submit" id="btn-signup">สมัครสมาชิก</button>
+      <a class="btn btn-outline login-submit" href="login.html">กลับไปหน้าเข้าสู่ระบบ</a>
+    </form>
+  </div>
+
+  <footer class="footer login-footer">
+    AI Disease Surveillance &amp; Response Platform — Prototype v1 · ข้อมูลทั้งหมดเป็นข้อมูลจำลองเพื่อการสาธิตเท่านั้น
+  </footer>
+</div>
+<script type="module" src="signup.js"></script>
+</body>
+</html>
