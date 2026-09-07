@@ -3,23 +3,12 @@
 // (Firebase SDK import, firebaseConfig, escapeHtml, error handling)
 // field ตรงกับ DATA-MODEL.md (SURVEILLANCE_REPORT_506): camelCase ทั้งหมด, วันที่เป็น string ธรรมดา (ไม่ใช้ Timestamp)
 
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js";
 import {
-  getFirestore,
   collection,
   onSnapshot,
   addDoc
 } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
-
-const firebaseConfig = {
-  apiKey: "AIzaSyCURDU09t4XimMJJS3-2tMJ03R_UG3eHHA",
-  authDomain: "ai-dsrp.firebaseapp.com",
-  projectId: "ai-dsrp",
-  storageBucket: "ai-dsrp.firebasestorage.app",
-  messagingSenderId: "1009928200028",
-  appId: "1:1009928200028:web:35c910cdf1b574d5056b99",
-  measurementId: "G-E94M9B9195"
-};
+import { db } from "./firebase-init.js";
 
 function escapeHtml(value) {
   return String(value == null ? "" : value)
@@ -39,16 +28,6 @@ function init() {
   const endDateInput = document.getElementById("end-date-input");
   const saveBtn = document.getElementById("btn-save-request");
   if (!saveBtn) return; // หน้าอื่นไม่มี element นี้
-
-  let app;
-  let db;
-  try {
-    app = initializeApp(firebaseConfig);
-    db = getFirestore(app);
-  } catch (err) {
-    statusEl.textContent = "เชื่อมต่อ Firebase ไม่สำเร็จ: " + err.message;
-    return;
-  }
 
   let diseasesLoaded = false;
   let requestersLoaded = false;

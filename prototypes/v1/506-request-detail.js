@@ -5,24 +5,13 @@
 // สำคัญ: ปุ่มยืนยัน/ไม่ยืนยันในหน้านี้แก้เฉพาะ field "status" เท่านั้น — จงใจไม่แตะ
 // approverId/approverName หรือ field อื่นใด (ต่างจาก case-analysis-506.js ที่แก้ approver ด้วย)
 
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js";
 import {
-  getFirestore,
   doc,
   onSnapshot,
   updateDoc,
   deleteDoc
 } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
-
-const firebaseConfig = {
-  apiKey: "AIzaSyCURDU09t4XimMJJS3-2tMJ03R_UG3eHHA",
-  authDomain: "ai-dsrp.firebaseapp.com",
-  projectId: "ai-dsrp",
-  storageBucket: "ai-dsrp.firebasestorage.app",
-  messagingSenderId: "1009928200028",
-  appId: "1:1009928200028:web:35c910cdf1b574d5056b99",
-  measurementId: "G-E94M9B9195"
-};
+import { db } from "./firebase-init.js";
 
 const STATUS_BADGE = {
   "รอพิจารณา": "badge-warning",
@@ -64,16 +53,6 @@ function init() {
   const id = new URLSearchParams(window.location.search).get("id");
   if (!id) {
     statusEl.textContent = "ไม่พบรหัสรายการ";
-    return;
-  }
-
-  let app;
-  let db;
-  try {
-    app = initializeApp(firebaseConfig);
-    db = getFirestore(app);
-  } catch (err) {
-    statusEl.textContent = "เชื่อมต่อ Firebase ไม่สำเร็จ: " + err.message;
     return;
   }
 

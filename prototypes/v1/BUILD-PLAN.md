@@ -906,3 +906,37 @@ FEAT-ANALYSIS-07 — ต่อจากรอบ 26 ที่สร้างห�
 
 ### Design Reference
 reuse class เดิมทั้งหมด (`.btn`, `.btn-outline`) ไม่มีการเพิ่ม/แก้ CSS ใหม่
+
+---
+
+## เพิ่มเติม 2026-09-07 (รอบ 30) — ระบบ login ด้วย Firebase Authentication (Email/Password) ครอบคลุมทั้ง 10 หน้า (FEAT-PLATFORM-02)
+
+### Requirement ต้นทาง
+FEAT-PLATFORM-02 — prototype v1 ยังไม่มี auth guard เลย ทุกหน้าเปิดดูได้อิสระโดยไม่ต้อง login และ `case-analysis-506.js` เดิม hardcode ผู้กดยืนยัน/ไม่ยืนยัน รง.506 เป็น `CURRENT_APPROVER` คงที่ (CUCU1/สุชาวดี ชัยวรรณะ) ทั้งที่ Firebase Auth มีบัญชีจริงผูกกับ collection `users` อยู่แล้ว (`cucu1@ai-dsrp.local`, `srrt1@ai-dsrp.local`, `srrt3@ai-dsrp.local`)
+
+### Scope
+แก้ไข `prototypes/v1` เดิมในที่ (ไม่สร้าง v2) — เพิ่มระบบ login (ไม่มี sign-up) ครอบคลุมทั้ง 10 หน้า: `index.html`, `case-intake.html`, `case-analysis.html`, `control-plan.html`, `field-tracking.html`, `asm-coordination.html`, `reports.html`, `alerts.html`, `new-506-request.html`, `506-request-detail.html`
+
+### รายละเอียด
+1. **`firebase-init.js` (ใหม่)** — จุดเดียวที่ประกาศ `firebaseConfig`/`initializeApp`/`getFirestore`/`getAuth` แล้ว export `app`/`db`/`auth` ให้ไฟล์อื่น import ใช้ร่วมกัน
+2. **Refactor `case-analysis-506.js`, `new-506-request.js`, `506-request-detail.js`** — ลบ `firebaseConfig`/`initializeApp`/`getFirestore(app)` ที่เคยประกาศซ้ำกัน 3 ที่ออกทั้งหมด เปลี่ยนเป็น `import { db } from "./firebase-init.js";` (และ `import { auth, db } from "./firebase-init.js";` ในไฟล์ที่ต้องรู้ผู้ใช้ที่ login ด้วย) — ไม่แตะ logic query/render/validate เดิมเลย
+3. **`login.html` + `login.js` (ใหม่)** — หน้า login แบบสแตนด์อโลน (ไม่มี left rail) ฟอร์ม email/password ตามสไตล์ DESIGN.md เดิม (reuse `.form-field`/`.panel` pattern), submit เรียก `signInWithEmailAndPassword(auth, email, password)` สำเร็จ → redirect `index.html`, ล้มเหลว → ข้อความ "อีเมลหรือรหัสผ่านไม่ถูกต้อง" ใต้ฟอร์ม (ไม่ throw)
+4. **`auth-guard.js` (ใหม่)** — import ในทุกหน้ายกเว้น `login.html`: `onAuthStateChanged` เด้งกลับ `login.html` ถ้ายังไม่ login, query collection `users` ด้วย `auth.currentUser.email` มาเติมชื่อ/role/อักษรย่อ avatar ลงบล็อก `.rail-user`, ผูกปุ่ม `#btn-logout` ให้ `signOut()` แล้วเด้งกลับ `login.html`
+5. **แก้บล็อก `.rail-user` ในทุก 10 หน้า** ให้ตรงกัน — ค่าเริ่มต้นเปลี่ยนจาก hardcode "สมศักดิ์ สุขวัฒน์"/"เจ้าหน้าที่เฝ้าระวังโรค" เป็น placeholder "กำลังโหลด..."/"--" (auth-guard.js เติมค่าจริงหลัง login สำเร็จ) เพิ่มปุ่ม "ออก" (`#btn-logout`, class `btn btn-outline btn-sm`) ต่อท้าย
+6. **เพิ่ม `<script type="module" src="auth-guard.js"></script>`** ก่อนปิด `</body>` ในทุก 10 หน้า (หน้าที่มี script module อื่นอยู่แล้ว เช่น `case-analysis.html`/`new-506-request.html`/`506-request-detail.html` เพิ่มเป็น script แยกต่างหาก ไม่แทนที่ของเดิม)
+7. **แทนที่ `CURRENT_APPROVER` hardcode ใน `case-analysis-506.js`** ด้วยฟังก์ชัน async `getCurrentUser()` ที่ query collection `users` ด้วย `auth.currentUser.email` แล้ว return `{ id, name }` ใช้แทนตอนกดยืนยัน/ไม่ยืนยัน (`updateDoc` เขียน `approverId`/`approverName` จากผู้ใช้ที่ login จริง) — ไม่แตะ dropdown "ผู้แจ้ง" ใน `new-506-request.js` (คนละ concept)
+8. **CSS**: ขยาย selector `.form-field input[...]` ให้ครอบคลุม `type="email"`/`type="password"` (ใช้กับหน้า login), เพิ่ม `.rail-user .btn-sm` (flex-shrink:0, white-space:nowrap, padding กระชับ) และซ่อนปุ่ม logout พร้อม `.rail-user-info` ในโหมด collapsed rail (`max-width: 960px`) กันไม่ให้ sidebar แคบแตก layout, เพิ่ม `.login-shell`/`.login-card`/`.login-brand-mark`/`.login-form`/`.login-error`/`.login-submit`/`.login-footer` สำหรับหน้า login โดยเฉพาะ (ตั้งชื่อ class แยกจาก `.rail-brand-mark` เพื่อไม่ให้โดน media query ของ side-rail ที่ซ่อน `.rail-brand-mark` ตอนจอแคบกระทบ)
+
+### Backlog/Feature ที่ไม่รวมในรอบนี้
+สมัครสมาชิก (sign-up), การจำกัดสิทธิ์ตาม role ในระดับ UI (แสดง role ตรงๆ ไปก่อน manager/team1/team3 เพราะยังไม่มี role label ภาษาไทยที่เป็นทางการ), Firestore Security Rules (ผู้ใช้ตั้งเองที่ Console), การ sync ไปยัง `DATA-MODEL.md`/`TECH-STACK.md`/`HIGH-LEVEL-ARCHITECTURE.md`
+
+### Assumption ที่ตั้งไว้
+- `new-506-request.js` เดิมไม่มีการ hardcode `CURRENT_APPROVER` อยู่แล้ว (มีแต่ dropdown "ผู้แจ้ง" ที่เลือกจาก collection `users` โดยตรง) จึงไม่มีจุดใดในไฟล์นี้ที่ต้องแทนที่ด้วย `getCurrentUser()` ตามคำสั่ง — ปล่อยไฟล์นี้ไว้ตามเดิม (แก้เฉพาะ refactor `firebase-init.js` ตามข้อ 2)
+- Role แสดงผลใน `.rail-user-role` เป็นค่าดิบจาก field `role` ใน Firestore (เช่น `manager`, `team1`, `team3`) ยังไม่แปลเป็นภาษาไทย เพราะยังไม่มี mapping ที่เป็นทางการ
+- ปุ่ม logout ใช้ label สั้น "ออก" (ไม่ใช่ "ออกจากระบบ" เต็ม) เพื่อไม่ให้ sidebar กว้าง 232px แตก layout เดิม — ใส่ `title="ออกจากระบบ"` ไว้เป็น tooltop เต็มความหมาย
+
+### Version
+แก้ไข `prototypes/v1` เดิมในที่ (ไม่สร้าง v2) — ตามคำสั่งผู้ใช้
+
+### Design Reference
+อ้างอิง `DESIGN.md` เดิม (Earth Tone + Minimalist + Muji) ให้เข้าชุดกับหน้าอื่น — หน้า login reuse `.form-field`/`.panel`/`.btn` pattern ที่มีอยู่แล้ว ไม่สร้าง component ใหม่นอกเหนือ layout centered card

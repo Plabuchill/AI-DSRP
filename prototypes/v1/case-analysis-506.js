@@ -2,29 +2,28 @@
 // ต่างจากส่วนอื่นของหน้านี้ (mock data ใน case-analysis.js) — ส่วนนี้ต้องมีอินเทอร์เน็ตถึงจะทำงานได้
 // field ตรงกับ DATA-MODEL.md (SURVEILLANCE_REPORT_506) และ scripts/seed/seed-data.js: camelCase ทั้งหมด
 
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js";
 import {
-  getFirestore,
   collection,
   onSnapshot,
   doc,
-  updateDoc
+  updateDoc,
+  query,
+  where,
+  getDocs
 } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
+import { auth, db } from "./firebase-init.js";
 
-const firebaseConfig = {
-  apiKey: "AIzaSyCURDU09t4XimMJJS3-2tMJ03R_UG3eHHA",
-  authDomain: "ai-dsrp.firebaseapp.com",
-  projectId: "ai-dsrp",
-  storageBucket: "ai-dsrp.firebasestorage.app",
-  messagingSenderId: "1009928200028",
-  appId: "1:1009928200028:web:35c910cdf1b574d5056b99",
-  measurementId: "G-E94M9B9195"
-};
-
-// ยังไม่มีระบบ login จริงในโปรเจกต์นี้ (FEAT-PLATFORM-02 ยังเป็น backlog)
-// ใช้ผู้ใช้ manager ที่ seed ไว้แล้ว (CUCU1/สุชาวดี ชัยวรรณะ) เป็นผู้กดยืนยัน/ไม่ยืนยันแทนไปก่อน
-// ต้องเปลี่ยนเป็นค่าจาก session ผู้ใช้จริงเมื่อมี Auth
-const CURRENT_APPROVER = { id: "CUCU1", name: "สุชาวดี ชัยวรรณะ" };
+// FEAT-PLATFORM-02 — ผู้กดยืนยัน/ไม่ยืนยัน คือผู้ใช้ที่ login อยู่จริง (ไม่ใช่ค่า hardcode อีกต่อไป)
+// query collection "users" ด้วยอีเมลของผู้ใช้ที่ login (auth.currentUser.email) ทุกครั้งที่ต้องใช้
+async function getCurrentUser() {
+  const current = auth.currentUser;
+  if (!current) return { id: "", name: "" };
+  const q = query(collection(db, "users"), where("email", "==", current.email));
+  const snap = await getDocs(q);
+  if (snap.empty) return { id: "", name: current.email || "" };
+  const userDoc = snap.docs[0];
+  return { id: userDoc.id, name: userDoc.data().name };
+}
 
 const STATUS_BADGE = {
   "รอพิจารณา": "badge-warning",
@@ -51,16 +50,6 @@ function init() {
   const statusEl = document.getElementById("report506-status");
   const tbodyEl = document.getElementById("report506-tbody");
   if (!tbodyEl) return; // หน้าอื่นไม่มี element นี้
-
-  let app;
-  let db;
-  try {
-    app = initializeApp(firebaseConfig);
-    db = getFirestore(app);
-  } catch (err) {
-    statusEl.textContent = "เชื่อมต่อ Firebase ไม่สำเร็จ: " + err.message;
-    return;
-  }
 
   function renderRows(docs) {
     if (docs.length === 0) {
@@ -100,10 +89,11 @@ function init() {
 
   async function decide(reportId, newStatus) {
     try {
+      const currentUser = await getCurrentUser();
       await updateDoc(doc(db, "506Requests", reportId), {
         status: newStatus,
-        approverId: CURRENT_APPROVER.id,
-        approverName: CURRENT_APPROVER.name
+        approverId: currentUser.id,
+        approverName: currentUser.name
       });
     } catch (err) {
       statusEl.textContent = "บันทึกไม่สำเร็จ: " + err.message + " (ตรวจสอบว่าตั้ง Firestore Security Rules ให้เขียนได้แล้วหรือยัง)";

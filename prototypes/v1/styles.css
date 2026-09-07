@@ -242,6 +242,12 @@ main.content-wrap {
   gap: 10px;
 }
 
+.rail-user .btn-sm {
+  flex-shrink: 0;
+  white-space: nowrap;
+  padding: 4px 8px;
+}
+
 .rail-user .avatar {
   width: 32px;
   height: 32px;
@@ -835,6 +841,10 @@ main.content-wrap {
   }
   .rail-user {
     justify-content: center;
+  }
+  .rail-user .btn-sm {
+    padding: 4px 6px;
+    font-size: var(--fs-caption);
   }
 }
 
@@ -2397,6 +2407,8 @@ main.content-wrap {
 
 .form-field input[type="text"],
 .form-field input[type="date"],
+.form-field input[type="email"],
+.form-field input[type="password"],
 .form-field select,
 .form-field textarea {
   font-family: var(--font-family);
@@ -2485,4 +2497,75 @@ main.content-wrap {
     grid-template-columns: 1fr;
     gap: 4px;
   }
+}
+
+/* =========================================================
+   Login page (FEAT-PLATFORM-02) — standalone, ไม่มี left rail
+   ========================================================= */
+.login-shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--side-padding);
+  background: var(--color-background);
+}
+
+.login-card {
+  width: 100%;
+  max-width: 380px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-panel);
+  box-shadow: var(--shadow-card);
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.login-brand {
+  text-align: center;
+}
+
+.login-brand-mark {
+  font-family: "Inter", system-ui, sans-serif;
+  font-weight: 500;
+  font-size: var(--fs-h2);
+  color: var(--color-text-primary);
+}
+
+.login-title {
+  text-align: center;
+}
+
+.login-subtitle {
+  text-align: center;
+  margin-bottom: var(--space-2);
+}
+
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.login-error {
+  margin: 0;
+  font-size: var(--fs-small);
+  color: var(--color-danger);
+  background: var(--color-danger-bg);
+  border-radius: var(--radius-control);
+  padding: 8px 10px;
+}
+
+.login-submit {
+  width: 100%;
+  margin-top: var(--space-1);
+}
+
+.login-footer {
+  text-align: center;
 }
