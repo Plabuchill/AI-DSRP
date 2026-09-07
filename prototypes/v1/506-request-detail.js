@@ -10,7 +10,8 @@ import {
   getFirestore,
   doc,
   onSnapshot,
-  updateDoc
+  updateDoc,
+  deleteDoc
 } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -58,6 +59,7 @@ function init() {
   const decisionActionsEl = document.getElementById("detail-decision-actions");
   const confirmBtn = document.getElementById("btn-confirm");
   const rejectBtn = document.getElementById("btn-reject");
+  const deleteBtn = document.getElementById("btn-delete");
 
   const id = new URLSearchParams(window.location.search).get("id");
   if (!id) {
@@ -114,6 +116,20 @@ function init() {
 
   confirmBtn.addEventListener("click", function () { decide("ยืนยัน"); });
   rejectBtn.addEventListener("click", function () { decide("ไม่ยืนยัน"); });
+
+  deleteBtn.addEventListener("click", async function () {
+    if (!window.confirm("ยืนยันลบรายการนี้ใช่ไหม? การลบไม่สามารถย้อนกลับได้")) {
+      return;
+    }
+    deleteBtn.disabled = true;
+    try {
+      await deleteDoc(doc(db, "506Requests", id));
+      window.location.href = "case-analysis.html";
+    } catch (err) {
+      statusEl.textContent = "ลบไม่สำเร็จ: " + err.message + " (ตรวจสอบว่าตั้ง Firestore Security Rules ให้ลบได้แล้วหรือยัง)";
+      deleteBtn.disabled = false;
+    }
+  });
 
   onSnapshot(
     doc(db, "506Requests", id),

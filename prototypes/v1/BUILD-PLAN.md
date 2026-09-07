@@ -854,3 +854,55 @@ FEAT-INTAKE-02 — กลไก "ปรับพิกัดด้วยมื�
 
 ### Design Reference
 อ้างอิง `DESIGN.md` ข้อ 3 (Input/Form: label บนสุด, กรอบ 1px สี border, radius 4px) — reuse `.input-inline`/`.edit-field-row`/`.row-actions`/`.badge`/`.btn-primary`/`.btn-outline`/`.btn-sm` ที่มีอยู่แล้วทั้งหมด ไม่เพิ่มสีใหม่ตามข้อจำกัดของโจทย์
+
+## เพิ่มเติม 2026-09-07 (รอบ 28) — ขยาย "ปรับพิกัดด้วยมือ" ให้ใช้ได้ทุกแถว ไม่จำกัดเฉพาะ geoAccuracy ต่ำ (FEAT-INTAKE-02)
+
+### Requirement ต้นทาง
+FEAT-INTAKE-02 — ต่อจากรอบ 27 ที่ทำให้กรอกละติจูด/ลองจิจูดจริงได้แต่จำกัดเฉพาะแถว `geoAccuracy === "low"` ผู้ใช้ต้องการขยายให้ปรับพิกัดด้วยมือได้กับ**ทุกแถว** รวมถึงแถว `geoAccuracy === "high"` ด้วย
+
+### Scope
+`prototypes/v1/case-intake.js` เท่านั้น — ไม่แตะ CSS, ไม่แตะฟิลด์ข้อมูลทั่วไปอื่น
+
+### การเปลี่ยนแปลง
+1. `geoCellHtml(c)` — ลบเงื่อนไข early-return `if (c.geoAccuracy === "high") return ...` ที่บล็อกไม่ให้เข้าสู่ edit mode/adjusted state ย้าย branch "พิกัดแม่นยำสูง" ไปเป็นเงื่อนไขสุดท้าย (หลัง `_editingGeo` และ `geoAdjusted`) พร้อมเพิ่มปุ่ม "ปรับพิกัดด้วยมือ" (`.btn-start-geo`) ต่อท้ายข้อความ ซึ่งเดิมไม่มีปุ่มเลย — branch `geoAccuracy === "low"` (ปุ่มเดิม) และ branch `_editingGeo`/`geoAdjusted` ไม่เปลี่ยนแปลง
+2. `toggleGeoAdjust(id)` — ลบเงื่อนไข `c.geoAccuracy !== "low"` เหลือแค่ `if (!c) return;`
+3. `startGeoEdit(id)` — ลบเงื่อนไข `c.geoAccuracy !== "low"` เหลือแค่ `if (!c) return;`
+4. `saveGeoCoordinates(id, lat, lng)` — ตรวจสอบแล้วว่าไม่มีเงื่อนไข geoAccuracy บล็อกอยู่ตั้งแต่รอบ 27 ไม่ต้องแก้
+5. `buildSpotMapSVG()` — แก้ตัวแปร `adjusted` จาก `c.geoAccuracy === "low" && c.geoAdjusted` เป็น `c.geoAdjusted` ตรงๆ (ไม่ผูกกับ geoAccuracy อีกต่อไป) เพื่อให้แถว high-accuracy ที่ถูกปรับพิกัดด้วยมือแสดงสีหมุด "ปรับแล้ว" (#7A6A53) แทนสีเขียว "พิกัดแม่นยำสูง" (#8A9A5B) ที่ไม่ตรงกับสถานะจริง
+
+### Backlog/Feature ที่ไม่รวมในรอบนี้
+เหมือนรอบ 27 — ไม่ต่อ Geocoding API จริง ไม่ใช้ map tile ภายนอก
+
+### Assumption ที่ตั้งไว้
+ไม่มี — การเปลี่ยนแปลงทั้งหมดระบุชัดเจนในคำสั่งของผู้ใช้ ไม่ต้องตีความเพิ่ม
+
+### Version
+แก้ไข `prototypes/v1` เดิมในที่ (ไม่สร้าง v2) — ยืนยันจากผู้ใช้แล้ว
+
+### Design Reference
+reuse class เดิมทั้งหมด (`.geo-note`, `.badge-flag`, `.btn-outline`, `.btn-sm`, `.btn-start-geo`) ไม่มีการเพิ่ม/แก้ CSS ใหม่
+
+## เพิ่มเติม 2026-09-07 (รอบ 29) — ปุ่มลบรายการ รง.506 ในหน้ารายละเอียด (FEAT-ANALYSIS-07)
+
+### Requirement ต้นทาง
+FEAT-ANALYSIS-07 — ต่อจากรอบ 26 ที่สร้างหน้า `506-request-detail.html` พร้อมปุ่มยืนยัน/ไม่ยืนยัน ผู้ใช้ต้องการเพิ่มปุ่มลบรายการ รง.506 ในหน้านี้ด้วย
+
+### Scope
+`prototypes/v1/506-request-detail.html` และ `prototypes/v1/506-request-detail.js` เท่านั้น — ไม่แตะ `case-analysis.html`/`case-analysis-506.js`/`new-506-request.html`/`new-506-request.js`, ไม่แตะ CSS
+
+### การเปลี่ยนแปลง
+1. `506-request-detail.html` — เพิ่มปุ่ม `<button id="btn-delete" class="btn btn-outline">ลบรายการนี้</button>` ใน `.report-actions` แยกจากกลุ่มปุ่มยืนยัน/ไม่ยืนยัน (`#detail-decision-actions`) วางไว้ก่อนลิงก์ "← กลับหน้ารายการ" — แสดงตลอดทุกสถานะ ไม่ผูกกับเงื่อนไข "รอพิจารณา"
+2. `506-request-detail.js` — import `deleteDoc` เพิ่มจาก firebase-firestore.js (เวอร์ชัน 10.13.2 เดียวกับที่ใช้อยู่แล้ว), เพิ่ม event listener ให้ `#btn-delete`: แสดง `window.confirm(...)` ก่อนเสมอ ถ้ายืนยันจึง `deleteDoc(doc(db, "506Requests", id))` แล้ว redirect ไป `case-analysis.html`; ถ้า error จะแสดงข้อความผ่าน `statusEl` (pattern เดียวกับ error handling ของ `decide()`) ไม่ throw ไม่ crash; ถ้ากด Cancel ใน confirm — ไม่ทำอะไรเลย
+3. ไม่แตะปุ่มยืนยัน/ไม่ยืนยันหรือ logic `updateDoc` เดิมในไฟล์เลย
+
+### Backlog/Feature ที่ไม่รวมในรอบนี้
+ไม่ตั้ง Firestore Security Rules เพิ่มสำหรับ delete permission (ใช้ของเดิมจากรอบ 24), ไม่เพิ่มปุ่มลบในหน้าอื่น (`case-analysis.html`)
+
+### Assumption ที่ตั้งไว้
+ไม่มี — การเปลี่ยนแปลงทั้งหมดระบุชัดเจนในคำสั่งของผู้ใช้ ไม่ต้องตีความเพิ่ม
+
+### Version
+แก้ไข `prototypes/v1` เดิมในที่ (ไม่สร้าง v2) — ยืนยันจากผู้ใช้แล้ว
+
+### Design Reference
+reuse class เดิมทั้งหมด (`.btn`, `.btn-outline`) ไม่มีการเพิ่ม/แก้ CSS ใหม่
