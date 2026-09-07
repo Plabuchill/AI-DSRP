@@ -42,7 +42,7 @@
 | Frontend framework | **Vanilla JS + Node.js/EJS (หรือ Handlebars) partials** — multi-page app (MPA) ต่อยอดจาก `prototypes/v1/` โดยแยก HTML ที่ซ้ำ 8 หน้าออกเป็น partial/include | ทีมรู้ Vanilla JS อยู่แล้ว 100% (Learning curve สูงสุด, น้ำหนัก 30%); ตอบโจทย์ที่ต้องการ "คง multi-page เหมือนเดิมแต่ลด copy-paste ด้วย component/partial" (สัมภาษณ์ข้อ 7); ไม่มี build step เพิ่ม เข้ากับ self-host on-prem ที่ทีม IT เดิมดูแล (สัมภาษณ์ข้อ 1, 2, 3); ใช้ runtime เดียวกับ backend (Node.js) ทำให้ทั้ง stack เป็นภาษา/runtime เดียว (JS/TS) ลดภาระดูแลของทีม IT เดิมตามที่ยืนยันไว้ (สัมภาษณ์ข้อ 1) | jQuery + Bootstrap (คะแนน 4.25), Alpine.js + htmx (3.95), Vue.js 3 per-page (3.90), Astro (3.60) — ดู Decision Rationale หัวข้อ 4 | FEAT-DASH, FEAT-INTAKE, FEAT-ANALYSIS, FEAT-CONTROL, FEAT-TRACK, FEAT-ASM, FEAT-REPORT, FEAT-ALERT |
 | Backend/API runtime + framework | **Node.js + Express (หรือ Fastify)** | ทีมถนัด JS/TS อยู่แล้ว (Learning curve สูงสุด, น้ำหนัก 30%, สอดคล้องสัมภาษณ์ข้อ 1); self-host ง่ายที่สุดในกลุ่มที่พิจารณา เข้ากับเงื่อนไข self-host on-prem/ศูนย์ข้อมูลราชการที่ยืนยันแล้ว (สัมภาษณ์ข้อ 2, 3); scale ที่ต้องรองรับเล็ก (<100 concurrent users, polling 5-30 วินาทีพอ ไม่ต้อง WebSocket/SSE จริง — สัมภาษณ์ข้อ 5) ไม่จำเป็นต้องใช้ framework ที่หนักกว่านี้; ใช้ภาษาเดียวกับ frontend (JS/TS) ตลอด stack ลดความซับซ้อนการดูแลระยะยาวโดยทีม IT เดิม | Node.js + NestJS (คะแนน 4.05), PHP + Laravel (3.90), .NET Core (C#) (3.90), Python + Django (3.65), Java + Spring Boot (3.40) — ดู Decision Rationale หัวข้อ 4 | FEAT-PLATFORM-01 |
 | Database engine | **Firebase Firestore** (มี Firebase project จริงชื่อ "ai-dsrp" อยู่แล้ว) | มี infrastructure พร้อมใช้งานจริงอยู่แล้ว (ลด setup cost); NoSQL เข้ากับความต้องการ real-time sync ของ Dashboard/Alert (FEAT-DASH, FEAT-ALERT-03, FEAT-REPORT-03 — เดิมสัมภาษณ์ไว้ว่า polling 5-30 วิพอ แต่ Firestore ให้ real-time listener มาฟรีโดยไม่ต้องเขียน WebSocket/SSE เอง) โดยไม่ต้องเพิ่มต้นทุน infra | PostgreSQL (self-hosted) (คะแนน — ดู Decision Rationale หัวข้อ 4.3), MongoDB Atlas (ดู Decision Rationale หัวข้อ 4.3) — ดู Decision Rationale หัวข้อ 4.3 | FEAT-PLATFORM-03 |
-| Auth/Identity provider | *ยังไม่สัมภาษณ์ — backlog รอสัมภาษณ์รอบหน้า* | — | — | FEAT-PLATFORM-02 |
+| Auth/Identity provider | **Firebase Authentication (Email/Password)** | อยู่ใน Firebase ecosystem เดียวกับ Firestore/Hosting ที่ยืนยันไปแล้ว ไม่ต้องเพิ่ม vendor ใหม่; มี Web SDK พร้อมใช้งานร่วมกับ Firestore ได้ทันที; Firestore Security Rules อ้าง `request.auth` ได้ตรงๆ โดยไม่ต้องเชื่อมระบบ auth แยกต่างหาก; ทีมถนัด JS/TS อยู่แล้ว (สัมภาษณ์ข้อ 1) ใช้ SDK ได้ทันที | Custom auth (Node/Express + JWT/session เอง) (คะแนน 3.10), Auth0 (คะแนน 2.65) — ดู Decision Rationale หัวข้อ 4.4 | FEAT-PLATFORM-02 |
 | Hosting/Infrastructure platform (เจาะจง) | **Firebase Hosting (หรือ Cloud Run สำหรับ backend ที่ซับซ้อนกว่า) + Cloud Functions** | จับคู่ Firebase ecosystem เดียวกับ Firestore ที่เพิ่งยืนยัน ลดความซับซ้อนการดูแล/จัดการ credential แยกส่วน; ยังคงใช้ Node.js (Cloud Functions รองรับ Node.js runtime) สอดคล้องกับ Backend/API runtime ที่ยืนยันไว้ก่อนหน้า (Node.js + Express/Fastify) — หมายเหตุ: Cloud Functions มีข้อจำกัดเรื่อง cold start/execution time เทียบกับ self-host VM แบบเดิมที่เคยวางแผนไว้ ต้องพิจารณาถ้ามี long-running job (เช่น batch report generation) | — | FEAT-PLATFORM-01 |
 | OCR/Document AI vendor | *ยังไม่สัมภาษณ์ (นอก scope รอบนี้) — backlog รอสัมภาษณ์รอบหน้า* | — | — | FEAT-INTAKE-05 |
 | Geocoding vendor | *ยังไม่สัมภาษณ์ — backlog รอสัมภาษณ์รอบหน้า* | — | — | FEAT-INTAKE-07 |
@@ -111,6 +111,22 @@ Weighted Scoring Model (น้ำหนัก: Setup cost/ทีมมี infra 
 - **Data residency/PDPA (คะแนนต่ำสุด = 1)**: Firestore/Google Cloud ไม่มี region ในประเทศไทย (region ที่ใกล้ที่สุดคือ `asia-southeast1` สิงคโปร์) ขณะที่ PostgreSQL (self-hosted) ทำ data residency ในไทยได้เต็มรูปแบบ (คะแนน 5) — นี่คือการพลิกกลับเงื่อนไข PDPA data residency ที่เคยยืนยันไว้ก่อนหน้า (ดู Assumption ท้ายไฟล์) **ต้องทบทวน PDPA compliance เจาะจงเพิ่มเติมก่อนใช้งานจริงกับข้อมูลสุขภาพ** เป็น open item ที่ยังไม่ได้ทบทวนในรอบนี้
 - **Fit กับ DATA-MODEL.md (คะแนนต่ำ = 2)**: `DATA-MODEL.md` ออกแบบเป็น relational เรียบง่าย มี soft-delete/audit snapshot ซึ่งเข้ากับ PostgreSQL โดยตรง (คะแนน 5) แต่ Firestore เป็น NoSQL/document-based ต้อง denormalize schema เพิ่มเติม (เช่น การจัดการ relation ระหว่าง entity, soft-delete flag, audit snapshot ต้องออกแบบใหม่ในรูปแบบ document) — ยังไม่ sync การเปลี่ยนแปลงนี้เข้า `DATA-MODEL.md` ในรอบนี้ (ดูหัวข้อ 5)
 
+### 4.4 Auth/Identity provider
+
+Weighted Scoring Model (น้ำหนัก: Ecosystem fit กับ Firestore/Hosting ที่ยืนยันแล้ว 35%, Learning curve ทีม JS/TS 25%, ต้นทุน/ไม่ต้องเพิ่ม vendor ใหม่ 20%, Maturity/community 20%):
+
+| ตัวเลือก | Ecosystem fit | Learning curve | ต้นทุน/ไม่เพิ่ม vendor | Maturity/community | คะแนนรวม |
+|---|---|---|---|---|---|
+| **Firebase Authentication** | 5 | 5 | 5 | 4 | **4.80 (เลือก)** |
+| Custom auth (Node/Express + JWT/session เอง) | 2 | 4 | 3 | 4 | 3.10 |
+| Auth0 | 2 | 3 | 1 | 5 | 2.65 |
+
+**ทางที่เลือก**: Firebase Authentication (Email/Password)
+
+**เหตุผล**: คะแนนสูงสุดชัดเจนในทุกเกณฑ์ที่มีน้ำหนักมาก — อยู่ใน Firebase ecosystem เดียวกับ Firestore/Hosting ที่ยืนยันไปแล้ว (ไม่ต้องเพิ่ม vendor ใหม่, ไม่ต้องเชื่อมระบบ auth แยกต่างหาก), Firestore Security Rules อ้าง `request.auth` ได้ตรงๆ, ทีมถนัด JS/TS อยู่แล้วใช้ Web SDK ได้ทันที (สัมภาษณ์ข้อ 1), ไม่มีต้นทุน vendor เพิ่มเติมเพราะใช้ project "ai-dsrp" ที่มีอยู่แล้ว
+
+**Trade-off ที่ต้องบันทึกไว้ (open question)**: Firebase Authentication ผูกกับ Google Cloud ecosystem เดียวกับ Firestore ที่เลือกไปแล้ว — ถ้าในอนาคตต้องการย้ายออกจาก Firebase ทั้งระบบ (เช่น กลับไป self-host เพื่อแก้ปัญหา data residency/PDPA ที่เป็น open item อยู่แล้วในหัวข้อ 4.3) จะต้องย้าย auth ออกไปพร้อมกันด้วย ไม่สามารถแยกย้ายทีละส่วนได้ง่าย (vendor lock-in ซ้อนกันทั้ง database และ auth); Custom auth ได้คะแนนต้นทุนต่ำกว่าเพราะแม้ไม่มีค่า vendor แต่มีภาระวิศวกรรม/ความเสี่ยงด้านความปลอดภัยที่ต้องดูแลเอง (session/JWT management, password hashing, token revocation); Auth0 ได้คะแนน maturity สูงสุดแต่ตกด้านต้นทุนเพราะเป็นการเพิ่ม vendor ใหม่นอก ecosystem ที่ยืนยันไว้แล้ว
+
 ---
 
 ## 5. เอกสาร Conceptual ที่ควร Sync ตาม
@@ -119,8 +135,8 @@ Weighted Scoring Model (น้ำหนัก: Setup cost/ทีมมี infra 
 
 | เอกสาร | หัวข้อที่ควรอัปเดต |
 |---|---|
-| `HIGH-LEVEL-ARCHITECTURE.md` | หัวข้อ 6 (Component Breakdown) — แถว "Web App (Frontend)" ควรเพิ่มระบุ "Vanilla JS + Node.js/EJS partials"; แถว "API Server" ควรเพิ่มระบุ "Node.js + Express/Fastify"; แถว Hosting/Infrastructure ควรเพิ่มระบุ "Firebase Hosting (หรือ Cloud Run) + Cloud Functions" ตามที่ยืนยันใหม่ 2026-09-06 |
-| `DATA-MODEL.md` | Database engine ยืนยันเป็น Firestore แล้ว — ควรเพิ่มคอลัมน์ Native Type ใน Entity Dictionary ตาม convention ของเอกสาร (เช่น string→Firestore string field, reference→Firestore document reference หรือ denormalized field) โดยเฉพาะ entity ใหม่ `SURVEILLANCE_REPORT_506`/`REPORT_506_APPROVAL_LOG` และ entity อื่นทั้งหมด — ยังไม่ sync ให้เองในรอบนี้ |
+| `HIGH-LEVEL-ARCHITECTURE.md` | หัวข้อ 6 (Component Breakdown) — แถว "Web App (Frontend)" ควรเพิ่มระบุ "Vanilla JS + Node.js/EJS partials"; แถว "API Server" ควรเพิ่มระบุ "Node.js + Express/Fastify"; แถว Hosting/Infrastructure ควรเพิ่มระบุ "Firebase Hosting (หรือ Cloud Run) + Cloud Functions" ตามที่ยืนยันใหม่ 2026-09-06; แถว **"Auth / Role-based Access" ควรเพิ่มระบุ "Firebase Authentication (Email/Password)"** ตามที่ยืนยันใหม่ 2026-09-07 |
+| `DATA-MODEL.md` | Database engine ยืนยันเป็น Firestore แล้ว — ควรเพิ่มคอลัมน์ Native Type ใน Entity Dictionary ตาม convention ของเอกสาร (เช่น string→Firestore string field, reference→Firestore document reference หรือ denormalized field) โดยเฉพาะ entity ใหม่ `SURVEILLANCE_REPORT_506`/`REPORT_506_APPROVAL_LOG` และ entity อื่นทั้งหมด — ยังไม่ sync ให้เองในรอบนี้; **entity `USER`** (ที่มี Gap note เดิมเรื่อง "ยังไม่มี USER/role entity ที่เป็นทางการ") ควรทบทวนใหม่เพราะตอนนี้มี Auth จริงแล้ว (Firebase Authentication ยืนยัน 2026-09-07) — ควรพิจารณาว่าจะผูก Firebase Auth UID เข้ากับ document ID ของ `users` collection หรือเก็บเป็น field ใหม่แยกต่างหาก (ยังไม่ตัดสินใจในรอบนี้ ต้องเรียก `data-contract-builder` แยก) |
 | `API-SPEC.md` | ยังไม่ต้อง sync รอบนี้ — protocol จริง (REST/GraphQL) ยังไม่อยู่ใน scope การสัมภาษณ์รอบนี้ (อยู่ในความรับผิดชอบของ Backend/API runtime ที่เพิ่งยืนยัน แต่ยังไม่มีการยืนยันเจาะจงเรื่อง protocol) |
 
 ---
