@@ -1,0 +1,14 @@
+// Firestore Security Rules — ai-dsrp
+// กฎเดียว: ต้องล็อกอิน (Firebase Authentication) ก่อนถึงจะอ่าน/เขียนอะไรได้
+// ไม่ได้แยกสิทธิ์ตาม role (ดู ACL.md สำหรับ role-based UI restriction ฝั่ง client
+// ที่ทำไปแล้ว — rules นี้เป็นแค่ชั้นป้องกันพื้นฐานว่าต้อง auth เท่านั้น)
+
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}
