@@ -9,7 +9,7 @@
 - **ระดับความละเอียด Sequence Flow**: ทุก flow เป็น **coarse** (decision point หลัก + ผลสำเร็จ/ไม่สำเร็จ 2 ทาง) ยกเว้น **4 flow เสี่ยงสูง** ที่ทำแบบ **step-by-step ละเอียด** (มี validation/error/retry branch เต็ม): OCR Review & Confirm Flow, Case Clustering Confirm & Report Flow, Control Plan Approval Flow, Alert Assign & Close Flow
 - **State/Status Diagram**: ส่วนใหญ่ไม่ทำแยก (ALERT/TEAM มี 3 สถานะ, CASE/CASE_CLUSTER มี 2 สถานะ — ใช้ `Note` ใน sequence diagram แทน) **ยกเว้น `APPROVAL_REQUEST`** ที่ข้าม threshold ≥4 สถานะจริงหลังเพิ่ม `rejected` (draft/sent/approved/rejected) — มี `stateDiagram-v2` แยกใน Flow 8 (ดูด้านล่าง)
 - **Error & Exception Handling** ครอบเฉพาะ error ที่กระทบ business-critical/ข้อมูลสุขภาพ: **เคสซ้ำ, cluster ผิดพื้นที่, แจ้งเตือนผิดทีม, อนุมัติซ้ำซ้อน, ปิด alert โดยไม่มี note** — flow ที่ไม่มี error ประเภทนี้เกี่ยวข้องจะระบุไว้ชัดเจนว่า "ไม่มี" แทนการยัดตารางที่ไม่จำเป็น ไม่ครอบ error ทั่วไป (network fail, timeout ฯลฯ)
-- **Tech Stack**: [[./TECH-STACK|TECH-STACK.md]] ยืนยันเฉพาะ Frontend (Vanilla JS + Node.js/EJS partials) และ Backend/API runtime (Node.js + Express/Fastify) — component อื่นที่ flow เหล่านี้เรียกใช้ (OCR/Document AI, Geocoding, Case Clustering, AI Vision QC) **ยังไม่ยืนยัน vendor จริง** จึง participant ในทุกไดอะแกรมยังเป็นชื่อ capability-level ตาม `HIGH-LEVEL-ARCHITECTURE.md` หัวข้อ 6 (เช่น "บริการ OCR/Document AI") ไม่ใช่ชื่อ vendor เจาะจง
+- **Tech Stack**: [[./TECH-STACK|TECH-STACK.md]] ยืนยัน Frontend (Vanilla JS + Node.js/EJS partials), Backend/API runtime (Node.js + Express/Fastify), **OCR/Document AI vendor (Claude Vision — Anthropic, ยืนยัน 2026-09-08)**, **Geocoding vendor (Google Maps Geocoding API, ยืนยัน 2026-09-08)** — จึง participant ที่เกี่ยวข้องใน Flow 1/Flow 2 ด้านล่างอ้างชื่อ vendor จริงแล้ว ส่วน component อื่นที่ flow อื่นในไฟล์นี้เรียกใช้ (Case Clustering, AI Vision QC) **ยังไม่ยืนยัน vendor จริง** จึง participant ยังเป็นชื่อ capability-level ตาม `HIGH-LEVEL-ARCHITECTURE.md` หัวข้อ 6 เหมือนเดิม (mixed state ตามปกติของเอกสารนี้)
 - **แกนอ้างอิงหลัก**: Dashboard ยึด [[../01-prototypes/USER-JOURNEY-outbreak-dashboard|USER-JOURNEY-outbreak-dashboard.md]] เป็นแกน — อีก 7 โมดูลยึด operation ใน `API-SPEC.md` เป็นแกน
 - Diagram ส่วนใหญ่ใช้ `sequenceDiagram` (Mermaid) — มี `stateDiagram-v2` เพิ่ม 1 diagram เฉพาะ Flow 8 (`APPROVAL_REQUEST`) ตามเหตุผลข้างต้น
 
@@ -27,7 +27,7 @@
 | Actor หลัก | เจ้าหน้าที่ รพ./เทศบาล (อัปโหลด/ตรวจสอบ/ยืนยัน), ระบบ (OCR extraction, auto-route ทีม) |
 | Precondition | ไฟล์รายงานเคสอยู่ในรูปแบบ PDF/JPEG ที่ระบบรองรับ |
 | Postcondition | `CASE.status = ยืนยันแล้ว`, มี `CASE_NOTIFICATION_LOG` ใหม่, `responsible_team` ถูกกำหนดแล้ว |
-| Reference | Operation 1, 2, 3, 5, 6 (`API-SPEC.md` หัวข้อ 2) · Entity `CASE`/`CASE_OCR_SNAPSHOT`/`CASE_ATTACHMENT`/`CASE_NOTIFICATION_LOG`/`TEAM`/`SUBDISTRICT_ROUTING_RULE` (`DATA-MODEL.md`) · Component "บริการ OCR/Document AI", "Web App (Frontend)", "API Server" (`HIGH-LEVEL-ARCHITECTURE.md` หัวข้อ 6) |
+| Reference | Operation 1, 2, 3, 5, 6 (`API-SPEC.md` หัวข้อ 2) · Entity `CASE`/`CASE_OCR_SNAPSHOT`/`CASE_ATTACHMENT`/`CASE_NOTIFICATION_LOG`/`TEAM`/`SUBDISTRICT_ROUTING_RULE` (`DATA-MODEL.md`) · Component "บริการ OCR/Document AI (Claude Vision)", "Web App (Frontend)", "API Server" (`HIGH-LEVEL-ARCHITECTURE.md` หัวข้อ 6) |
 
 ### 2. Sequence Flow
 
@@ -36,7 +36,7 @@ sequenceDiagram
   participant จนท as เจ้าหน้าที่ รพ./เทศบาล
   participant UI as Web App (Case Intake)
   participant API as API Server
-  participant OCR as บริการ OCR/Document AI
+  participant OCR as Claude Vision (Anthropic)
   participant Data as CASE / CASE_OCR_SNAPSHOT / CASE_ATTACHMENT / CASE_NOTIFICATION_LOG
 
   จนท->>UI: อัปโหลดไฟล์รายงานเคส (PDF/JPEG)
@@ -113,7 +113,7 @@ sequenceDiagram
 | Feature | FEAT-INTAKE-01, FEAT-INTAKE-02, FEAT-INTAKE-03, FEAT-INTAKE-05 (backlog), FEAT-INTAKE-08 (backlog), FEAT-INTAKE-09 (backlog) |
 | Entity | `CASE`, `CASE_OCR_SNAPSHOT`, `CASE_ATTACHMENT`, `CASE_NOTIFICATION_LOG`, `TEAM`, `SUBDISTRICT_ROUTING_RULE` |
 | Operation | API-SPEC.md operation 1, 2, 3, 5, 6 |
-| Component | Web App (Case Intake), API Server, บริการ OCR/Document AI, LINE OA (backlog) |
+| Component | Web App (Case Intake), API Server, บริการ OCR/Document AI (Claude Vision), LINE OA (backlog) |
 
 ---
 
@@ -127,7 +127,7 @@ sequenceDiagram
 | Actor หลัก | เจ้าหน้าที่ รพ./เทศบาล |
 | Precondition | เคสมี `geo_accuracy = low` |
 | Postcondition | `CASE.geo_adjusted` ถูกสลับค่า (toggle) |
-| Reference | Operation 4 (`API-SPEC.md`) · Entity `CASE` (`geo_accuracy`, `geo_adjusted`) · Component Web App (Case Intake), API Server, บริการ Geocoding (backlog `FEAT-INTAKE-07`) |
+| Reference | Operation 4 (`API-SPEC.md`) · Entity `CASE` (`geo_accuracy`, `geo_adjusted`) · Component Web App (Case Intake), API Server, บริการ Geocoding (Google Maps Geocoding API) |
 
 ### 2. Sequence Flow
 
@@ -164,7 +164,7 @@ sequenceDiagram
 | Feature | FEAT-INTAKE-04, FEAT-INTAKE-07 (backlog) |
 | Entity | `CASE` |
 | Operation | API-SPEC.md operation 4 |
-| Component | Web App (Case Intake), API Server, บริการ Geocoding (backlog) |
+| Component | Web App (Case Intake), API Server, บริการ Geocoding (Google Maps Geocoding API) |
 
 ---
 
