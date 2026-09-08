@@ -611,6 +611,49 @@
     renderSpotMap();
   }
 
+  // เพิ่มเคสใหม่จากผลลัพธ์ OCR จริง (FEAT-INTAKE-05) — รับผ่าน CustomEvent จาก
+  // case-intake-upload.js (module แยกที่คุยกับ Cloud Function/Claude Vision)
+  // ยังเป็น in-memory ล้วนเหมือน CASES เดิม (ไม่ persist ข้ามการ reload หน้า —
+  // ดูเหตุผลขอบเขตใน BUILD-PLAN.md), geoAccuracy ตั้งเป็น "low" เสมอเพราะ OCR
+  // ไม่ได้คืนพิกัด ต้องพึ่ง fallback "ปรับพิกัดด้วยมือ" ที่มีอยู่แล้ว
+  function addCaseFromOCR(detail) {
+    var fields = detail.fields || {};
+    var subdistrict = fields.subdistrict || "";
+    var nextId = CASES.reduce(function (max, c) { return Math.max(max, c.id); }, 0) + 1;
+    var now = new Date();
+
+    var newCase = {
+      id: nextId,
+      fileName: detail.fileName,
+      fileType: detail.fileType,
+      fileSize: detail.fileSize,
+      uploadedLabel: formatThaiDateTime(now),
+      patientName: fields.patientName || "",
+      hn: fields.hn || "",
+      houseNo: fields.houseNo || "",
+      villageNo: fields.villageNo || "",
+      village: fields.village || "",
+      subdistrict: subdistrict,
+      district: fields.district || "",
+      province: fields.province || "",
+      onsetDate: fields.onsetDate || "",
+      labResult: fields.labResult || "",
+      // ตำบลไม่ตรงกับพื้นที่ที่ระบบรู้จัก (mock) -> เข้าทีมสอบสวนโรค เขต 1 เป็นค่าเริ่มต้นไปก่อน
+      zone: SUBDISTRICT_TEAM_MAP.hasOwnProperty(subdistrict) ? SUBDISTRICT_TEAM_MAP[subdistrict] : 1,
+      geoAccuracy: "low",
+      geoAdjusted: false,
+      status: "pending",
+      mapX: 50, mapY: 50
+    };
+    newCase._originalMapX = newCase.mapX;
+    newCase._originalMapY = newCase.mapY;
+    newCase._editingGeo = false;
+
+    CASES.unshift(newCase);
+    renderUploadList();
+    renderOCRTable();
+  }
+
   /* -- Inline edit of an OCR row (pending rows only): start / cancel / save -- */
   function startEdit(id) {
     var c = getCaseById(id);
@@ -730,6 +773,9 @@
     renderNotificationLog();
     renderSpotMap();
     initEvents();
+    document.addEventListener("case-intake:ocr-result", function (e) {
+      addCaseFromOCR(e.detail);
+    });
   }
 
   document.addEventListener("DOMContentLoaded", init);

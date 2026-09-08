@@ -108,8 +108,10 @@
           <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M7 9l5-5 5 5"></path><path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"></path></svg>
         </div>
         <p class="dropzone-title">ลากไฟล์มาวางที่นี่เพื่ออัปโหลด</p>
-        <p class="dropzone-hint">หรือคลิกเพื่อเลือกไฟล์จากเครื่อง (PDF, JPEG ขนาดไม่เกิน 10MB) — ฟังก์ชันอัปโหลดจริงยังไม่เปิดใช้งานใน prototype นี้ ไฟล์ต้นฉบับจะถูกเก็บคู่กับแถวข้อมูลใน Google Drive โดยอัตโนมัติ</p>
-        <button type="button" class="btn btn-outline" disabled>เลือกไฟล์ (จำลอง)</button>
+        <p class="dropzone-hint">หรือคลิกเพื่อเลือกไฟล์จากเครื่อง (PDF, JPEG, PNG ขนาดไม่เกิน 7MB) — ระบบใช้ Claude Vision (AI) อ่านข้อมูลจากเอกสารให้อัตโนมัติ แล้วเจ้าหน้าที่ตรวจสอบ/แก้ไขก่อนยืนยันอีกครั้ง (human-in-the-loop) ไฟล์ต้นฉบับจะถูกเก็บคู่กับแถวข้อมูลใน Google Drive โดยอัตโนมัติในเฟสถัดไป (ยังไม่เชื่อมต่อจริงรอบนี้)</p>
+        <button type="button" class="btn btn-outline" id="btn-select-file">เลือกไฟล์</button>
+        <input type="file" id="file-input" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png" hidden>
+        <p id="upload-ocr-status" class="body-secondary" style="display:none;margin-top:8px;"></p>
       </div>
 
       <div class="upload-file-list" id="upload-file-list" aria-label="ไฟล์ที่อัปโหลดล่าสุด"></div>
@@ -191,6 +193,7 @@
 </div>
 </div>
 <script src="case-intake.js"></script>
+<script type="module" src="case-intake-upload.js"></script>
 <script type="module" src="auth-guard.js"></script>
 </body>
 </html>

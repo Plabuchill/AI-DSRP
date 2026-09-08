@@ -2561,6 +2561,10 @@ main.content-wrap {
   padding: 8px 10px;
 }
 
+.upload-ocr-status-error {
+  color: var(--color-danger);
+}
+
 #login-info {
   color: var(--color-text-secondary);
   background: var(--color-success-bg);
