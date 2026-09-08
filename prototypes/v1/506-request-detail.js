@@ -12,6 +12,7 @@ import {
   deleteDoc
 } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
 import { db } from "./firebase-init.js";
+import { getCurrentUserProfile, getRoleCategory } from "./current-user.js";
 
 const STATUS_BADGE = {
   "รอพิจารณา": "badge-warning",
@@ -32,7 +33,7 @@ function formatDateRange(startDate, endDate) {
   return endDate ? escapeHtml(startDate) + " – " + escapeHtml(endDate) : escapeHtml(startDate) + " (ต่อเนื่อง)";
 }
 
-function init() {
+async function init() {
   const statusEl = document.getElementById("detail-status");
   const listEl = document.getElementById("detail-list");
   if (!listEl) return; // หน้าอื่นไม่มี element นี้
@@ -56,6 +57,13 @@ function init() {
     return;
   }
 
+  // FEAT-PLATFORM-02 — ยืนยัน/ไม่ยืนยัน/ลบรายการ เป็นสิทธิ์ของ Manager เท่านั้น (ดู ACL.md)
+  const profile = await getCurrentUserProfile();
+  const isManager = getRoleCategory(profile ? profile.role : "") === "manager";
+  if (!isManager) {
+    deleteBtn.style.display = "none";
+  }
+
   function render(d) {
     titleEl.textContent = d.title || "-";
     reasonEl.textContent = d.reason || "-";
@@ -74,7 +82,7 @@ function init() {
     }
 
     const isPending = d.status === "รอพิจารณา";
-    decisionActionsEl.style.display = isPending ? "" : "none";
+    decisionActionsEl.style.display = (isPending && isManager) ? "" : "none";
 
     listEl.style.display = "";
   }

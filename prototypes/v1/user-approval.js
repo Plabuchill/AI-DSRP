@@ -1,7 +1,6 @@
 // อนุมัติสมาชิกใหม่ (FEAT-PLATFORM-02) — เชื่อมต่อ Firestore จริง (collection "users")
 // แสดงเฉพาะ document ที่ status = "pending" — manager เลือก role แล้วกดอนุมัติ/ปฏิเสธ
-// หมายเหตุ: หน้านี้ยังไม่จำกัดสิทธิ์จริงว่าต้องเป็น manager เท่านั้นถึงเข้าได้
-// (ไม่มี role-based route protection ในระบบตอนนี้ — ดู ACL.md หัวข้อ 4)
+// การจำกัดสิทธิ์ว่าต้องเป็น manager เท่านั้นถึงเข้าหน้านี้ได้ อยู่ใน auth-guard.js (route guard)
 import { db } from "./firebase-init.js";
 import {
   collection,

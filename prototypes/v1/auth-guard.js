@@ -1,13 +1,28 @@
 // Auth guard (FEAT-PLATFORM-02) — import ในทุกหน้ายกเว้น login.html
 // หน้าที่: (1) เด้งกลับ login.html ถ้ายังไม่ login, (2) เติมชื่อ/สิทธิ์/อักษรย่อผู้ใช้ที่ login
-// ลงบล็อก .rail-user ของ left rail, (3) ผูกปุ่ม "ออกจากระบบ" (#btn-logout) ให้ signOut แล้วเด้งกลับ login.html
+// ลงบล็อก .rail-user ของ left rail, (3) ผูกปุ่ม "ออกจากระบบ" (#btn-logout) ให้ signOut แล้วเด้งกลับ
+// login.html, (4) บล็อกการเข้าหน้าที่ role ปัจจุบันไม่มีสิทธิ์ตาม ACL.md แม้พิมพ์ URL ตรงๆ เอง
 //
 // ต้องมี element เหล่านี้ในหน้า (ตามโครง left rail มาตรฐานของ prototype v1):
 //   .rail-user-name, .rail-user-role, .rail-user .avatar, #btn-logout
 
-import { auth, db } from "./firebase-init.js";
+import { auth } from "./firebase-init.js";
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-auth.js";
-import { collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
+import { getCurrentUserProfile, getRoleCategory } from "./current-user.js";
+
+// ตาม ACL.md: หน้าไหนบล็อก role category ไหนบ้าง (ไม่อยู่ในลิสต์ = เข้าได้ทุก role)
+// - new-506-request.html: SRRT/Manager ยื่นได้ Director ยื่นไม่ได้
+// - user-approval.html: อยู่นอกขอบเขตตาราง ACL.md (เฉพาะ รง.506) แต่ตามเจตนาฟีเจอร์ควรเป็น
+//   Manager เท่านั้น จึงบล็อกทุก role category อื่นรวมถึง "unknown" (role แปลกที่เดาไม่ได้)
+const BLOCKED_ROLES_BY_PAGE = {
+  "new-506-request.html": ["director"],
+  "user-approval.html": ["srrt", "director", "unknown"]
+};
+
+function currentPageName() {
+  const path = window.location.pathname;
+  return path.substring(path.lastIndexOf("/") + 1);
+}
 
 onAuthStateChanged(auth, async function (user) {
   if (!user) {
@@ -20,14 +35,19 @@ onAuthStateChanged(auth, async function (user) {
   const avatarEl = document.querySelector(".rail-user .avatar");
 
   try {
-    const q = query(collection(db, "users"), where("email", "==", user.email));
-    const snap = await getDocs(q);
-    if (!snap.empty) {
-      const userData = snap.docs[0].data();
-      if (nameEl) nameEl.textContent = userData.name;
-      // ยังไม่มี role label ภาษาไทยที่เป็นทางการ — แสดง role ตรงๆ ไปก่อน (manager/team1/team3)
-      if (roleEl) roleEl.textContent = userData.role;
-      if (avatarEl) avatarEl.textContent = userData.name.slice(0, 2);
+    const profile = await getCurrentUserProfile();
+    if (profile) {
+      if (nameEl) nameEl.textContent = profile.name;
+      // ยังไม่มี role label ภาษาไทยที่เป็นทางการ — แสดง role ตรงๆ ไปก่อน (manager/team1/team3/director)
+      if (roleEl) roleEl.textContent = profile.role;
+      if (avatarEl) avatarEl.textContent = (profile.name || "").slice(0, 2);
+
+      const blockedRoles = BLOCKED_ROLES_BY_PAGE[currentPageName()];
+      if (blockedRoles && blockedRoles.indexOf(getRoleCategory(profile.role)) !== -1) {
+        window.alert("คุณไม่มีสิทธิ์เข้าหน้านี้ตามบทบาทที่ได้รับ");
+        window.location.href = "case-analysis.html";
+        return;
+      }
     } else {
       if (nameEl) nameEl.textContent = user.email;
       if (roleEl) roleEl.textContent = "-";

@@ -6,24 +6,10 @@ import {
   collection,
   onSnapshot,
   doc,
-  updateDoc,
-  query,
-  where,
-  getDocs
+  updateDoc
 } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
-import { auth, db } from "./firebase-init.js";
-
-// FEAT-PLATFORM-02 — ผู้กดยืนยัน/ไม่ยืนยัน คือผู้ใช้ที่ login อยู่จริง (ไม่ใช่ค่า hardcode อีกต่อไป)
-// query collection "users" ด้วยอีเมลของผู้ใช้ที่ login (auth.currentUser.email) ทุกครั้งที่ต้องใช้
-async function getCurrentUser() {
-  const current = auth.currentUser;
-  if (!current) return { id: "", name: "" };
-  const q = query(collection(db, "users"), where("email", "==", current.email));
-  const snap = await getDocs(q);
-  if (snap.empty) return { id: "", name: current.email || "" };
-  const userDoc = snap.docs[0];
-  return { id: userDoc.id, name: userDoc.data().name };
-}
+import { db } from "./firebase-init.js";
+import { getCurrentUserProfile, getRoleCategory } from "./current-user.js";
 
 const STATUS_BADGE = {
   "รอพิจารณา": "badge-warning",
@@ -46,10 +32,22 @@ function formatDateRange(startDate, endDate) {
   return endDate ? escapeHtml(startDate) + " – " + escapeHtml(endDate) : escapeHtml(startDate) + " (ต่อเนื่อง)";
 }
 
-function init() {
+async function init() {
   const statusEl = document.getElementById("report506-status");
   const tbodyEl = document.getElementById("report506-tbody");
   if (!tbodyEl) return; // หน้าอื่นไม่มี element นี้
+
+  const createLinkEl = document.getElementById("btn-new-506-request");
+
+  // FEAT-PLATFORM-02 — ยืนยัน/ไม่ยืนยัน เป็นสิทธิ์ของ Manager เท่านั้น (ดู ACL.md)
+  // Director สร้างรายงานใหม่ไม่ได้ จึงซ่อนลิงก์ "+ สร้าง รง.506 ใหม่" ด้วย
+  const profile = await getCurrentUserProfile();
+  const roleCategory = getRoleCategory(profile ? profile.role : "");
+  const isManager = roleCategory === "manager";
+
+  if (createLinkEl && roleCategory === "director") {
+    createLinkEl.style.display = "none";
+  }
 
   function renderRows(docs) {
     if (docs.length === 0) {
@@ -68,10 +66,12 @@ function init() {
       const badgeClass = STATUS_BADGE[d.status] || "badge-neutral";
       const isPending = d.status === "รอพิจารณา";
       const actionsHtml = isPending
-        ? '<div class="row-actions">' +
-            '<button type="button" class="btn btn-primary btn-sm" data-action="confirm" data-id="' + escapeHtml(item.id) + '">ยืนยัน</button>' +
-            '<button type="button" class="btn btn-outline btn-sm" data-action="reject" data-id="' + escapeHtml(item.id) + '">ไม่ยืนยัน</button>' +
-          '</div>'
+        ? (isManager
+            ? '<div class="row-actions">' +
+                '<button type="button" class="btn btn-primary btn-sm" data-action="confirm" data-id="' + escapeHtml(item.id) + '">ยืนยัน</button>' +
+                '<button type="button" class="btn btn-outline btn-sm" data-action="reject" data-id="' + escapeHtml(item.id) + '">ไม่ยืนยัน</button>' +
+              '</div>'
+            : '<span class="body-secondary">รอพิจารณา</span>')
         : '<span class="body-secondary">' + escapeHtml(d.approverName || "-") + '</span>';
 
       return (
@@ -89,7 +89,7 @@ function init() {
 
   async function decide(reportId, newStatus) {
     try {
-      const currentUser = await getCurrentUser();
+      const currentUser = profile || { id: "", name: "" };
       await updateDoc(doc(db, "506Requests", reportId), {
         status: newStatus,
         approverId: currentUser.id,
@@ -102,7 +102,7 @@ function init() {
 
   tbodyEl.addEventListener("click", function (event) {
     const btn = event.target.closest("button[data-action]");
-    if (!btn) return;
+    if (!btn || !isManager) return;
     const reportId = btn.getAttribute("data-id");
     const newStatus = btn.getAttribute("data-action") === "confirm" ? "ยืนยัน" : "ไม่ยืนยัน";
     decide(reportId, newStatus);
