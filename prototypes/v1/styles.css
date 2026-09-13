@@ -2565,6 +2565,58 @@ main.content-wrap {
   color: var(--color-danger);
 }
 
+.assist-result {
+  margin-top: 6px;
+  padding: 6px 8px;
+  border-radius: var(--radius-control);
+  font-size: var(--fs-small);
+}
+
+.assist-result ul {
+  margin: 4px 0 0;
+  padding-left: 18px;
+}
+
+.assist-result-ok {
+  color: var(--color-success);
+  background: var(--color-success-bg);
+}
+
+.assist-result-concern {
+  color: var(--color-warning);
+  background: var(--color-warning-bg);
+}
+
+.assist-result-error {
+  color: var(--color-danger);
+  background: var(--color-danger-bg);
+}
+
+.ai-suggest-row {
+  margin-top: 6px;
+}
+
+#ai-suggest-status {
+  margin-top: 6px;
+  padding: 6px 8px;
+  border-radius: var(--radius-control);
+}
+
+#ai-suggest-status.ai-suggest-status-suggested {
+  color: var(--color-success);
+  background: var(--color-success-bg);
+}
+
+#ai-suggest-status.ai-suggest-status-unmatched {
+  color: var(--color-warning);
+  background: var(--color-warning-bg);
+}
+
+#ai-suggest-status.ai-suggest-status-error {
+  color: var(--color-danger);
+  background: var(--color-danger-bg);
+}
+
 #login-info {
   color: var(--color-text-secondary);
   background: var(--color-success-bg);

@@ -8,7 +8,19 @@ import {
   onSnapshot,
   addDoc
 } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
-import { db } from "./firebase-init.js";
+import { httpsCallable } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-functions.js";
+import { db, functions } from "./firebase-init.js";
+
+const AI_SUGGEST_TIMEOUT_MS = 15000;
+
+function withTimeout(promise, ms) {
+  return Promise.race([
+    promise,
+    new Promise(function (_, reject) {
+      setTimeout(function () { reject(new Error("TIMEOUT")); }, ms);
+    })
+  ]);
+}
 
 function escapeHtml(value) {
   return String(value == null ? "" : value)
@@ -27,6 +39,8 @@ function init() {
   const startDateInput = document.getElementById("start-date-input");
   const endDateInput = document.getElementById("end-date-input");
   const saveBtn = document.getElementById("btn-save-request");
+  const aiSuggestBtn = document.getElementById("btn-ai-suggest-disease");
+  const aiSuggestStatusEl = document.getElementById("ai-suggest-status");
   if (!saveBtn) return; // หน้าอื่นไม่มี element นี้
 
   let diseasesLoaded = false;
@@ -35,6 +49,9 @@ function init() {
   function updateStatusReady() {
     if (diseasesLoaded && requestersLoaded) {
       statusEl.textContent = "โหลดรายการโรคติดต่อและผู้แจ้งสำเร็จ — กรอกข้อมูลแล้วกดบันทึก";
+    }
+    if (diseasesLoaded && aiSuggestBtn) {
+      aiSuggestBtn.disabled = false;
     }
   }
 
@@ -122,6 +139,60 @@ function init() {
       statusEl.textContent = "บันทึกไม่สำเร็จ: " + err.message + " (ตรวจสอบว่าตั้ง Firestore Security Rules ให้เขียนได้แล้วหรือยัง)";
     }
   }
+
+  // ให้ AI ช่วยเลือกโรคติดต่อ (FEAT-ANALYSIS-08) — advisory เท่านั้น: เสนอค่าให้ dropdown
+  // แต่ผู้ใช้แก้ไขเองได้เสมอก่อนบันทึก, เรียกไม่สำเร็จ/timeout ไม่บล็อกการบันทึกด้วยมือ
+  const suggestDiseaseType = httpsCallable(functions, "suggestDiseaseType");
+
+  function showAiSuggestStatus(text, kind) {
+    aiSuggestStatusEl.textContent = text;
+    aiSuggestStatusEl.className = "body-secondary" + (kind ? " ai-suggest-status-" + kind : "");
+    aiSuggestStatusEl.style.display = "block";
+  }
+
+  async function handleAiSuggestDisease() {
+    const title = titleInput.value.trim();
+    const reason = reasonInput.value.trim();
+    if (!title && !reason) {
+      showAiSuggestStatus("กรุณากรอกหัวเรื่องหรือเหตุผลก่อน แล้วค่อยกดให้ AI ช่วยเลือก", "error");
+      return;
+    }
+
+    aiSuggestBtn.disabled = true;
+    aiSuggestBtn.textContent = "กำลังวิเคราะห์...";
+    aiSuggestStatusEl.style.display = "none";
+
+    try {
+      const result = await withTimeout(suggestDiseaseType({ title: title, reason: reason }), AI_SUGGEST_TIMEOUT_MS);
+      const data = result.data;
+      if (data.matched) {
+        diseaseSelect.value = data.diseaseId;
+        showAiSuggestStatus(
+          "ข้อเสนอจาก AI — โปรดตรวจสอบก่อนยืนยัน: " + data.diseaseName + (data.reason ? " (" + data.reason + ")" : ""),
+          "suggested"
+        );
+      } else {
+        // ⭐ จัดหมวดหมู่ไม่ได้ -> ไม่แตะค่าปัจจุบันของ diseaseSelect เลย
+        showAiSuggestStatus(
+          "AI จัดหมวดหมู่ให้ไม่ได้ กรุณาเลือกโรคติดต่อเอง" + (data.reason ? " (" + data.reason + ")" : ""),
+          "unmatched"
+        );
+      }
+    } catch (err) {
+      const timedOut = err && err.message === "TIMEOUT";
+      showAiSuggestStatus(
+        timedOut
+          ? "ไม่ได้รับคำตอบจาก AI ภายใน 15 วินาที กรุณาเลือกโรคติดต่อเอง"
+          : "เรียก AI ไม่สำเร็จ: " + ((err && err.message) || "เกิดข้อผิดพลาด") + " — ยังกรอกและบันทึกด้วยมือได้ตามปกติ",
+        "error"
+      );
+    } finally {
+      aiSuggestBtn.disabled = false;
+      aiSuggestBtn.textContent = "ให้ AI ช่วยเลือกโรคติดต่อ";
+    }
+  }
+
+  aiSuggestBtn.addEventListener("click", handleAiSuggestDisease);
 
   saveBtn.addEventListener("click", handleSave);
 }

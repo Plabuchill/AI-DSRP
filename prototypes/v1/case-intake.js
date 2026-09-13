@@ -332,6 +332,37 @@
     );
   }
 
+  // ผล "ให้ AI ช่วยตรวจสอบ" (FEAT-INTAKE-10) — สร้าง HTML ของปุ่ม + ผลลัพธ์ (ถ้ามี)
+  // ใช้เฉพาะแถว "รอตรวจสอบ" ที่ไม่ได้อยู่ในโหมดแก้ไข
+  function assistReviewHtml(c) {
+    var fieldsForAssist = {
+      patientName: c.patientName, hn: c.hn, houseNo: c.houseNo, villageNo: c.villageNo,
+      village: c.village, subdistrict: c.subdistrict, district: c.district, province: c.province,
+      onsetDate: c.onsetDate, labResult: c.labResult
+    };
+    var fieldsJson = escapeHtml(JSON.stringify(fieldsForAssist));
+    var btnLabel = c._assistLoading ? "กำลังตรวจสอบ..." : "ให้ AI ช่วยตรวจสอบ";
+    var btnHtml =
+      '<button type="button" class="btn btn-outline btn-sm btn-assist-review" data-id="' + c.id + '" data-fields="' + fieldsJson + '"' +
+      (c._assistLoading ? " disabled" : "") + ">" + btnLabel + "</button>";
+
+    var resultHtml = "";
+    if (c._assistResult) {
+      if (c._assistResult.error) {
+        resultHtml = '<div class="assist-result assist-result-error">' + escapeHtml(c._assistResult.error) + "</div>";
+      } else if (c._assistResult.status === "ok") {
+        resultHtml = '<div class="assist-result assist-result-ok">' + ICON_CHECK + "AI: ข้อมูลดูสมเหตุสมผล</div>";
+      } else {
+        var notesHtml = (c._assistResult.notes || []).map(function (n) {
+          return "<li><strong>" + escapeHtml(n.field) + ":</strong> " + escapeHtml(n.issue) + "</li>";
+        }).join("");
+        resultHtml = '<div class="assist-result assist-result-concern">AI พบจุดที่น่าสงสัย:<ul>' + notesHtml + "</ul></div>";
+      }
+    }
+
+    return '<div class="row-actions" style="margin-top:6px;">' + btnHtml + "</div>" + resultHtml;
+  }
+
   function actionCellHtml(c, editing) {
     if (c.status === "confirmed") {
       return '<span class="confirmed-check">' + ICON_CHECK + "ยืนยันแล้ว</span>";
@@ -348,7 +379,8 @@
       '<div class="row-actions">' +
         '<button type="button" class="btn btn-outline btn-sm btn-edit-row" data-id="' + c.id + '">' + ICON_EDIT + "แก้ไข</button>" +
         '<button type="button" class="btn btn-primary btn-sm btn-confirm" data-id="' + c.id + '">ยืนยัน</button>' +
-      "</div>"
+      "</div>" +
+      assistReviewHtml(c)
     );
   }
 
@@ -775,6 +807,19 @@
     initEvents();
     document.addEventListener("case-intake:ocr-result", function (e) {
       addCaseFromOCR(e.detail);
+    });
+    document.addEventListener("case-intake:assist-result", function (e) {
+      var c = getCaseById(e.detail.id);
+      if (!c) return;
+      if (e.detail.loading) {
+        c._assistLoading = true;
+      } else {
+        c._assistLoading = false;
+        c._assistResult = e.detail.error
+          ? { error: e.detail.error }
+          : { status: e.detail.status, notes: e.detail.notes };
+      }
+      renderOCRTable();
     });
   }
 
