@@ -159,6 +159,8 @@ erDiagram
     string approverId
     string approverName
     date createdAt
+    string aiSummary
+    date aiSummaryGeneratedAt
   }
   REPORT_506_APPROVAL_LOG {
     string log_id PK
@@ -539,7 +541,7 @@ erDiagram
 
 ### `SURVEILLANCE_REPORT_506` — บันทึกและยืนยันรายงานผู้ป่วยเฝ้าระวังโรค (รง.506)
 
-รองรับ Feature: `FEAT-ANALYSIS-07`
+รองรับ Feature: `FEAT-ANALYSIS-07`, `FEAT-ANALYSIS-09`
 
 **Collection**: `506Requests` (ตรงกับ seed จริงที่ทำไปแล้วใน `scripts/seed/seed-firestore.js` — ไม่ใช่ `surveillanceReports506` ตามที่เคยเสนอไว้ในแผนคุยกันตอนแรก, document ID เป็น auto-generated ID จาก `db.collection("506Requests").doc()`)
 
@@ -558,6 +560,8 @@ erDiagram
 | approverId | string (nullable) | `string` (nullable, ตรงกับ `user_id` ของ `USER` ในทางปฏิบัติ) | ไม่บังคับ (null จนกว่าจะตัดสินใจ) | รหัสอ้างอิงผู้ตัดสินใจ (free-text/snapshot ชั่วคราว — gap เดียวกับ `requesterId`) |
 | approverName | string (nullable) | `string` (nullable) | ไม่บังคับ (null จนกว่าจะตัดสินใจ) | ชื่อผู้ตัดสินใจ ณ ขณะตัดสินใจ (snapshot) |
 | createdAt | date | `string` (ISO 8601 timestamp เช่น `"2026-08-19T14:02:00+07:00"` — ไม่ใช่ Firestore `Timestamp`) | ใช่ | เวลาที่สร้างรายการ |
+| aiSummary | string (nullable) | `string` (nullable) | ไม่บังคับ (null จนกว่าจะมีคนกดให้ AI สรุป) | สรุปแนวโน้มโรคที่ AI เขียน (จำนวนรายงานโรคเดียวกันในช่วง 7 วันย้อนหลังจาก `startDate` + คำอธิบายสั้นๆ) เขียนโดย Cloud Function `summarizeDiseaseTrend` ผ่าน Firebase Admin SDK — เป็น advisory ให้ Manager อ่านประกอบการตัดสินใจเท่านั้น ไม่ผูกกับ business logic ใดๆ (`FEAT-ANALYSIS-09`) |
+| aiSummaryGeneratedAt | date (nullable) | `string` (nullable, ISO 8601 timestamp เช่นเดียวกับ `createdAt`) | ไม่บังคับ (null จนกว่าจะมีคนกดให้ AI สรุป) | เวลาที่ `aiSummary` ถูกเขียน/อัปเดตล่าสุด (`FEAT-ANALYSIS-09`) |
 
 **Business rule**: ไม่มี reopen กลับเป็น "รอพิจารณา" หลังตัดสินใจแล้ว (one-way transition ตามที่ยืนยันในแผน เช่นเดียวกับ `CASE_CLUSTER.status`)
 

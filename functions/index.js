@@ -239,3 +239,87 @@ exports.suggestDiseaseType = onCall({ secrets: [ANTHROPIC_API_KEY] }, async (req
 
   return { matched: true, diseaseId: matchedType.id, diseaseName: matchedType.name, reason: result.reason || "" };
 });
+
+// summarizeDiseaseTrend (FEAT-ANALYSIS-09) — เฉพาะหน้ารายละเอียด รง.506 (Manager เท่านั้นที่เห็น
+// ปุ่มฝั่ง UI — ดู ACL.md) นับจำนวนรายงาน 506Requests ที่เป็นโรคเดียวกัน ในช่วง 7 วันย้อนหลัง
+// จาก startDate ของรายงานนี้ (รวมตัวมันเอง) แล้วให้ Claude เขียนสรุปสั้นๆ เขียนกลับเข้า
+// field ใหม่ aiSummary/aiSummaryGeneratedAt ผ่าน Admin SDK (ดู DATA-MODEL.md)
+
+function addDaysToIsoDate(isoDateStr, days) {
+  const d = new Date(isoDateStr + "T00:00:00Z");
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+exports.summarizeDiseaseTrend = onCall({ secrets: [ANTHROPIC_API_KEY] }, async (request) => {
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "ต้องเข้าสู่ระบบก่อนใช้งานฟังก์ชันนี้");
+  }
+
+  const { reportId } = request.data || {};
+  if (!reportId || typeof reportId !== "string") {
+    throw new HttpsError("invalid-argument", "ไม่พบรหัสรายงานที่จะสรุป");
+  }
+
+  const reportRef = db.collection("506Requests").doc(reportId);
+  const reportSnap = await reportRef.get();
+  if (!reportSnap.exists) {
+    throw new HttpsError("not-found", "ไม่พบรายงาน รง.506 นี้");
+  }
+
+  const report = reportSnap.data();
+  const diseaseId = report.diseaseId;
+  const diseaseName = report.diseaseName;
+  const startDate = report.startDate;
+
+  if (!diseaseId || !startDate) {
+    throw new HttpsError("failed-precondition", "รายงานนี้ไม่มีข้อมูลโรคติดต่อ/วันที่เริ่มต้นให้สรุป");
+  }
+
+  // ช่วง 7 วัน = [startDate - 6 วัน, startDate] (รวมวันที่ startDate เอง)
+  const windowStart = addDaysToIsoDate(startDate, -6);
+  const windowEnd = startDate;
+
+  const sameDiseaseSnap = await db.collection("506Requests").where("diseaseId", "==", diseaseId).get();
+  const inWindowCount = sameDiseaseSnap.docs.filter(function (d) {
+    const s = d.data().startDate;
+    return typeof s === "string" && s >= windowStart && s <= windowEnd;
+  }).length;
+
+  const client = new Anthropic({ apiKey: ANTHROPIC_API_KEY.value() });
+
+  const prompt =
+    "โรคติดต่อ: " + diseaseName + "\n" +
+    "ช่วงเวลา: " + windowStart + " ถึง " + windowEnd + " (7 วัน)\n" +
+    "จำนวนรายงาน รง.506 ของโรคนี้ในช่วงเวลาดังกล่าว: " + inWindowCount + " รายการ\n\n" +
+    "ช่วยเขียนสรุปสั้นๆ (2-3 ประโยค) ให้ผู้บริหาร (Manager) อ่านประกอบการพิจารณาอนุมัติรายงานนี้ " +
+    "บอกจำนวนที่พบและช่วงเวลา ถ้าจำนวนดูมาก/น้อยผิดปกติให้ตั้งข้อสังเกตสั้นๆ " +
+    "(ไม่ต้องฟันธงว่าเป็นการระบาดจริงหรือไม่ เพราะเป็นแค่การนับข้อมูลในระบบ ไม่ใช่การวิเคราะห์ทางระบาดวิทยาเต็มรูปแบบ) " +
+    "ตอบเป็นข้อความล้วน ไม่ต้องมี markdown";
+
+  let response;
+  try {
+    response = await client.messages.create({
+      model: "claude-sonnet-5",
+      max_tokens: 300,
+      messages: [{ role: "user", content: prompt }]
+    });
+  } catch (err) {
+    throw new HttpsError("internal", "เรียก AI ไม่สำเร็จ: " + err.message);
+  }
+
+  const textBlock = response.content.find(function (block) { return block.type === "text"; });
+  const summaryText = textBlock
+    ? textBlock.text.trim()
+    : ("พบรายงาน " + diseaseName + " จำนวน " + inWindowCount + " รายการ ในช่วง " + windowStart + " ถึง " + windowEnd);
+
+  const generatedAt = new Date().toISOString();
+
+  try {
+    await reportRef.update({ aiSummary: summaryText, aiSummaryGeneratedAt: generatedAt });
+  } catch (err) {
+    throw new HttpsError("internal", "เขียนสรุปกลับลงฐานข้อมูลไม่สำเร็จ: " + err.message);
+  }
+
+  return { aiSummary: summaryText, aiSummaryGeneratedAt: generatedAt, count: inWindowCount };
+});

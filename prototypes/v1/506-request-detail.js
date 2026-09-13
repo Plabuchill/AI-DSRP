@@ -11,7 +11,8 @@ import {
   updateDoc,
   deleteDoc
 } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
-import { db } from "./firebase-init.js";
+import { httpsCallable } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-functions.js";
+import { db, functions } from "./firebase-init.js";
 import { getCurrentUserProfile, getRoleCategory } from "./current-user.js";
 
 const STATUS_BADGE = {
@@ -50,6 +51,11 @@ async function init() {
   const confirmBtn = document.getElementById("btn-confirm");
   const rejectBtn = document.getElementById("btn-reject");
   const deleteBtn = document.getElementById("btn-delete");
+  const aiSummarizeBtn = document.getElementById("btn-ai-summarize");
+  const aiSummarizeStatusEl = document.getElementById("ai-summarize-status");
+  const aiSummaryBlockEl = document.getElementById("ai-summary-block");
+  const aiSummaryTextEl = document.getElementById("ai-summary-text");
+  const aiSummaryTimestampEl = document.getElementById("ai-summary-timestamp");
 
   const id = new URLSearchParams(window.location.search).get("id");
   if (!id) {
@@ -62,6 +68,7 @@ async function init() {
   const isManager = getRoleCategory(profile ? profile.role : "") === "manager";
   if (!isManager) {
     deleteBtn.style.display = "none";
+    aiSummarizeBtn.style.display = "none";
   }
 
   function render(d) {
@@ -84,6 +91,16 @@ async function init() {
     const isPending = d.status === "รอพิจารณา";
     decisionActionsEl.style.display = (isPending && isManager) ? "" : "none";
 
+    if (d.aiSummary) {
+      aiSummaryBlockEl.style.display = "";
+      aiSummaryTextEl.textContent = d.aiSummary;
+      aiSummaryTimestampEl.textContent = d.aiSummaryGeneratedAt
+        ? "สรุปโดย AI เมื่อ " + new Date(d.aiSummaryGeneratedAt).toLocaleString("th-TH")
+        : "";
+    } else {
+      aiSummaryBlockEl.style.display = "none";
+    }
+
     listEl.style.display = "";
   }
 
@@ -103,6 +120,27 @@ async function init() {
 
   confirmBtn.addEventListener("click", function () { decide("ยืนยัน"); });
   rejectBtn.addEventListener("click", function () { decide("ไม่ยืนยัน"); });
+
+  // ให้ AI ช่วยสรุปแนวโน้มโรค (FEAT-ANALYSIS-09) — เขียนผลกลับลง Firestore เอง
+  // (ดู functions/summarizeDiseaseTrend) แล้ว onSnapshot ด้านล่างจะแสดงผลอัตโนมัติ
+  const summarizeDiseaseTrend = httpsCallable(functions, "summarizeDiseaseTrend");
+
+  aiSummarizeBtn.addEventListener("click", async function () {
+    aiSummarizeBtn.disabled = true;
+    aiSummarizeBtn.textContent = "กำลังวิเคราะห์...";
+    aiSummarizeStatusEl.style.display = "none";
+
+    try {
+      await summarizeDiseaseTrend({ reportId: id });
+      // ไม่ต้องอัปเดต UI เองตรงนี้ — onSnapshot จะรับ aiSummary ที่เพิ่งเขียนแล้ว render() ให้อัตโนมัติ
+    } catch (err) {
+      aiSummarizeStatusEl.textContent = "เรียก AI ไม่สำเร็จ: " + ((err && err.message) || "เกิดข้อผิดพลาด");
+      aiSummarizeStatusEl.style.display = "block";
+    } finally {
+      aiSummarizeBtn.disabled = false;
+      aiSummarizeBtn.textContent = "ให้ AI ช่วยสรุปแนวโน้มโรค";
+    }
+  });
 
   deleteBtn.addEventListener("click", async function () {
     if (!window.confirm("ยืนยันลบรายการนี้ใช่ไหม? การลบไม่สามารถย้อนกลับได้")) {

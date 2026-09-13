@@ -137,11 +137,19 @@
         </div>
       </dl>
 
+      <div id="ai-summary-block" style="display:none;margin-bottom:16px;">
+        <h3 style="font-size:var(--fs-small);margin-bottom:6px;">สรุปแนวโน้มโรคโดย AI</h3>
+        <div id="ai-summary-text" class="body-secondary" style="padding:10px 12px;background:var(--color-warning-bg);border-radius:var(--radius-control);"></div>
+        <div id="ai-summary-timestamp" class="body-secondary" style="font-size:var(--fs-tiny, 12px);margin-top:4px;"></div>
+      </div>
+
       <div class="report-actions">
         <div class="row-actions" id="detail-decision-actions" style="display:none;">
           <button type="button" class="btn btn-primary" id="btn-confirm">ยืนยัน</button>
           <button type="button" class="btn btn-outline" id="btn-reject">ไม่ยืนยัน</button>
+          <button type="button" class="btn btn-outline" id="btn-ai-summarize">ให้ AI ช่วยสรุปแนวโน้มโรค</button>
         </div>
+        <p id="ai-summarize-status" class="body-secondary" style="display:none;"></p>
         <button type="button" class="btn btn-outline" id="btn-delete">ลบรายการนี้</button>
         <a class="btn btn-outline" href="case-analysis.html">← กลับหน้ารายการ</a>
       </div>
