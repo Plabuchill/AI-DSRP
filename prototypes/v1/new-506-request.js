@@ -46,6 +46,13 @@ function init() {
   let diseasesLoaded = false;
   let requestersLoaded = false;
 
+  // Snapshot ผลลัพธ์ล่าสุดจาก "ให้ AI ช่วยเลือกโรคติดต่อ" (FEAT-ANALYSIS-08) — เก็บไว้ส่งไป
+  // บันทึกคู่กับเอกสารตอนกดบันทึก (field aiSuggestion ใน DATA-MODEL.md) ไม่ใช่ null ถ้าไม่เคยกด
+  let lastAiSuggestion = null;
+  // input ที่ใช้เรียกครั้งล่าสุด — เก็บคู่กับ lastAiSuggestion เพื่อเขียนลง aiLog subcollection
+  // (506Requests/{id}/aiLog) พร้อมกันตอนกดบันทึก เพราะตอนเรียก AI ยังไม่มีรหัสเอกสารให้ผูก log
+  let lastAiSuggestionInput = null;
+
   function updateStatusReady() {
     if (diseasesLoaded && requestersLoaded) {
       statusEl.textContent = "โหลดรายการโรคติดต่อและผู้แจ้งสำเร็จ — กรอกข้อมูลแล้วกดบันทึก";
@@ -119,7 +126,7 @@ function init() {
     statusEl.textContent = "กำลังบันทึก...";
 
     try {
-      await addDoc(collection(db, "506Requests"), {
+      const docRef = await addDoc(collection(db, "506Requests"), {
         title: title,
         reason: reason,
         startDate: startDate,
@@ -131,8 +138,27 @@ function init() {
         approverName: null,
         diseaseId: diseaseId,
         diseaseName: diseaseName,
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
+        aiSuggestion: lastAiSuggestion
       });
+
+      // เขียน aiLog ผูกกับการบันทึกนี้เท่านั้น (ตอนเรียก AI ยังไม่มีรหัสเอกสาร) — เฉพาะกรณี
+      // เคยกด "ให้ AI ช่วยเลือกโรคติดต่อ" จริง ไม่งั้นไม่มีอะไรให้ log (ดู DATA-MODEL.md
+      // SURVEILLANCE_REPORT_506_AI_LOG) — ล้มเหลวได้โดยไม่กระทบการบันทึกรายงานหลัก
+      if (lastAiSuggestion) {
+        try {
+          await addDoc(collection(db, "506Requests", docRef.id, "aiLog"), {
+            type: "disease-suggestion",
+            input: lastAiSuggestionInput,
+            output: lastAiSuggestion,
+            createdAt: new Date().toISOString()
+          });
+        } catch (logErr) {
+          // ไม่ throw ต่อ — รายงานหลักบันทึกสำเร็จแล้ว การเขียน log ล้มเหลวไม่ควรทำให้ผู้ใช้เข้าใจผิดว่าบันทึกไม่สำเร็จ
+          console.error("เขียน aiLog (disease-suggestion) ไม่สำเร็จ:", logErr.message);
+        }
+      }
+
       window.location.href = "case-analysis.html";
     } catch (err) {
       saveBtn.disabled = false;
@@ -165,6 +191,8 @@ function init() {
     try {
       const result = await withTimeout(suggestDiseaseType({ title: title, reason: reason }), AI_SUGGEST_TIMEOUT_MS);
       const data = result.data;
+      lastAiSuggestion = { matched: data.matched, diseaseId: data.diseaseId, diseaseName: data.diseaseName, reason: data.reason || "" };
+      lastAiSuggestionInput = { title: title, reason: reason };
       if (data.matched) {
         diseaseSelect.value = data.diseaseId;
         showAiSuggestStatus(

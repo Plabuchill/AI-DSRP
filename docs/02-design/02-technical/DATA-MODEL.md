@@ -161,6 +161,7 @@ erDiagram
     date createdAt
     string aiSummary
     date aiSummaryGeneratedAt
+    map aiSuggestion
   }
   REPORT_506_APPROVAL_LOG {
     string log_id PK
@@ -541,7 +542,7 @@ erDiagram
 
 ### `SURVEILLANCE_REPORT_506` — บันทึกและยืนยันรายงานผู้ป่วยเฝ้าระวังโรค (รง.506)
 
-รองรับ Feature: `FEAT-ANALYSIS-07`, `FEAT-ANALYSIS-09`
+รองรับ Feature: `FEAT-ANALYSIS-07`, `FEAT-ANALYSIS-08`, `FEAT-ANALYSIS-09`
 
 **Collection**: `506Requests` (ตรงกับ seed จริงที่ทำไปแล้วใน `scripts/seed/seed-firestore.js` — ไม่ใช่ `surveillanceReports506` ตามที่เคยเสนอไว้ในแผนคุยกันตอนแรก, document ID เป็น auto-generated ID จาก `db.collection("506Requests").doc()`)
 
@@ -562,6 +563,7 @@ erDiagram
 | createdAt | date | `string` (ISO 8601 timestamp เช่น `"2026-08-19T14:02:00+07:00"` — ไม่ใช่ Firestore `Timestamp`) | ใช่ | เวลาที่สร้างรายการ |
 | aiSummary | string (nullable) | `string` (nullable) | ไม่บังคับ (null จนกว่าจะมีคนกดให้ AI สรุป) | สรุปแนวโน้มโรคที่ AI เขียน (จำนวนรายงานโรคเดียวกันในช่วง 7 วันย้อนหลังจาก `startDate` + คำอธิบายสั้นๆ) เขียนโดย Cloud Function `summarizeDiseaseTrend` ผ่าน Firebase Admin SDK — เป็น advisory ให้ Manager อ่านประกอบการตัดสินใจเท่านั้น ไม่ผูกกับ business logic ใดๆ (`FEAT-ANALYSIS-09`) |
 | aiSummaryGeneratedAt | date (nullable) | `string` (nullable, ISO 8601 timestamp เช่นเดียวกับ `createdAt`) | ไม่บังคับ (null จนกว่าจะมีคนกดให้ AI สรุป) | เวลาที่ `aiSummary` ถูกเขียน/อัปเดตล่าสุด (`FEAT-ANALYSIS-09`) |
+| aiSuggestion | map (nullable) | `map` (nullable) — โครงสร้าง `{ matched: boolean, diseaseId: string \| null, diseaseName: string \| null, reason: string }` | ไม่บังคับ (null ถ้าผู้สร้างรายการไม่ได้ใช้ปุ่ม "ให้ AI ช่วยเลือกโรคติดต่อ" ก่อนบันทึก) | Snapshot ผลลัพธ์ล่าสุดจาก AI ช่วยเลือกโรคติดต่อ (Cloud Function `suggestDiseaseType`) ณ ขณะกดบันทึกสร้างรายงานนี้ — เขียนพร้อมกับตอนสร้างเอกสาร (ส่วนหนึ่งของ `addDoc` เดียวกัน) ไม่ใช่เขียนทีหลัง เพื่อเก็บประวัติว่า AI เคยแนะนำอะไรไว้ตอนสร้าง แม้ผู้ใช้จะเลือกโรคติดต่อเองก็ตาม (`FEAT-ANALYSIS-08`) |
 
 **Business rule**: ไม่มี reopen กลับเป็น "รอพิจารณา" หลังตัดสินใจแล้ว (one-way transition ตามที่ยืนยันในแผน เช่นเดียวกับ `CASE_CLUSTER.status`)
 
@@ -587,6 +589,24 @@ erDiagram
 **Cardinality**: `SURVEILLANCE_REPORT_506` ↔ `REPORT_506_APPROVAL_LOG` = **1:N** — 1 รง.506 มีบันทึกความเห็นได้หลายรายการตามลำดับเวลา ไม่มี limit
 
 **หมายเหตุ**: field ยังคง snake_case ตาม convention เดิมของเอกสาร เพราะยังไม่มีการ seed ข้อมูลจริงใน collection นี้ (ต่างจาก `SURVEILLANCE_REPORT_506` ที่ seed แล้วและปรับเป็น camelCase ให้ตรงของจริง) — พิจารณาปรับเป็น camelCase ทีหลังถ้า implement จริง
+
+### `SURVEILLANCE_REPORT_506_AI_LOG` — ประวัติการเรียก AI ทุกครั้งของรายงาน รง.506 แต่ละฉบับ
+
+รองรับ Feature: `FEAT-ANALYSIS-08`, `FEAT-ANALYSIS-09`
+
+**Collection**: `506Requests/{report_506_id}/aiLog` (Firestore subcollection ซ้อนใต้ document ของ `SURVEILLANCE_REPORT_506` โดยตรง — ตั้งใจให้เป็น subcollection ไม่ใช่ top-level collection แบบ `REPORT_506_APPROVAL_LOG`/`506RequestApprovalLogs`, document ID เป็น auto-generated ID)
+
+| Attribute | Conceptual Type | Native Type (Firestore) | จำเป็นต้องมี | คำอธิบาย |
+|---|---|---|---|---|
+| log_id | string (PK) | `string` (auto-generated Firestore document ID) | ใช่ | รหัส log entry |
+| type | enum(disease-suggestion, disease-trend) | `string` | ใช่ | ประเภทการเรียก AI — `disease-suggestion` มาจาก Cloud Function `suggestDiseaseType` (`FEAT-ANALYSIS-08`, เขียน log ตอนกดบันทึกสร้างรายงานพร้อมกับ field `aiSuggestion` ของ `SURVEILLANCE_REPORT_506`) หรือ `disease-trend` มาจาก Cloud Function `summarizeDiseaseTrend` (`FEAT-ANALYSIS-09`) |
+| input | map | `map` | ใช่ | ข้อมูลที่ส่งเข้า AI ณ ครั้งนั้น — `disease-suggestion`: `{ title, reason }`, `disease-trend`: `{ diseaseId, diseaseName, startDate, windowStart, windowEnd }` |
+| output | map | `map` | ใช่ | ผลลัพธ์ที่ได้จาก AI ณ ครั้งนั้น — `disease-suggestion`: `{ matched, diseaseId, diseaseName, reason }` (โครงสร้างเดียวกับ field `aiSuggestion`), `disease-trend`: `{ summary, count }` |
+| createdAt | date | `string` (ISO 8601 timestamp เช่นเดียวกับ `SURVEILLANCE_REPORT_506.createdAt`) | ใช่ | เวลาที่เรียก AI ครั้งนี้ |
+
+**Business rule**: เป็น audit trail แบบ append-only — ไม่มีการแก้ไข/ลบ log entry ที่มีอยู่แล้ว และ**ห้ามมีการเขียน field `status` ของ `SURVEILLANCE_REPORT_506` จากกลไกนี้โดยเด็ดขาด** (สถานะเปลี่ยนได้เฉพาะจากคนกดยืนยัน/ไม่ยืนยันเท่านั้น ดู Business rule ของ `SURVEILLANCE_REPORT_506`)
+
+**Cardinality**: `SURVEILLANCE_REPORT_506` ↔ `SURVEILLANCE_REPORT_506_AI_LOG` = **1:N** (ผ่านโครงสร้าง Firestore subcollection โดยตรง ไม่ใช่ field FK แบบ `REPORT_506_APPROVAL_LOG`) — 1 รายงานมี log การเรียก AI ได้หลายรายการตามจำนวนครั้งที่ถูกเรียก ไม่มี limit
 
 ### Module: Control Plan (`FEAT-CONTROL-*`)
 

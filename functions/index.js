@@ -315,10 +315,28 @@ exports.summarizeDiseaseTrend = onCall({ secrets: [ANTHROPIC_API_KEY] }, async (
 
   const generatedAt = new Date().toISOString();
 
+  // ⚠️ ห้ามเพิ่ม field "status" เข้าไปใน object นี้เด็ดขาด — สถานะรอพิจารณา/ยืนยัน/ไม่ยืนยัน
+  // เปลี่ยนได้เฉพาะตอนคนกดปุ่มยืนยัน/ไม่ยืนยันเท่านั้น (ดู 506-request-detail.js/decide()
+  // และ Business rule ของ SURVEILLANCE_REPORT_506_AI_LOG ใน DATA-MODEL.md)
   try {
     await reportRef.update({ aiSummary: summaryText, aiSummaryGeneratedAt: generatedAt });
   } catch (err) {
     throw new HttpsError("internal", "เขียนสรุปกลับลงฐานข้อมูลไม่สำเร็จ: " + err.message);
+  }
+
+  // audit log แบบ append-only ใต้ subcollection ของรายงานนี้ (ดู DATA-MODEL.md
+  // SURVEILLANCE_REPORT_506_AI_LOG) — ไม่กระทบ field status ใดๆ ทั้งสิ้น
+  try {
+    await reportRef.collection("aiLog").add({
+      type: "disease-trend",
+      input: { diseaseId: diseaseId, diseaseName: diseaseName, startDate: startDate, windowStart: windowStart, windowEnd: windowEnd },
+      output: { summary: summaryText, count: inWindowCount },
+      createdAt: generatedAt
+    });
+  } catch (err) {
+    // ไม่ throw ต่อ — เขียน aiSummary สำเร็จแล้วถือว่าฟีเจอร์หลักทำงานได้ การเขียน log ล้มเหลว
+    // ไม่ควรทำให้ Manager เห็น error ทั้งที่ได้สรุปไปดูแล้วจริง
+    console.error("เขียน aiLog (disease-trend) ไม่สำเร็จ:", err.message);
   }
 
   return { aiSummary: summaryText, aiSummaryGeneratedAt: generatedAt, count: inWindowCount };
